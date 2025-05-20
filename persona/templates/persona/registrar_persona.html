@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Crear Cuenta{% endblock %}
+
+{% block content %}
+<style>
+    .register-box {
+        max-width: 350px;
+        margin: 60px auto 40px auto;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        padding: 32px 32px 18px 32px;
+        text-align: center;
+    }
+    .register-box .user-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 18px;
+        color: #bdbdbd;
+        background: #f2f2f2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .register-box input[type="text"],
+    .register-box input[type="email"],
+    .register-box input[type="date"] {
+        margin-bottom: 14px;
+        border-radius: 2px;
+        border: 1px solid #bdbdbd;
+        font-size: 16px;
+        padding: 8px 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .register-box .date-fields {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+    .register-box .date-fields input {
+        text-align: center;
+        font-size: 16px;
+        border-radius: 2px;
+        border: 1px solid #bdbdbd;
+        padding: 8px 0;
+        width: 33.33%;
+    }
+    .register-box button {
+        width: 100%;
+        background: #2176d2;
+        color: #fff;
+        border: none;
+        border-radius: 2px;
+        padding: 10px 0;
+        font-size: 17px;
+        font-weight: 500;
+        margin-top: 8px;
+        margin-bottom: 10px;
+        transition: background 0.2s;
+    }
+    .register-box button:hover {
+        background: #185a9d;
+    }
+    .register-box .info {
+        font-size: 12px;
+        color: #888;
+        margin-top: 8px;
+    }
+    .register-box .error {
+        color: #d32f2f;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    .register-box .form-errors {
+        background: #ffd6d6;
+        color: #b71c1c;
+        border: 1px solid #d32f2f;
+        border-radius: 3px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+        text-align: left;
+        font-size: 15px;
+    }
+</style>
+<div class="register-box">
+    {% if form.errors %}
+    <div class="form-errors">
+        <ul style="margin:0;padding-left:18px;">
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <div class="user-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            <path fill-rule="evenodd" d="M8 9a5 5 0 0 0-5 5v.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V14a5 5 0 0 0-5-5z"/>
+        </svg>
+    </div>
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        {{ form.nombre_completo|add_class:"" }}
+        {{ form.dni|add_class:"" }}
+        {{ form.email|add_class:"" }}
+        <div class="date-fields">
+            <input type="text" name="fecha_dia" maxlength="2" placeholder="DD" pattern="\d{1,2}" required>
+            <input type="text" name="fecha_mes" maxlength="2" placeholder="MM" pattern="\d{1,2}" required>
+            <input type="text" name="fecha_anio" maxlength="4" placeholder="AAAA" pattern="\d{4}" required>
+        </div>
+        <input type="hidden" name="fecha_nacimiento" id="fecha_nacimiento_hidden">
+        <button type="submit">Crear Cuenta</button>
+    </form>
+    <div class="info">
+        Recibirás tu contraseña vía email.<br>Luego podrás cambiarla.
+    </div>
+</div>
+<script>
+// Unir los campos de fecha y poner el valor en el input oculto antes de enviar
+const form = document.querySelector('.register-box form');
+form.addEventListener('submit', function(e) {
+    const dia = form.querySelector('input[name="fecha_dia"]').value.padStart(2, '0');
+    const mes = form.querySelector('input[name="fecha_mes"]').value.padStart(2, '0');
+    const anio = form.querySelector('input[name="fecha_anio"]').value;
+    if (dia && mes && anio) {
+        form.querySelector('#fecha_nacimiento_hidden').value = `${anio}-${mes}-${dia}`;
+    }
+});
+</script>
+{% endblock %} 

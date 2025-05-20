@@ -1,22 +1,31 @@
 from django.db import models
+from django.utils import timezone
 
 class Persona(models.Model):
     nombre = models.CharField(max_length=100)
-    dni = models.IntegerField()# Campo de texto con longitud máxima de 100 caracteres.
-    apollo = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.
-    edad = models.IntegerField()  # Campo para un número entero (edad).
+    apellido = models.CharField(max_length=100)
+    dni = models.CharField(max_length=20, unique=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    telefono = models.CharField(max_length=20, null=True, blank=True)
+    fecha_nacimiento = models.DateField(null=True, blank=True)
+    direccion = models.TextField(null=True, blank=True)
+    fecha_registro = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.nombre} {self.apollo} ({self.edad} años)"
+        return f"{self.nombre} {self.apellido}"
+
+    class Meta:
+        verbose_name = "Persona"
+        verbose_name_plural = "Personas"
 
 class Empleado(models.Model):
     nombre = models.CharField(max_length=100)
     dni = models.IntegerField()# Campo de texto con longitud máxima de 100 caracteres.
-    apollo = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.
+    apellido = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.
     edad = models.IntegerField()  # Campo para un número entero (edad).
 
     def __str__(self):
-        return f"{self.nombre} {self.apollo} ({self.edad} años)"
+        return f"{self.nombre} {self.apellido} ({self.edad} años)"
 
 class Maquina(models.Model):
     nombre = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.
