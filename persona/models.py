@@ -1,15 +1,46 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinLengthValidator, RegexValidator
+from django.core.exceptions import ValidationError
+from datetime import date
+
+def validar_mayor_edad(fecha_nacimiento):
+    hoy = date.today()
+    edad = hoy.year - fecha_nacimiento.year - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+    if edad < 18:
+        raise ValidationError('Debe ser mayor de 18 años para registrarse.')
 
 class Persona(models.Model):
-    nombre = models.CharField(max_length=100)
-    apellido = models.CharField(max_length=100)
-    dni = models.CharField(max_length=20, unique=True)
-    email = models.EmailField(unique=True, null=True, blank=True)
-    telefono = models.CharField(max_length=20, null=True, blank=True)
-    fecha_nacimiento = models.DateField(null=True, blank=True)
-    direccion = models.TextField(null=True, blank=True)
-    fecha_registro = models.DateTimeField(default=timezone.now)
+    id = models.AutoField(primary_key=True)
+    nombre = models.CharField(
+        max_length=50,
+        validators=[MinLengthValidator(2)],
+        help_text="El nombre debe tener entre 2 y 50 caracteres"
+    )
+    apellido = models.CharField(
+        max_length=50,
+        validators=[MinLengthValidator(2)],
+        help_text="El apellido debe tener entre 2 y 50 caracteres"
+    )
+    dni = models.CharField(
+        max_length=9,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{7,9}$',
+                message='El DNI debe tener entre 7 y 9 dígitos numéricos'
+            )
+        ],
+        help_text="Ingrese un DNI de entre 7 y 9 dígitos"
+    )
+    email = models.EmailField(
+        unique=True,
+        help_text="Ingrese un correo electrónico válido"
+    )
+    fecha_nacimiento = models.DateField(
+        help_text="Ingrese su fecha de nacimiento (debe ser mayor de 18 años)",
+        validators=[validar_mayor_edad]
+    )
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
