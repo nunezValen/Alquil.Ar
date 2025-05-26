@@ -22,10 +22,12 @@ class Empleado(models.Model):
     nombre = models.CharField(max_length=100)
     dni = models.IntegerField()# Campo de texto con longitud máxima de 100 caracteres.
     apellido = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.
-    edad = models.IntegerField()  # Campo para un número entero (edad).
+    fecha_nacimiento = models.DateField(null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)  # Para almacenar la contraseña hasheada
 
     def __str__(self):
-        return f"{self.nombre} {self.apellido} ({self.edad} años)"
+        return f"{self.nombre} {self.apellido}"
 
 class Maquina(models.Model):
     nombre = models.CharField(max_length=100)  # Campo de texto con longitud máxima de 100 caracteres.

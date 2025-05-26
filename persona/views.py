@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib import messages
 from .models import Persona, Maquina, Empleado
-from .forms import PersonaForm
+from .forms import PersonaForm, EmpleadoForm
 from datetime import date
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -63,21 +63,72 @@ def registrar_persona(request):
         form = PersonaForm()
     return render(request, 'persona/registrar_persona.html', {'form': form, 'error': error})
 
+def registrar_empleado(request):
+    error = None
+    if request.method == 'POST':
+        post = request.POST.copy()
+        dia = post.get('fecha_dia')
+        mes = post.get('fecha_mes')
+        anio = post.get('fecha_anio')
+        if dia and mes and anio:
+            post['fecha_nacimiento'] = f"{anio}-{mes.zfill(2)}-{dia.zfill(2)}"
+        form = EmpleadoForm(post)
+        if form.is_valid():
+            empleado = form.save()
+            email = empleado.email
+            if email:
+                try:
+                    password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                    empleado.password = password
+                    empleado.save()
+                    send_mail(
+                        'Tu cuenta de empleado en Alquil.ar',
+                        f'Hola {empleado.nombre},\n\nTu usuario de empleado ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.',
+                        'no-reply@alquilar.com.ar',
+                        [email],
+                        fail_silently=False,
+                    )
+                    messages.success(request, 'Empleado registrado exitosamente. Recibirás tu contraseña por email.')
+                    return redirect('registrar_empleado')
+                except Exception as e:
+                    error = f'Error al enviar el correo: {e}'
+    else:
+        form = EmpleadoForm()
+    return render(request, 'persona/registrar_empleado.html', {'form': form, 'error': error})
+
 def login_view(request):
     error = None
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect('inicio_blanco')
+        # Primero buscar en Empleado
+        empleado = Empleado.objects.filter(email=username).first()
+        if empleado and empleado.password:
+            # Verificamos la contraseña (en texto plano, pero deberías usar hash en producción)
+            if empleado.password == password:
+                request.session['empleado_id'] = empleado.id
+                request.session['es_empleado'] = True
+                return redirect('inicio_empleado')
+            else:
+                error = 'Contraseña incorrecta para empleado.'
         else:
-            error = 'Usuario o contraseña incorrectos.'
+            # Si no es empleado, buscar como usuario normal (Persona)
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                request.session['es_empleado'] = False
+                return redirect('inicio_blanco')
+            else:
+                error = 'Usuario o contraseña incorrectos.'
     return render(request, 'login.html', {'error': error})
 
 @login_required
 def inicio_blanco(request):
     return render(request, 'inicio_blanco.html')
+
+def inicio_empleado(request):
+    if not request.session.get('es_empleado'):
+        return redirect('login')
+    return render(request, 'persona/inicio_empleado.html')
 
 # Create your views here.

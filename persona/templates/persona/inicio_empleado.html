@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Inicio Empleado{% endblock %}
+{% block content %}
+<style>
+    .welcome-box {
+        max-width: 600px;
+        margin: 60px auto 40px auto;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        padding: 32px;
+        text-align: center;
+    }
+    .welcome-box h1 {
+        color: #2176d2;
+        margin-bottom: 20px;
+    }
+    .welcome-box p {
+        color: #666;
+        font-size: 18px;
+        line-height: 1.6;
+    }
+</style>
+<div class="welcome-box">
+    <h1>¡Bienvenido Empleado!</h1>
+    <p>Has iniciado sesión como empleado del sistema.</p>
+</div>
+{% endblock %} 
