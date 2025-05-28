@@ -70,6 +70,21 @@
     .login-box .links a:hover {
         color: #333;
     }
+    .login-box .register-links {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .login-box .register-links a {
+        display: block;
+        margin: 10px 0;
+        color: #2176d2;
+        text-decoration: none;
+        font-size: 14px;
+    }
+    .login-box .register-links a:hover {
+        text-decoration: underline;
+    }
 </style>
 <div class="login-box">
     <div class="user-icon">
@@ -81,15 +96,18 @@
     {% if error %}
     <div class="error">{{ error }}</div>
     {% endif %}
-    <form method="post" autocomplete="off">
+    <form method="post" action="{% url 'login' %}" autocomplete="off">
         {% csrf_token %}
         <input type="text" name="username" placeholder="Email" required>
         <input type="password" name="password" placeholder="Contraseña" required>
         <button type="submit">Ingresar</button>
     </form>
     <div class="links">
-        <a href="{% url 'registrar_persona' %}">Registrarse</a>
         <a href="{% url 'cambiar_password' %}">Cambiar Contraseña</a>
+    </div>
+    <div class="register-links">
+        <a href="{% url 'registrar_persona' %}">Registrarse como Cliente</a>
+        <a href="{% url 'registrar_empleado' %}">Registrarse como Empleado</a>
     </div>
 </div>
 {% endblock %} 

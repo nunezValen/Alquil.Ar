@@ -9,6 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.contrib.auth.forms import PasswordChangeForm
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 import random, string
 
 
@@ -47,8 +49,13 @@ def registrar_persona(request):
                 else:
                     try:
                         password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-                        user = User.objects.create_user(username=email, email=email, password=password,
-                            first_name=persona.nombre, last_name=persona.apellido)
+                        user = User.objects.create_user(
+                            username=email,
+                            email=email,
+                            password=password,
+                            first_name=persona.nombre,
+                            last_name=persona.apellido
+                        )
                         send_mail(
                             'Tu cuenta en Alquil.ar',
                             f'Hola {persona.nombre},\n\nTu usuario ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.',
@@ -64,17 +71,52 @@ def registrar_persona(request):
         form = PersonaForm()
     return render(request, 'persona/registrar_persona.html', {'form': form, 'error': error})
 
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def login_view(request):
     error = None
     if request.method == 'POST':
-        username = request.POST.get('username')
+        email = request.POST.get('username')
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect('inicio_blanco')
-        else:
-            error = 'Usuario o contraseña incorrectos.'
+        
+        print(f"Intento de login con email: {email}")  # Debug
+        
+        # 1. Primero buscar en Empleado
+        try:
+            empleado = Empleado.objects.get(email=email)
+            print(f"Empleado encontrado: {empleado}")  # Debug
+            # 1.1 Intentar autenticar como empleado
+            username = f"emp_{email}"
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                print(f"Autenticación exitosa como empleado: {user}")  # Debug
+                login(request, user)
+                return redirect('inicio_blanco')
+            # 1.2 Si la contraseña no coincide
+            else:
+                print("Contraseña incorrecta para empleado")  # Debug
+                error = 'Email o contraseña incorrectos'
+        except Empleado.DoesNotExist:
+            print("No se encontró empleado, buscando en Persona")  # Debug
+            # 2. Si no existe en Empleado, buscar en Persona
+            try:
+                persona = Persona.objects.get(email=email)
+                print(f"Persona encontrada: {persona}")  # Debug
+                # 2.1 Intentar autenticar como persona
+                user = authenticate(request, username=email, password=password)
+                if user is not None:
+                    print(f"Autenticación exitosa como persona: {user}")  # Debug
+                    login(request, user)
+                    return redirect('inicio_blanco')
+                # 2.2 Si la contraseña no coincide
+                else:
+                    print("Contraseña incorrecta para persona")  # Debug
+                    error = 'Email o contraseña incorrectos'
+            except Persona.DoesNotExist:
+                # 3. Si no existe ni en Empleado ni en Persona
+                print("No se encontró ni empleado ni persona")  # Debug
+                error = 'Email o contraseña incorrectos'
+    
     return render(request, 'login.html', {'error': error})
 
 @login_required
@@ -100,17 +142,25 @@ def registrar_empleado(request):
                     password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
                     # Agregamos un prefijo al username para diferenciarlo de los usuarios normales
                     username = f"emp_{email}"
-                    user = User.objects.create_user(username=username, email=email, password=password,
-                        first_name=empleado.nombre, last_name=empleado.apellido)
-                    send_mail(
-                        'Tu cuenta de empleado en Alquil.ar',
-                        f'Hola {empleado.nombre},\n\nTu usuario ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.',
-                        'no-reply@alquilar.com.ar',
-                        [email],
-                        fail_silently=False,
-                    )
-                    messages.success(request, 'Empleado registrado exitosamente. Recibirás tu contraseña por email.')
-                    return redirect('registrar_empleado')
+                    if User.objects.filter(username=username).exists():
+                        error = 'Ya existe un usuario con ese email. Si no recibiste el correo, contacta al administrador.'
+                    else:
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email,
+                            password=password,
+                            first_name=empleado.nombre,
+                            last_name=empleado.apellido
+                        )
+                        send_mail(
+                            'Tu cuenta de empleado en Alquil.ar',
+                            f'Hola {empleado.nombre},\n\nTu usuario ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.',
+                            'no-reply@alquilar.com.ar',
+                            [email],
+                            fail_silently=False,
+                        )
+                        messages.success(request, 'Empleado registrado exitosamente. Recibirás tu contraseña por email.')
+                        return redirect('registrar_empleado')
                 except Exception as e:
                     error = f'Error al enviar el correo: {e}'
     else:
@@ -216,5 +266,78 @@ def cambiar_password_empleado_logueado(request):
             success = 'Contraseña cambiada exitosamente.'
             
     return render(request, 'cambiar_password_empleado_logueado.html', {'error': error, 'success': success})
+
+@login_required
+def login_as_persona(request):
+    error = None
+    success = None
+    
+    # Verificar que el usuario actual es un empleado
+    if not request.user.username.startswith('emp_'):
+        return redirect('inicio_blanco')
+    
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        email = request.user.email  # El email del empleado actual
+        
+        try:
+            # Buscar si existe una cuenta Persona con el mismo email
+            persona = Persona.objects.get(email=email)
+            
+            # Intentar autenticar como persona
+            user = authenticate(request, username=email, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('inicio_blanco')
+            else:
+                error = 'Contraseña incorrecta para la cuenta Persona'
+        except Persona.DoesNotExist:
+            error = 'No existe una cuenta Persona asociada a este email'
+    
+    return render(request, 'login_as_persona.html', {'error': error, 'success': success})
+
+def login_unificado2(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        
+        # 1. Buscar en modelo Empleado
+        try:
+            empleado = Empleado.objects.get(email=email)
+            # 1.1. Intentar autenticar como empleado
+            username = f"emp_{email}"
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                # Si la contraseña coincide
+                login(request, user)
+                return redirect('inicio_blanco')
+            else:
+                # 1.2. Si la contraseña no coincide
+                return render(request, 'persona/login_unificado2.html', {
+                    'error': 'Email o contraseña incorrectos'
+                })
+        except Empleado.DoesNotExist:
+            # 2. Si no existe en Empleado, buscar en Persona
+            try:
+                persona = Persona.objects.get(email=email)
+                # 2.1. Intentar autenticar como persona
+                user = authenticate(request, username=email, password=password)
+                if user is not None:
+                    # Si la contraseña coincide
+                    login(request, user)
+                    return redirect('inicio_blanco')
+                else:
+                    # 2.2. Si la contraseña no coincide
+                    return render(request, 'persona/login_unificado2.html', {
+                        'error': 'Email o contraseña incorrectos'
+                    })
+            except Persona.DoesNotExist:
+                # 3. Si no existe ni en Empleado ni en Persona
+                return render(request, 'persona/login_unificado2.html', {
+                    'error': 'Email o contraseña incorrectos'
+                })
+    
+    # Si es GET, mostrar el formulario
+    return render(request, 'persona/login_unificado2.html')
 
 # Create your views here.

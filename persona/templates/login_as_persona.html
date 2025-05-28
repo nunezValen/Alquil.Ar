@@ -1,7 +1,5 @@
 {% extends 'base.html' %}
-
-{% block title %}Iniciar Sesión - Empleado{% endblock %}
-
+{% block title %}Iniciar Sesión como Persona{% endblock %}
 {% block content %}
 <style>
     .login-box {
@@ -28,7 +26,6 @@
         margin-left: auto;
         margin-right: auto;
     }
-    .login-box input[type="text"],
     .login-box input[type="password"] {
         margin-bottom: 14px;
         border-radius: 2px;
@@ -59,18 +56,20 @@
         font-size: 14px;
         margin-bottom: 10px;
     }
-    .login-box .links {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 10px;
-    }
-    .login-box .links a {
+    .login-box .back-link {
+        display: block;
         color: #666;
         text-decoration: none;
         font-size: 14px;
+        margin-top: 10px;
     }
-    .login-box .links a:hover {
+    .login-box .back-link:hover {
         color: #333;
+    }
+    .login-box .info {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 20px;
     }
 </style>
 <div class="login-box">
@@ -79,19 +78,18 @@
             <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
         </svg>
     </div>
-    <h2>Iniciar Sesión - Empleado</h2>
+    <h2>Iniciar Sesión como Persona</h2>
+    <div class="info">
+        Ingresa la contraseña de tu cuenta Persona para iniciar sesión.
+    </div>
     {% if error %}
     <div class="error">{{ error }}</div>
     {% endif %}
     <form method="post" autocomplete="off">
         {% csrf_token %}
-        <input type="text" name="username" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Contraseña" required>
-        <button type="submit">Ingresar</button>
+        <input type="password" name="password" placeholder="Contraseña de Persona" required>
+        <button type="submit">Ingresar como Persona</button>
     </form>
-    <div class="links">
-        <a href="{% url 'registrar_empleado' %}">Registrarse</a>
-        <a href="{% url 'cambiar_password_empleado' %}">Cambiar Contraseña</a>
-    </div>
+    <a href="{% url 'inicio_blanco' %}" class="back-link">Volver al inicio</a>
 </div>
 {% endblock %} 

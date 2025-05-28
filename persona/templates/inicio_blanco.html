@@ -46,6 +46,7 @@
         color: #2176d2;
         text-decoration: none;
         font-size: 14px;
+        margin-left: 15px;
     }
     .user-info a:hover {
         text-decoration: underline;
@@ -55,6 +56,9 @@
 <div class="container">
     <div class="user-info">
         <a href="{% if 'emp_' in request.user.username %}{% url 'cambiar_password_empleado_logueado' %}{% else %}{% url 'cambiar_password_logueado' %}{% endif %}">Cambiar Contraseña</a>
+        {% if 'emp_' in request.user.username %}
+        <a href="{% url 'login_as_persona' %}">Iniciar Sesión como Persona</a>
+        {% endif %}
     </div>
     
     <div class="menu">
