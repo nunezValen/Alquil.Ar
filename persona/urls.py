@@ -9,6 +9,7 @@ from .views import (
 from . import views
 
 urlpatterns = [
+    path('', views.inicio, name='inicio'),
     path('personas/', lista_personas, name='lista_personas'),
     path('maquinas/', lista_maquinas, name='lista_maquinas'),
     path('empleados/', lista_empleados, name='lista_empleados'),

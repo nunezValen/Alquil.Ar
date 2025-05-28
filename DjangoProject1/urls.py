@@ -21,7 +21,7 @@ from persona import views
 
 
 urlpatterns = [
-    path('', lambda request: redirect('persona/', permanent=False)),  # Redirige / a /persona/
+    path('', lambda request: redirect('inicio', permanent=False)),  # Redirige / a la vista de inicio
     path('admin/', admin.site.urls),
     path('persona/', include('persona.urls')),  # La aplicación personas.
 ]

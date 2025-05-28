@@ -96,7 +96,7 @@
     {% if error %}
     <div class="error">{{ error }}</div>
     {% endif %}
-    <form method="post" action="{% url 'login' %}" autocomplete="off">
+    <form method="post" action="{% url 'login_unificado2' %}" autocomplete="off">
         {% csrf_token %}
         <input type="text" name="username" placeholder="Email" required>
         <input type="password" name="password" placeholder="Contraseña" required>

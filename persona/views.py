@@ -15,7 +15,7 @@ import random, string
 
 
 def inicio(request):
-    return HttpResponse("<h1>Bienvenido a nuestra página de inicio</h1>")
+    return render(request, 'inicio.html')
 
 def lista_maquinas(request):
     maquinas = Maquina.objects.all()  # Consulta todos los productos.
