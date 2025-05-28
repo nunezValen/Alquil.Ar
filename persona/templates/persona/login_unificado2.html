@@ -96,6 +96,50 @@
     .register-links a:hover {
         text-decoration: underline;
     }
+
+    .password-recovery {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        text-align: center;
+    }
+
+    .password-recovery h3 {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .recovery-options {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .recovery-option {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        text-align: center;
+        flex: 1;
+    }
+
+    .recovery-option h4 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .recovery-option a {
+        color: #4a90e2;
+        text-decoration: none;
+        font-size: 13px;
+    }
+
+    .recovery-option a:hover {
+        text-decoration: underline;
+    }
 </style>
 
 <div class="login-container">
@@ -123,11 +167,23 @@
         <button type="submit" class="submit-button">Ingresar</button>
     </form>
 
+    <div class="password-recovery">
+        <h3>¿Olvidaste tu contraseña?</h3>
+        <div class="recovery-options">
+            <div class="recovery-option">
+                <h4>Soy Cliente</h4>
+                <a href="{% url 'cambiar_password' %}">Recuperar contraseña</a>
+            </div>
+            <div class="recovery-option">
+                <h4>Soy Empleado</h4>
+                <a href="{% url 'cambiar_password_empleado' %}">Recuperar contraseña</a>
+            </div>
+        </div>
+    </div>
+
     <div class="register-links">
         <a href="{% url 'registrar_persona' %}">Registrarse como Cliente</a>
         <a href="{% url 'registrar_empleado' %}">Registrarse como Empleado</a>
-        <br><br>
-        <a href="{% url 'cambiar_password' %}">¿Olvidaste tu contraseña?</a>
     </div>
 </div>
 {% endblock %} 
