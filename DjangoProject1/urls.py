@@ -18,13 +18,15 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 from persona import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 urlpatterns = [
     path('', lambda request: redirect('persona/', permanent=False)),  # Redirige / a /persona/
     path('admin/', admin.site.urls),
     path('persona/', include('persona.urls')),  # La aplicación personas.
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 

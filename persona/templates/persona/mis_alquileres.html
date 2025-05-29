@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis Alquileres{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Mis Alquileres</h1>
+
+    {% if alquileres %}
+    <div class="row">
+        {% for alquiler in alquileres %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Alquiler #{{ alquiler.numero }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ alquiler.maquina.nombre }}</h6>
+                    
+                    <div class="mt-3">
+                        <p class="mb-1">
+                            <strong>Estado:</strong>
+                            <span class="badge {% if alquiler.estado == 'confirmado' %}bg-success
+                                             {% elif alquiler.estado == 'pendiente' %}bg-warning
+                                             {% elif alquiler.estado == 'en_curso' %}bg-info
+                                             {% elif alquiler.estado == 'finalizado' %}bg-secondary
+                                             {% else %}bg-danger{% endif %}">
+                                {{ alquiler.get_estado_display }}
+                            </span>
+                        </p>
+                        <p class="mb-1"><strong>Fecha de Inicio:</strong> {{ alquiler.fecha_inicio }}</p>
+                        <p class="mb-1"><strong>Fecha de Fin:</strong> {{ alquiler.fecha_fin }}</p>
+                        <p class="mb-1"><strong>Método de Pago:</strong> {{ alquiler.get_metodo_pago_display }}</p>
+                        <p class="mb-1"><strong>Monto Total:</strong> ${{ alquiler.monto_total }}</p>
+                        <p class="mb-1"><strong>Fecha de Reserva:</strong> {{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No tienes alquileres registrados.
+        <a href="{% url 'catalogo_maquinas' %}" class="alert-link">Ver catálogo de máquinas</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

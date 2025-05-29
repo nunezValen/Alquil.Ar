@@ -1,6 +1,7 @@
 from django import forms
-from .models import Persona
+from .models import Persona, Alquiler
 from datetime import date
+from django.utils import timezone
 
 class PersonaForm(forms.ModelForm):
     nombre_completo = forms.CharField(
@@ -50,4 +51,31 @@ class PersonaForm(forms.ModelForm):
         instance.apellido = partes[1] if len(partes) > 1 else ''
         if commit:
             instance.save()
-        return instance 
+        return instance
+
+class AlquilerForm(forms.ModelForm):
+    class Meta:
+        model = Alquiler
+        fields = ['fecha_inicio', 'fecha_fin', 'metodo_pago']
+        widgets = {
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
+            'metodo_pago': forms.RadioSelect(choices=[
+                ('mercadopago', 'Mercado Pago'),
+                ('binance', 'Binance Pay')
+            ])
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin:
+            if fecha_inicio > fecha_fin:
+                raise forms.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin.")
+            
+            if fecha_inicio < timezone.now().date():
+                raise forms.ValidationError("La fecha de inicio no puede ser en el pasado.")
+        
+        return cleaned_data 
