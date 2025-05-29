@@ -1,115 +1,132 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Alquil.ar{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding-top: 0;
-            background-color: #f8f9fa;
-        }
-        .main-navbar {
-            background: #111;
-            color: #fff;
-            padding: 0 0 0 0;
-            border-bottom: 2px solid #fff;
-            min-height: 60px;
-        }
-        .main-navbar .container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 60px;
-        }
-        .main-navbar .logo {
-            background: #fff;
-            color: #111;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-right: 20px;
-        }
-        .main-navbar .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 32px;
-            font-size: 1.05rem;
-        }
-        .main-navbar .nav-links a {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 400;
-            transition: color 0.2s;
-        }
-        .main-navbar .nav-links a:hover {
-            color: #2176d2;
-        }
-        .main-navbar .user-icon {
-            margin-left: 28px;
-            background: #2176d2;
-            color: #fff;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-        }
-        @media (max-width: 600px) {
-            .main-navbar .container {
-                flex-direction: column;
-                height: auto;
-                padding: 10px 0;
-            }
-            .main-navbar .nav-links {
-                gap: 16px;
-                font-size: 0.98rem;
-            }
-        }
-    </style>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Custom CSS -->
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
 </head>
 <body>
-    <nav class="main-navbar">
-        <div class="container">
-            <div class="logo">Logo</div>
-            <div class="nav-links">
-                <a href="/">Inicio</a>
-                <a href="#">Catálogo</a>
-                <a href="#">Sucursales</a>
-                <a href="#">Contacto</a>
-                <a href="{% url 'login_unificado2' %}">
-                    <span class="user-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
-                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-                            <path fill-rule="evenodd" d="M8 9a5 5 0 0 0-5 5v.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V14a5 5 0 0 0-5-5z"/>
-                        </svg>
-                    </span>
-                </a>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="section-container">
+            <a class="navbar-brand" href="{% url 'persona:inicio' %}">
+                <img src="{% static 'img/logo.png' %}" alt="Alquil.ar" class="logo-img">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'persona:inicio' %}">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'persona:lista_maquinas' %}">Catálogo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Sucursales</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Contacto</a>
+                    </li>
+                    {% if user.is_authenticated and user.is_superuser %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'persona:gestion' %}">Gestión</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'persona:estadisticas' %}">Estadísticas</a>
+                    </li>
+                    {% endif %}
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> Mi cuenta
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if user.is_staff %}
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:login_as_persona' %}">Cambiar a Cuenta Personal</a></li>
+                            {% elif user.email in empleados_emails %}
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
+                            {% else %}
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_logueado' %}">Cambiar Contraseña</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'persona:logout' %}">Cerrar Sesión</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a href="{% url 'persona:login_unificado2' %}" class="nav-link">
+                            <i class="bi bi-person-circle"></i> Iniciar Sesión
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
     </nav>
-    <div class="container">
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
-            {% endfor %}
+
+    <!-- Hero Section (solo en la página de inicio) -->
+    {% block hero %}{% endblock %}
+
+    <!-- Contenido principal -->
+    <main class="py-4">
+        <div class="section-container">
+            {% if messages %}
+                <div class="messages mb-4">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% block content %}{% endblock %}
         </div>
-        {% endif %}
-        {% block content %}
-        {% endblock %}
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="section-container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Contacto</h5>
+                    <p>Teléfono: +54 11 1234-5678</p>
+                    <p>Email: contacto@alquilar.com.ar</p>
+                    <p>WhatsApp: +54 9 11 9876-5432</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Enlaces</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'persona:inicio' %}">Inicio</a></li>
+                        <li><a href="{% url 'persona:lista_maquinas' %}">Catálogo</a></li>
+                        <li><a href="#">Sucursales</a></li>
+                        <li><a href="#">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Síguenos</h5>
+                    <div class="social-links">
+                        <a href="#" class="me-3"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="me-3"><i class="bi bi-instagram"></i></a>
+                        <a href="#"><i class="bi bi-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

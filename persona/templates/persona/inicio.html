@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inicio - Alquil.ar{% endblock %}
+
+{% block hero %}
+<div class="hero">
+    <div class="section-container">
+        <h2>ALQUILER DE MAQUINARIA</h2>
+        <h2 class="display-4 mb-4">ALQUIL.AR</h2>
+        <p class="lead">Tu solución confiable en alquiler de maquinaria. Encuentra equipos de calidad para construcción, industria y más.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    {% if maquinas %}
+        <h2 class="text-center mb-5">Explorá nuestro catálogo</h2>
+        <div class="catalog-grid">
+            {% for maquina in maquinas %}
+                <div class="machine-card">
+                    {% if maquina.imagen %}
+                        <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}">
+                    {% else %}
+                        <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen">
+                    {% endif %}
+                    <div class="card-body">
+                        <h3>{{ maquina.nombre }}</h3>
+                        <p class="price">${{ maquina.precio_por_dia }}</p>
+                        <p class="description">{{ maquina.descripcion_vista }}</p>
+                        <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="btn btn-primary">Saber más</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-5">
+            <a href="{% url 'persona:lista_maquinas' %}" class="btn btn-lg btn-primary">Ver Catálogo Completo</a>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <h2 class="mb-4">¡Próximamente más máquinas!</h2>
+            <p class="lead">Estamos trabajando para traerte el mejor catálogo de maquinaria.</p>
+            {% if user.is_staff %}
+                <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mt-3">Cargar Máquina</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %} 

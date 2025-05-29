@@ -1,96 +1,66 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Inicio - Alquil.ar{% endblock %}
 
+{% block hero %}
+<div class="hero">
+    <div class="container">
+        <h1>ALQUILER DE MAQUINARIA</h1>
+        <h2 class="display-4 mb-4">ALQUIL.AR</h2>
+        <p class="lead">Tu solución confiable en alquiler de maquinaria. Encuentra equipos de calidad para construcción, industria y más.</p>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<style>
-    .welcome-section {
-        text-align: center;
-        margin: 50px 0;
-    }
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Explorá nuestro catálogo</h2>
+        <div class="catalog-grid">
+            <div class="machine-card">
+                <img src="{% static 'img/miniexcavadora.jpg' %}" alt="Miniexcavadora">
+                <div class="card-body">
+                    <h3>Miniexcavadora</h3>
+                    <p class="price">$75,000</p>
+                    <p>La XCMG XE35U es una miniexcavadora compacta y versátil, diseñada para...</p>
+                    <a href="#" class="btn btn-primary">Saber más</a>
+                </div>
+            </div>
 
-    .welcome-section h1 {
-        font-size: 2.5em;
-        color: #2176d2;
-        margin-bottom: 20px;
-    }
+            <div class="machine-card">
+                <img src="{% static 'img/bordeadora.jpg' %}" alt="Bordeadora a gasolina">
+                <div class="card-body">
+                    <h3>Bordeadora a gasolina</h3>
+                    <p class="price">$2,500</p>
+                    <p>Herramienta de jardín a gasolina...</p>
+                    <a href="#" class="btn btn-primary">Saber más</a>
+                </div>
+            </div>
 
-    .welcome-section p {
-        font-size: 1.2em;
-        color: #666;
-        margin-bottom: 40px;
-    }
+            <div class="machine-card">
+                <img src="{% static 'img/compactadora.jpg' %}" alt="Compactadora de suelos">
+                <div class="card-body">
+                    <h3>Compactadora de suelos</h3>
+                    <p class="price">$24,000</p>
+                    <p>Máquina diseñada para...</p>
+                    <a href="#" class="btn btn-primary">Saber más</a>
+                </div>
+            </div>
 
-    .navigation-links {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin: 0 auto;
-        max-width: 1000px;
-        padding: 20px;
-    }
-
-    .nav-card {
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .nav-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-
-    .nav-card h3 {
-        color: #2176d2;
-        margin-bottom: 10px;
-    }
-
-    .nav-card p {
-        color: #666;
-        margin-bottom: 15px;
-    }
-
-    .nav-card a {
-        display: inline-block;
-        padding: 8px 20px;
-        background-color: #2176d2;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-    }
-
-    .nav-card a:hover {
-        background-color: #185a9d;
-    }
-</style>
-
-<div class="welcome-section">
-    <h1>¡Bienvenido a Alquil.ar!</h1>
-    <p>Tu plataforma de alquiler de maquinaria de confianza</p>
-</div>
-
-<div class="navigation-links">
-    <div class="nav-card">
-        <h3>Iniciar Sesión</h3>
-        <p>Accede a tu cuenta de cliente o empleado</p>
-        <a href="{% url 'login_unificado2' %}">Ingresar</a>
+            <div class="machine-card">
+                <img src="{% static 'img/hormigonera.jpg' %}" alt="Hormigonera 160L">
+                <div class="card-body">
+                    <h3>Hormigonera 160L</h3>
+                    <p class="price">$8,500</p>
+                    <p>Máquina utilizada para mezclar de manera eficiente los componentes...</p>
+                    <a href="#" class="btn btn-primary">Saber más</a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-5">
+            <a href="{% url 'persona:lista_maquinas' %}" class="btn btn-lg btn-primary">Ver Catálogo Completo</a>
+        </div>
     </div>
-
-    <div class="nav-card">
-        <h3>Panel de Administración</h3>
-        <p>Acceso al panel de control</p>
-        <a href="/admin">Admin</a>
-    </div>
-
-    <div class="nav-card">
-        <h3>Registrarse</h3>
-        <p>Crea una nueva cuenta</p>
-        <a href="{% url 'registrar_persona' %}">Registro</a>
-    </div>
-</div>
+</section>
 {% endblock %} 

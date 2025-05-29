@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ maquina.nombre }} - Alquil.ar{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        font-size: 16px;
+    }
+    h2 {
+        font-size: 30px !important;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+    }
+    h2.product-title {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    .specs-list {
+        font-size: 16px;
+    }
+    .price {
+        color: #666;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        display: block;
+    }
+    .machine-image {
+        max-height: 500px;
+        object-fit: contain;
+        width: 100%;
+        object-position: left;
+    }
+    .image-container {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        height: 500px;
+    }
+    .description {
+        font-size: 16px;
+    }
+    .specs-item {
+        margin-bottom: 0.5rem;
+    }
+    .specs-item strong {
+        margin-right: 0.5rem;
+    }
+    .section-container {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+</style>
+
+<div class="section-container py-5">
+    <!-- Primera sección: Imagen y detalles principales -->
+    <div class="row mb-5">
+        <!-- Columna izquierda: Imagen -->
+        <div class="col-md-6">
+            <div class="image-container">
+                {% if maquina.imagen %}
+                    <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="machine-image">
+                {% else %}
+                    <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="machine-image">
+                {% endif %}
+            </div>
+        </div>
+        <!-- Columna derecha: Información principal -->
+        <div class="col-md-6">
+            <h2 class="product-title">{{ maquina.nombre }}</h2>
+            <span class="price">${{ maquina.precio_por_dia }} por día</span>
+            <p class="description mb-4">{{ maquina.descripcion_corta }}</p>
+            <div class="d-flex gap-3">
+                <a href="#" class="btn boton-principal">Alquilar</a>
+                <a href="{% url 'persona:lista_maquinas' %}" class="btn boton-principal">Regresar al Catálogo</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Segunda sección: Especificaciones -->
+    <div class="row">
+        <div class="col-12">
+            <h2>Especificaciones</h2>
+            <p class="description mb-4">{{ maquina.descripcion_larga }}</p>
+            <div class="specs-list">
+                <div class="specs-item">
+                    <strong>Tipo:</strong>{{ maquina.get_tipo_display }}
+                </div>
+                <div class="specs-item">
+                    <strong>Marca:</strong>{{ maquina.get_marca_display }}
+                </div>
+                <div class="specs-item">
+                    <strong>Modelo:</strong>{{ maquina.modelo }}
+                </div>
+                <div class="specs-item">
+                    <strong>Días mínimos de alquiler:</strong>{{ maquina.dias_alquiler_min }} días
+                </div>
+                <div class="specs-item">
+                    <strong>Días máximos de alquiler:</strong>{{ maquina.dias_alquiler_max }} días
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="row mb-4">Panel de Gestión</h1>
+        <!-- Sección para Empleados y Administradores -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    {% if user.is_superuser %}
+                    <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn boton-principal mb-2 w-100">Cargar Máquina Base</a>
+                    <a href="#" class="btn boton-principal mb-2 w-100">Ver Máquinas Disponibles</a>
+                    {% endif %}
+                    <a href="#" class="btn boton-principal w-100">Gestionar Alquileres</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección solo para Administradores -->
+        {% if user.is_superuser %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <a href="{% url 'persona:registrar_empleado' %}" class="btn boton-principal mb-2 w-100">Registrar Empleado</a>
+                    <a href="{% url 'persona:lista_empleados' %}" class="btn boton-principal mb-2 w-100">Gestionar Empleados</a>
+                    <a href="{% url 'persona:estadisticas' %}" class="btn boton-principal w-100">Ver Estadísticas</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,450 @@
+/* Estilos generales */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Container principal */
+.section-container {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 15px;
+    width: 100%;
+}
+
+/* Tipografías */
+h1, h2, h3, h4, h5, h6, .nav-link, .btn {
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-size: 30px !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5rem;
+}
+
+p, span, div, input, textarea, label {
+    font-family: 'Inter', sans-serif !important;
+}
+
+main {
+    flex: 1;
+}
+
+/* Eliminar bordes redondeados globalmente */
+.card,
+.btn,
+.form-control,
+.dropdown-menu,
+.machine-card,
+.machine-detail,
+.form-container,
+.machine-detail img,
+.alert,
+.nav-tabs .nav-link,
+.modal-content,
+.input-group-text {
+    border-radius: 0 !important;
+}
+
+/* Botones */
+.boton-principal,
+.btn-primary {
+    background-color: #2D7DD2 !important;
+    border: 2px solid #2D7DD2 !important;
+    color: white !important;
+    font-family: 'Poppins', sans-serif !important;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.boton-principal:hover,
+.btn-primary:hover {
+    background-color: white !important;
+    border: 2px solid #2D7DD2 !important;
+    color: #2D7DD2 !important;
+}
+
+.boton-secundario,
+.btn-outline-primary {
+    background-color: white !important;
+    border: 2px solid #2D7DD2 !important;
+    color: #2D7DD2 !important;
+    font-family: 'Poppins', sans-serif !important;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.boton-secundario:hover,
+.btn-outline-primary:hover {
+    background-color: #2D7DD2 !important;
+    border: 2px solid #2D7DD2 !important;
+    color: white !important;
+}
+
+/* Navbar */
+.navbar {
+    padding: 0.5rem 0;
+    background-color: #000 !important;
+}
+
+.navbar-brand {
+    padding: 0;
+}
+
+.logo-img {
+    height: 50px;
+    width: auto;
+    filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
+}
+
+.nav-link {
+    color: #fff !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem !important;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #2D7DD2 !important;
+}
+
+/* Formularios */
+.form-control {
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.form-control:focus {
+    border-color: #2D7DD2;
+    box-shadow: 0 0 0 0.2rem rgba(45, 125, 210, 0.25);
+}
+
+.form-label {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Cards */
+.card {
+    border: 1px solid #ddd;
+    box-shadow: none;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Dropdown */
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+    font-family: 'Inter', sans-serif !important;
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #2D7DD2;
+    color: white;
+}
+
+/* Alerts */
+.alert {
+    border: none;
+    padding: 1rem;
+}
+
+/* Footer */
+footer {
+    background-color: #000 !important;
+    padding: 3rem 0;
+    margin-top: auto;
+}
+
+footer h5 {
+    color: #2D7DD2;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+footer p, 
+footer a {
+    color: #fff !important;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+footer a:hover {
+    opacity: 1;
+    text-decoration: none;
+    color: #2D7DD2 !important;
+}
+
+/* Hero Section */
+.hero {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('../img/hero-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    padding: 6rem 0;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+/* Catálogo */
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem 0;
+}
+
+.machine-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+}
+
+.machine-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.machine-card img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+}
+
+.machine-card .card-body {
+    padding: 1.5rem;
+}
+
+.machine-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.machine-card .price {
+    font-size: 1.75rem;
+    color: #FFD700;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.machine-card .description {
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+/* Detalles de máquina */
+.machine-detail {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.machine-detail img {
+    width: 100%;
+    max-height: 500px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.machine-detail h1 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.machine-detail .price {
+    font-size: 2rem;
+    color: #FFD700;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.specs-list {
+    list-style: none;
+    padding: 0;
+}
+
+.specs-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.specs-list strong {
+    font-weight: 600;
+    color: #333;
+    min-width: 150px;
+    display: inline-block;
+}
+
+/* Formularios */
+.form-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.form-container h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero {
+        padding: 4rem 0;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .logo-img {
+        height: 40px;
+    }
+
+    .machine-card img {
+        height: 200px;
+    }
+
+    .form-container {
+        margin: 1rem;
+        padding: 1rem;
+    }
+}
+
+.main-navbar {
+    background: #111;
+    color: #fff;
+    padding: 0 0 0 0;
+    border-bottom: 2px solid #fff;
+    min-height: 60px;
+}
+
+.main-navbar .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+
+.main-navbar .logo {
+    background: #fff;
+    color: #111;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-right: 20px;
+}
+
+.main-navbar .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    font-size: 1.05rem;
+}
+
+.main-navbar .nav-links a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 0.2s;
+}
+
+.main-navbar .nav-links a:hover {
+    color: #2176d2;
+}
+
+.main-navbar .user-icon {
+    margin-left: 28px;
+    background: #2176d2;
+    color: #fff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.dropdown-menu {
+    margin-top: 0.5rem;
+}
+
+/* Estilos para formularios */
+.btn-primary {
+    background-color: #2176d2;
+    border-color: #2176d2;
+}
+
+.btn-primary:hover {
+    background-color: #1a5fa8;
+    border-color: #1a5fa8;
+}
+
+/* Estilos responsivos */
+@media (max-width: 600px) {
+    .main-navbar .container {
+        flex-direction: column;
+        height: auto;
+        padding: 10px 0;
+    }
+    .main-navbar .nav-links {
+        gap: 16px;
+        font-size: 0.98rem;
+    }
+    .form-container {
+        margin: 1rem;
+        padding: 1rem;
+    }
+} 

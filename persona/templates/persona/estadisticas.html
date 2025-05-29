@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Estadísticas - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Estadísticas del Sistema</h1>
+    
+    <div class="row">
+        <!-- Tarjeta de Alquileres -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Alquileres</h5>
+                    <div class="stats-number">0</div>
+                    <p class="card-text">Total de alquileres activos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de Máquinas -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Máquinas</h5>
+                    <div class="stats-number">0</div>
+                    <p class="card-text">Máquinas disponibles</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de Usuarios -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Usuarios</h5>
+                    <div class="stats-number">0</div>
+                    <p class="card-text">Usuarios registrados</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos (se implementarán más adelante) -->
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Alquileres por Mes</h5>
+                    <div class="chart-placeholder">
+                        <p class="text-muted text-center my-5">Gráfico de alquileres por mes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Máquinas más Alquiladas</h5>
+                    <div class="chart-placeholder">
+                        <p class="text-muted text-center my-5">Gráfico de máquinas más alquiladas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #2176d2;
+    margin: 1rem 0;
+}
+
+.chart-placeholder {
+    min-height: 200px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+{% endblock %} 

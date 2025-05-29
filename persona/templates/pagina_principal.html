@@ -55,22 +55,22 @@
 
 <div class="container">
     <div class="user-info">
-        <a href="{% if 'emp_' in request.user.username %}{% url 'cambiar_password_empleado_logueado' %}{% else %}{% url 'cambiar_password_logueado' %}{% endif %}">Cambiar Contraseña</a>
+        <a href="{% if 'emp_' in request.user.username %}{% url 'persona:cambiar_password_empleado_logueado' %}{% else %}{% url 'persona:cambiar_password_logueado' %}{% endif %}">Cambiar Contraseña</a>
         {% if 'emp_' in request.user.username %}
-        <a href="{% url 'login_as_persona' %}">Iniciar Sesión como Persona</a>
+        <a href="{% url 'persona:login_as_persona' %}">Iniciar Sesión como Persona</a>
         {% endif %}
     </div>
     
     <div class="menu">
-        <a href="{% url 'lista_personas' %}" class="menu-item">
+        <a href="{% url 'persona:lista_personas' %}" class="menu-item">
             <i class="bi bi-people"></i>
             <h3>Personas</h3>
         </a>
-        <a href="{% url 'lista_maquinas' %}" class="menu-item">
+        <a href="{% url 'persona:lista_maquinas' %}" class="menu-item">
             <i class="bi bi-tools"></i>
             <h3>Máquinas</h3>
         </a>
-        <a href="{% url 'lista_empleados' %}" class="menu-item">
+        <a href="{% url 'persona:lista_empleados' %}" class="menu-item">
             <i class="bi bi-person-badge"></i>
             <h3>Empleados</h3>
         </a>

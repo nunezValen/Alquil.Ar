@@ -1,0 +1,62 @@
+[
+    {
+        "model": "auth.user",
+        "pk": 1,
+        "fields": {
+            "password": "pbkdf2_sha256$720000$MarioBro123!$",
+            "last_login": null,
+            "is_superuser": true,
+            "username": "emp_mario@alquilar.com",
+            "first_name": "Mario",
+            "last_name": "Bro",
+            "email": "mario@alquilar.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2024-01-01T00:00:00Z"
+        }
+    },
+    {
+        "model": "auth.user",
+        "pk": 2,
+        "fields": {
+            "password": "pbkdf2_sha256$720000$LuigiBro123!$",
+            "last_login": null,
+            "is_superuser": true,
+            "username": "emp_luigi@alquilar.com",
+            "first_name": "Luigi",
+            "last_name": "Bro",
+            "email": "luigi@alquilar.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2024-01-01T00:00:00Z"
+        }
+    },
+    {
+        "model": "persona.empleado",
+        "pk": 1,
+        "fields": {
+            "nombre": "Mario",
+            "apellido": "Bro",
+            "dni": "20123456",
+            "email": "mario@alquilar.com",
+            "telefono": null,
+            "fecha_nacimiento": null,
+            "direccion": null,
+            "fecha_registro": "2024-01-01T00:00:00Z"
+        }
+    },
+    {
+        "model": "persona.empleado",
+        "pk": 2,
+        "fields": {
+            "nombre": "Luigi",
+            "apellido": "Bro",
+            "dni": "20123457",
+            "email": "luigi@alquilar.com",
+            "telefono": null,
+            "fecha_nacimiento": null,
+            "direccion": null,
+            "fecha_registro": "2024-01-01T00:00:00Z"
+        }
+    }
+] 

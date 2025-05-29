@@ -1,147 +1,9 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Iniciar Sesión Unificado{% endblock %}
+{% block title %}Iniciar Sesión - Alquil.ar{% endblock %}
 
 {% block content %}
-<style>
-    .login-container {
-        max-width: 400px;
-        margin: 50px auto;
-        padding: 20px;
-        background-color: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .login-header {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-
-    .login-header h2 {
-        color: #333;
-        font-size: 24px;
-        margin-bottom: 10px;
-    }
-
-    .login-form {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .form-group label {
-        color: #555;
-        font-size: 14px;
-    }
-
-    .form-group input {
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 16px;
-    }
-
-    .form-group input:focus {
-        outline: none;
-        border-color: #4a90e2;
-        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
-    }
-
-    .submit-button {
-        background-color: #4a90e2;
-        color: white;
-        padding: 12px;
-        border: none;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    .submit-button:hover {
-        background-color: #357abd;
-    }
-
-    .error-message {
-        color: #dc3545;
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        padding: 10px;
-        border-radius: 4px;
-        margin-bottom: 15px;
-        text-align: center;
-    }
-
-    .register-links {
-        margin-top: 20px;
-        text-align: center;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-    }
-
-    .register-links a {
-        color: #4a90e2;
-        text-decoration: none;
-        margin: 0 10px;
-        font-size: 14px;
-    }
-
-    .register-links a:hover {
-        text-decoration: underline;
-    }
-
-    .password-recovery {
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-        text-align: center;
-    }
-
-    .password-recovery h3 {
-        color: #666;
-        font-size: 16px;
-        margin-bottom: 15px;
-    }
-
-    .recovery-options {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-    }
-
-    .recovery-option {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 4px;
-        border: 1px solid #ddd;
-        text-align: center;
-        flex: 1;
-    }
-
-    .recovery-option h4 {
-        color: #333;
-        margin-bottom: 10px;
-        font-size: 14px;
-    }
-
-    .recovery-option a {
-        color: #4a90e2;
-        text-decoration: none;
-        font-size: 13px;
-    }
-
-    .recovery-option a:hover {
-        text-decoration: underline;
-    }
-</style>
-
 <div class="login-container">
     <div class="login-header">
         <h2>Iniciar Sesión</h2>
@@ -154,7 +16,7 @@
     </div>
     {% endif %}
 
-    <form method="post" action="{% url 'login_unificado2' %}" class="login-form">
+    <form method="post" action="{% url 'persona:login_unificado2' %}" class="login-form">
         {% csrf_token %}
         <div class="form-group">
             <label for="email">Email</label>
@@ -167,23 +29,99 @@
         <button type="submit" class="submit-button">Ingresar</button>
     </form>
 
-    <div class="password-recovery">
-        <h3>¿Olvidaste tu contraseña?</h3>
-        <div class="recovery-options">
-            <div class="recovery-option">
-                <h4>Soy Cliente</h4>
-                <a href="{% url 'cambiar_password' %}">Recuperar contraseña</a>
-            </div>
-            <div class="recovery-option">
-                <h4>Soy Empleado</h4>
-                <a href="{% url 'cambiar_password_empleado' %}">Recuperar contraseña</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="register-links">
-        <a href="{% url 'registrar_persona' %}">Registrarse como Cliente</a>
-        <a href="{% url 'registrar_empleado' %}">Registrarse como Empleado</a>
+    <div class="login-footer">
+        <a href="{% url 'persona:cambiar_password' %}">¿Olvidaste tu contraseña?</a>
+        <a href="{% url 'persona:registrar_persona' %}">Registrarse</a>
     </div>
 </div>
+
+<style>
+.login-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header h2 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.login-header p {
+    color: #666;
+    margin: 0;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    color: #555;
+    font-weight: 500;
+}
+
+.form-group input {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.submit-button {
+    background-color: #2D7DD2;
+    color: white;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+.submit-button:hover {
+    background-color: #2468b3;
+}
+
+.error-message {
+    background-color: #fff2f2;
+    border: 1px solid #ffcdd2;
+    color: #d32f2f;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.login-footer {
+    margin-top: 2rem;
+    text-align: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.login-footer a {
+    color: #2D7DD2;
+    text-decoration: none;
+}
+
+.login-footer a:hover {
+    text-decoration: underline;
+}
+</style>
 {% endblock %} 
