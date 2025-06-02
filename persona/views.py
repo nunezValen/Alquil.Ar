@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib import messages
-from .models import Persona, Maquina, Empleado
+from .models import Persona, Maquina, Empleado, Sucursal
 from .forms import PersonaForm, EmpleadoForm
 from datetime import date
 from django.contrib.auth import authenticate, login, update_session_auth_hash
@@ -339,5 +339,25 @@ def login_unificado2(request):
     
     # Si es GET, mostrar el formulario
     return render(request, 'persona/login_unificado2.html')
+
+def mapa_sucursales(request):
+    try:
+        sucursales = Sucursal.objects.all()
+        
+        # Validar que las coordenadas sean válidas
+        for sucursal in sucursales:
+            if not (-90 <= sucursal.latitud <= 90) or not (-180 <= sucursal.longitud <= 180):
+                raise ValueError(f'Coordenadas inválidas en sucursal {sucursal.id_sucursal}')
+        
+        return render(request, 'mapa_sucursales.html', {
+            'sucursales': sucursales,
+            'centro_mapa': [-34.9214, -57.9544]  # Coordenadas de La Plata
+        })
+    except ValueError as e:
+        messages.error(request, f'Error en las coordenadas: {str(e)}')
+        return redirect('inicio')
+    except Exception as e:
+        messages.error(request, 'Ocurrió un error al cargar el mapa de sucursales')
+        return redirect('inicio')
 
 # Create your views here.

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .header {
+        background-color: #1a1a1a;
+        color: white;
+        text-align: center;
+        padding: 3rem 0;
+        margin: 0;
+        margin-top: -2px;
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        box-sizing: border-box;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/static/img/background-gears.jpg');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .header h1 {
+        font-size: 2.5rem;
+        margin: 0;
+    }
+
+    .map-container {
+        width: 100%;
+        height: calc(100vh - 200px);
+        min-height: 600px;
+        padding: 0 1rem;  /* Agregamos padding horizontal */
+        margin: 0 auto;   /* Centramos el contenedor */
+        max-width: 75%; /* Ancho máximo para el mapa */
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        border-radius: 8px; /* Opcional: bordes redondeados para el mapa */
+    }
+
+    /* Estilos base del mapa */
+    .map-container {
+        width: 100%;
+        height: calc(100vh - 200px);
+        min-height: 600px;
+    }
+
+    /* Estilos del popup */
+    .leaflet-popup-content-wrapper {
+        background: #007bff !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 5px !important;
+        padding: 0 !important;
+    }
+
+    .leaflet-popup-tip-container {
+        display: none !important;
+    }
+
+    .leaflet-popup {
+        margin-bottom: 0 !important;
+    }
+
+    .leaflet-popup-close-button {
+        color: white !important;
+        opacity: 0.7;
+    }
+
+    .leaflet-popup-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    .custom-popup {
+        padding: 15px;
+    }
+
+    .custom-popup h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.2rem;
+    }
+
+    .custom-popup p {
+        margin: 5px 0;
+    }
+
+    /* Ajustamos el contenedor del contenido para compensar el header */
+    .content-wrapper {
+        position: relative;
+        width: 100%;
+    }
+</style>
+
+<div class="header">
+    <h1>Nuestras Sucursales</h1>
+</div>
+
+<div class="content-wrapper">
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+</div>
+
+<!-- Incluimos Leaflet CSS y JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'persona/js/mapa_sucursales.js' %}"></script>
+<script>
+    const sucursales = [
+        {% for sucursal in sucursales %}
+        {
+            lat: {{ sucursal.latitud }},
+            lng: {{ sucursal.longitud }},
+            direccion: "{{ sucursal.direccion|escapejs }}",
+            horario: "{{ sucursal.horario|escapejs }}",
+            telefono: "{{ sucursal.telefono|escapejs }}",
+            email: "{{ sucursal.email|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Inicializar el mapa cuando el documento esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap({{ centro_mapa|safe }}, sucursales);
+    });
+</script>
+{% endblock %} 

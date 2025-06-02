@@ -22,6 +22,7 @@ urlpatterns = [
     path('cambiar-password-logueado/', cambiar_password_logueado, name='cambiar_password_logueado'),
     path('cambiar-password-empleado-logueado/', cambiar_password_empleado_logueado, name='cambiar_password_empleado_logueado'),
     path('login-as-persona/', login_as_persona, name='login_as_persona'),
+    path('sucursales/', views.mapa_sucursales, name='mapa_sucursales'),
 ]
 
 
