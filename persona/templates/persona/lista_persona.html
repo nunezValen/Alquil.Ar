@@ -1,42 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Lista de Personas{% endblock %}
+{% block title %}Lista de Personas - Alquil.ar{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <h2>Lista de Personas</h2>
-    
     <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Apellido</th>
-                    <th>DNI</th>
-                    <th>Email</th>
-                    <th>Teléfono</th>
-                    <th>Fecha de Nacimiento</th>
-                    <th>Dirección</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for persona in personas %}
-                <tr>
-                    <td>{{ persona.nombre }}</td>
-                    <td>{{ persona.apellido }}</td>
-                    <td>{{ persona.dni }}</td>
-                    <td>{{ persona.email|default:"-" }}</td>
-                    <td>{{ persona.telefono|default:"-" }}</td>
-                    <td>{{ persona.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</td>
-                    <td>{{ persona.direccion|default:"-" }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center">No hay personas registradas</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {{ lista_persona|safe }}
     </div>
 </div>
 {% endblock %}

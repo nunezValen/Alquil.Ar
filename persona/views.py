@@ -21,7 +21,7 @@ def es_admin(user):
     return user.is_authenticated and user.is_superuser
 
 def inicio(request):
-    maquinas = MaquinaBase.objects.all()[:4]  # Obtener las primeras 4 máquinas
+    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
     for maquina in maquinas:
         # Creamos un atributo temporal solo para la vista
         if len(maquina.descripcion_corta) > 300:
@@ -31,8 +31,19 @@ def inicio(request):
     return render(request, 'persona/inicio.html', {'maquinas': maquinas})
 
 def lista_maquinas(request):
-    maquinas = Maquina.objects.all()  # Consulta todos los productos.
-    return render(request, 'lista_maquina.html', {'maquinas': maquinas})
+    search_query = request.GET.get('q', '')
+    maquinas = MaquinaBase.objects.filter(stock__gt=0)  # Solo máquinas con stock
+    
+    if search_query:
+        maquinas = maquinas.filter(nombre__icontains=search_query)
+    
+    for maquina in maquinas:
+        if len(maquina.descripcion_corta) > 200:
+            maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
+        else:
+            maquina.descripcion_vista = maquina.descripcion_corta
+            
+    return render(request, 'persona/catalogo.html', {'maquinas': maquinas})
 
 def lista_empleados(request):
     empleados = Empleado.objects.all()  # Consulta todos los productos.
@@ -134,7 +145,7 @@ def login_view(request):
 
 @login_required
 def pagina_principal(request):
-    return render(request, 'pagina_principal.html')
+    return redirect('persona:inicio')
 
 @login_required
 @user_passes_test(es_admin)

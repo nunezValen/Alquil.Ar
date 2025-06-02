@@ -1,36 +1,51 @@
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}Gestión - Alquil.ar{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <h1 class="row mb-4">Panel de Gestión</h1>
-        <!-- Sección para Empleados y Administradores -->
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    {% if user.is_superuser %}
-                    <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn boton-principal mb-2 w-100">Cargar Máquina Base</a>
-                    <a href="#" class="btn boton-principal mb-2 w-100">Ver Máquinas Disponibles</a>
-                    {% endif %}
-                    <a href="#" class="btn boton-principal w-100">Gestionar Alquileres</a>
+<div class="container mt-4">
+    <h2>Panel de Gestión</h2>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Gestión de Alquileres</h5>
+                    <p class="card-text">Administrar alquileres y cancelaciones.</p>
                 </div>
             </div>
         </div>
-
-        <!-- Sección solo para Administradores -->
-        {% if user.is_superuser %}
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <a href="{% url 'persona:registrar_empleado' %}" class="btn boton-principal mb-2 w-100">Registrar Empleado</a>
-                    <a href="{% url 'persona:lista_empleados' %}" class="btn boton-principal mb-2 w-100">Gestionar Empleados</a>
-                    <a href="{% url 'persona:estadisticas' %}" class="btn boton-principal w-100">Ver Estadísticas</a>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Gestión de Usuarios</h5>
+                    <p class="card-text">Administrar registros y bloqueos.</p>
                 </div>
             </div>
         </div>
-        {% endif %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Gestión de Máquinas</h5>
+                    <p class="card-text">Administrar inventario de máquinas.</p>
+                    <div class="mt-auto">
+                        <a href="{% url 'maquinas:lista_maquinas' %}" class="btn btn-primary mb-2 w-100">Ver Máquinas Base</a>
+                        <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mb-2 w-100">Cargar Máquina Base</a>
+                        <a href="{% url 'maquinas:lista_unidades' %}" class="btn btn-primary mb-2 w-100">Ver Unidades</a>
+                        <a href="{% url 'maquinas:cargar_unidad' %}" class="btn btn-primary w-100">Cargar Unidad</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+    }
+</style>
 {% endblock %} 

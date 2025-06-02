@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Unidades - Alquil.ar{% endblock %}
+
+{% block messages %}{% endblock %}
+
+{% block content %}
+<style>
+    .table th {
+        background-color: #f8f9fa;
+    }
+    .actions-column {
+        width: 120px;
+    }
+    .table-responsive {
+        margin-top: 1rem;
+    }
+    .empty-message {
+        text-align: center;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        margin: 1rem 0;
+    }
+    .action-icon {
+        font-size: 1.2rem;
+        margin: 0 5px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .action-icon.view {
+        color: var(--color-primary);
+    }
+    .action-icon.delete {
+        color: #dc3545;
+    }
+    .action-icon:hover {
+        opacity: 0.8;
+    }
+</style>
+
+<div class="section-container py-5">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:"info" }} text-center mb-4">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Gestión de Unidades de Máquinas</h2>
+        <a href="{% url 'maquinas:cargar_unidad' %}" class="btn boton-principal">
+            Agregar Unidad de Máquina
+        </a>
+    </div>
+
+    {% if unidades %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Máquina Base</th>
+                    <th>Patente</th>
+                    <th>Sucursal</th>
+                    <th>Estado</th>
+                    <th class="actions-column">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unidad in unidades %}
+                <tr>
+                    <td>{{ unidad.maquina_base.nombre }}</td>
+                    <td>{{ unidad.patente }}</td>
+                    <td>{{ unidad.sucursal.nombre }}</td>
+                    <td>{{ unidad.get_estado_display }}</td>
+                    <td>
+                        <a href="{% url 'maquinas:eliminar_unidad' unidad.id %}" class="action-icon delete" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-message">
+        <p class="mb-3">No hay unidades de máquinas registradas.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

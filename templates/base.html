@@ -11,15 +11,208 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
     <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    <style>
+        /* Navbar Styles */
+        .navbar {
+            background: black;
+            padding: 0;
+            min-height: 80px;
+        }
+
+        .navbar .section-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 80px;
+        }
+
+        .navbar-brand {
+            padding: 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-img {
+            height: 60px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--color-white) !important;
+            padding: 0.5rem 1rem !important;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--color-primary) !important;
+        }
+
+        .navbar-toggler {
+            border: none;
+            padding: 0;
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: none;
+        }
+
+        /* Footer Styles */
+        footer {
+            position: relative;
+            padding: 3rem 0;
+            margin-top: auto;
+            background: var(--color-black);
+            overflow: hidden;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('{% static "img/Footer.jpg" %}');
+            background-size: cover;
+            background-position: center;
+        }
+
+        footer .section-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        footer h5 {
+            color: var(--color-white);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        footer p, 
+        footer a {
+            color: var(--color-white) !important;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        footer a:hover {
+            opacity: 1;
+            text-decoration: none;
+            color: var(--color-primary) !important;
+        }
+
+        @media (max-width: 600px) {
+            .navbar .section-container {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem 0;
+            }
+
+            .navbar-nav {
+                margin-top: 1rem;
+            }
+
+            .nav-link {
+                padding: 0.5rem 0 !important;
+            }
+
+            footer::before {
+                width: 100%;
+            }
+        }
+
+        /* Estilos para mensajes */
+        #django-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            width: 300px;
+        }
+
+        #django-messages .alert {
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            animation: slideIn 0.5s forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-dismissible .btn-close {
+            padding: 0.5rem 0.5rem;
+            color: inherit;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+
+        .alert-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+
+        /* Estilos para validación de formularios */
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: none;
+        }
+
+        .invalid-feedback {
+            display: block;
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .form-control.is-valid {
+            border-color: #ced4da;
+            background-image: none;
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="section-container">
             <a class="navbar-brand" href="{% url 'persona:inicio' %}">
-                <img src="{% static 'img/logo.png' %}" alt="Alquil.ar" class="logo-img">
+                <img src="{% static 'img/Logo.png' %}" alt="Alquil.ar" class="logo-img">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -82,51 +275,54 @@
     <!-- Contenido principal -->
     <main class="py-4">
         <div class="section-container">
-            {% if messages %}
-                <div class="messages mb-4">
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-light py-4 mt-5">
+    <footer class="mt-5">
         <div class="section-container">
             <div class="row">
                 <div class="col-md-4">
                     <h5>Contacto</h5>
-                    <p>Teléfono: +54 11 1234-5678</p>
-                    <p>Email: contacto@alquilar.com.ar</p>
-                    <p>WhatsApp: +54 9 11 9876-5432</p>
-                </div>
-                <div class="col-md-4">
-                    <h5>Enlaces</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="{% url 'persona:inicio' %}">Inicio</a></li>
-                        <li><a href="{% url 'persona:lista_maquinas' %}">Catálogo</a></li>
-                        <li><a href="#">Sucursales</a></li>
-                        <li><a href="#">Contacto</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <h5>Síguenos</h5>
-                    <div class="social-links">
-                        <a href="#" class="me-3"><i class="bi bi-facebook"></i></a>
-                        <a href="#" class="me-3"><i class="bi bi-instagram"></i></a>
-                        <a href="#"><i class="bi bi-linkedin"></i></a>
-                    </div>
+                    <p><i class="fa-solid fa-phone"></i> Teléfono: +54 11 1234-5678</p>
+                    <p><i class="fa-solid fa-envelope"></i> Email: contacto.alquilar@gmail.com</p>
+                    <p><i class="fa-brands fa-whatsapp"></i> WhatsApp: +54 9 11 9876-5432</p>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Script para mensajes -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-cerrar mensajes después de 5 segundos
+            const messages = document.querySelectorAll('#django-messages .alert');
+            messages.forEach(function(message) {
+                setTimeout(function() {
+                    message.classList.remove('show');
+                    setTimeout(function() {
+                        message.remove();
+                    }, 150);
+                }, 5000);
+            });
+
+            // Manejar el cierre manual de mensajes
+            document.querySelectorAll('.alert .btn-close').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const alert = this.closest('.alert');
+                    alert.classList.remove('show');
+                    setTimeout(function() {
+                        alert.remove();
+                    }, 150);
+                });
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html> 

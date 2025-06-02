@@ -1,14 +1,12 @@
-   <!DOCTYPE html>
-   <html>
-   <head>
-       <title>Lista de Empleados</title>
-   </head>
-   <body>
-       <h1>Empleados Registradas</h1>
-       <ul>
-           {% for empleado in empleados %}
-               <li>{{ empleado.nombre }} {{ empleado.apollo }} - {{ empleado.edad }} - DNI: {{ empleado.dni }}</li>
-           {% endfor %}
-       </ul>
-   </body>
-   </html>
+{% extends 'base.html' %}
+
+{% block title %}Lista de Empleados - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Lista de Empleados</h2>
+    <div class="table-responsive">
+        {{ lista_empleado|safe }}
+    </div>
+</div>
+{% endblock %}

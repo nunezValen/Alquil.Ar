@@ -28,16 +28,16 @@
         display: block;
     }
     .machine-image {
-        max-height: 500px;
-        object-fit: contain;
         width: 100%;
-        object-position: left;
+        aspect-ratio: 1/1;
+        object-fit: cover;
     }
     .image-container {
         display: flex;
-        justify-content: flex-start;
+        justify-content: center;
         align-items: center;
-        height: 500px;
+        width: 100%;
+        background-color: #f8f9fa;
     }
     .description {
         font-size: 16px;
@@ -56,6 +56,16 @@
 </style>
 
 <div class="section-container py-5">
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Primera sección: Imagen y detalles principales -->
     <div class="row mb-5">
         <!-- Columna izquierda: Imagen -->
@@ -74,7 +84,9 @@
             <span class="price">${{ maquina.precio_por_dia }} por día</span>
             <p class="description mb-4">{{ maquina.descripcion_corta }}</p>
             <div class="d-flex gap-3">
-                <a href="#" class="btn boton-principal">Alquilar</a>
+                {% if maquina.stock > 0 %}
+                    <a href="#" class="btn boton-principal">Alquilar</a>
+                {% endif %}
                 <a href="{% url 'persona:lista_maquinas' %}" class="btn boton-principal">Regresar al Catálogo</a>
             </div>
         </div>

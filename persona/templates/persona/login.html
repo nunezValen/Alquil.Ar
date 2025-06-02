@@ -7,7 +7,7 @@
 <div class="login-container">
     <div class="login-header">
         <h2>Iniciar Sesión</h2>
-        <p>Accede como empleado o cliente.</p>
+        <p>Accede a tu cuenta.</p>
     </div>
 
     {% if error %}
@@ -16,7 +16,7 @@
     </div>
     {% endif %}
 
-    <form method="post" action="{% url 'persona:login_unificado2' %}" class="login-form">
+    <form method="post" action="{% url 'persona:login' %}" class="login-form">
         {% csrf_token %}
         <div class="form-group">
             <label for="email">Email</label>

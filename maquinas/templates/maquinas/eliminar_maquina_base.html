@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Eliminar {{ maquina.nombre }} - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="section-container py-5">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">Eliminar Máquina Base</h2>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger">
+                <h4>¿Está seguro que desea eliminar esta máquina?</h4>
+                <p>Esta acción no se puede deshacer. Se eliminará la siguiente máquina base:</p>
+                <ul class="mb-0">
+                    <li><strong>Nombre:</strong> {{ maquina.nombre }}</li>
+                    <li><strong>Tipo:</strong> {{ maquina.get_tipo_display }}</li>
+                    <li><strong>Marca:</strong> {{ maquina.get_marca_display }}</li>
+                    <li><strong>Modelo:</strong> {{ maquina.modelo }}</li>
+                </ul>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'maquinas:lista_maquinas' %}" class="btn boton-principal">Cancelar</a>
+                    <button type="submit" class="btn boton-cancelar">Confirmar Eliminación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

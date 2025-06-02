@@ -1,41 +1,54 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.core.exceptions import ValidationError
 
 class MaquinaBase(models.Model):
-    TIPOS = [
-        ('bordeadora', 'Bordeadora'),
-        ('aplanadora', 'Aplanadora'),
+    TIPOS_MAQUINA = [
         ('excavadora', 'Excavadora'),
         ('retroexcavadora', 'Retroexcavadora'),
+        ('cargadora', 'Cargadora'),
+        ('compactadora', 'Compactadora'),
+        ('motoniveladora', 'Motoniveladora'),
+        ('pavimentadora', 'Pavimentadora'),
+        ('grua', 'Grúa'),
+        ('hormigonera', 'Hormigonera'),
+        ('dumper', 'Dumper'),
+        ('manipulador', 'Manipulador Telescópico'),
     ]
 
     MARCAS = [
         ('caterpillar', 'Caterpillar'),
+        ('komatsu', 'Komatsu'),
+        ('volvo', 'Volvo'),
+        ('hitachi', 'Hitachi'),
+        ('liebherr', 'Liebherr'),
+        ('jcb', 'JCB'),
+        ('case', 'Case'),
+        ('doosan', 'Doosan'),
         ('john_deere', 'John Deere'),
-        ('bobcat', 'Bobcat'),
+        ('kubota', 'Kubota'),
     ]
 
-    nombre = models.CharField(max_length=100, verbose_name='Nombre')
-    tipo = models.CharField(
-        max_length=50, 
-        verbose_name='Tipo',
-        choices=TIPOS
-    )
-    marca = models.CharField(
-        max_length=50, 
-        verbose_name='Marca',
-        choices=MARCAS
-    )
-    modelo = models.CharField(max_length=50, verbose_name='Modelo')
+    nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPOS_MAQUINA)
+    marca = models.CharField(max_length=20, choices=MARCAS)
+    modelo = models.CharField(max_length=50)
     precio_por_dia = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        verbose_name='Precio por día',
-        validators=[MinValueValidator(0)]
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        error_messages={
+            'max_digits': 'El precio no puede tener más de 10 dígitos enteros.',
+            'decimal_places': 'El precio no puede tener más de 2 decimales.',
+            'invalid': 'Por favor, ingrese un precio válido.',
+            'max_whole_digits': 'La parte entera del precio no puede tener más de 10 dígitos.'
+        }
     )
-    descripcion_corta = models.TextField(verbose_name='Descripción corta')
-    descripcion_larga = models.TextField(verbose_name='Descripción larga')
-    imagen = models.ImageField(upload_to='maquinas/', verbose_name='Imagen')
+    descripcion_corta = models.TextField()
+    descripcion_larga = models.TextField()
+    imagen = models.ImageField(upload_to='maquinas/')
     dias_alquiler_min = models.PositiveIntegerField(
         verbose_name='Cantidad mínima de días de alquiler',
         validators=[MinValueValidator(1)]
@@ -44,18 +57,29 @@ class MaquinaBase(models.Model):
         verbose_name='Cantidad máxima de días de alquiler',
         validators=[MinValueValidator(1)]
     )
+    stock = models.IntegerField(default=0, editable=False)
 
     def clean(self):
-        from django.core.exceptions import ValidationError
-        if self.dias_alquiler_max < self.dias_alquiler_min:
-            raise ValidationError('La cantidad máxima de días debe ser mayor o igual a la cantidad mínima')
+        super().clean()
+        if self.dias_alquiler_min is not None and self.dias_alquiler_max is not None:
+            if self.dias_alquiler_max < self.dias_alquiler_min:
+                raise ValidationError({
+                    'dias_alquiler_max': 'La cantidad máxima de días debe ser mayor o igual a la cantidad mínima.'
+                })
 
     def __str__(self):
-        return f"{self.marca} {self.modelo} - {self.tipo}"
+        return f"{self.nombre} ({self.get_marca_display()} {self.modelo})"
 
     class Meta:
-        verbose_name = 'Máquina Base'
-        verbose_name_plural = 'Máquinas Base'
+        verbose_name = "Máquina Base"
+        verbose_name_plural = "Máquinas Base"
+        ordering = ['nombre']
+
+@receiver(post_save, sender=MaquinaBase)
+def actualizar_stock_maquina_base(sender, instance, created, **kwargs):
+    if created:
+        instance.stock = 0
+        instance.save()
 
 class Unidad(models.Model):
     ESTADOS = [
@@ -99,3 +123,17 @@ class Unidad(models.Model):
     class Meta:
         verbose_name = 'Unidad'
         verbose_name_plural = 'Unidades'
+
+@receiver(post_save, sender=Unidad)
+def actualizar_stock_maquina(sender, instance, created, **kwargs):
+    if created:  # Solo si es una nueva unidad
+        maquina = instance.maquina_base
+        maquina.stock = maquina.stock + 1
+        maquina.save()
+
+@receiver(post_delete, sender=Unidad)
+def restar_stock_maquina(sender, instance, **kwargs):
+    maquina = instance.maquina_base
+    if maquina.stock > 0:
+        maquina.stock -= 1
+        maquina.save()
