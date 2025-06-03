@@ -208,6 +208,18 @@
     </style>
 </head>
 <body>
+    <!-- Django Messages -->
+    <div id="django-messages">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="section-container">
@@ -231,7 +243,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#">Contacto</a>
                     </li>
-                    {% if user.is_authenticated and user.is_superuser %}
+                    {% if user.is_authenticated and user.is_superuser or user.email in empleados_emails and not es_empleado_actuando_como_cliente %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'persona:gestion' %}">Gestión</a>
                     </li>
@@ -245,11 +257,13 @@
                             <i class="bi bi-person-circle"></i> Mi cuenta
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            {% if user.is_staff %}
+                            <li><a class="dropdown-item" href="{% url 'persona:editar_datos_personales' %}">Editar Datos Personales</a></li>
+                            {% if es_empleado_actuando_como_cliente %}
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_logueado' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:switch_back_to_employee' %}">Volver a Cuenta Empleado</a></li>
+                            {% elif user.is_staff or user.email in empleados_emails %}
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:login_as_persona' %}">Cambiar a Cuenta Personal</a></li>
-                            {% elif user.email in empleados_emails %}
-                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
                             {% else %}
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_logueado' %}">Cambiar Contraseña</a></li>
                             {% endif %}
@@ -295,7 +309,7 @@
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Script para mensajes -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {

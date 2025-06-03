@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 from persona.views import es_empleado_o_admin
 from .forms import MaquinaBaseForm
 from .models import MaquinaBase
@@ -16,6 +18,9 @@ def detalle_maquina(request, maquina_id):
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def cargar_maquina_base(request):
     if request.method == 'POST':
         form = MaquinaBaseForm(request.POST, request.FILES)
@@ -25,16 +30,19 @@ def cargar_maquina_base(request):
             return redirect('maquinas:lista_maquinas')
     else:
         form = MaquinaBaseForm()
-    
+
     return render(request, 'maquinas/cargar_maquina_base.html', {
         'form': form
     })
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def eliminar_maquina_base(request, maquina_id):
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
-    
+
     if request.method == 'POST':
         nombre_maquina = maquina.nombre
         try:
@@ -44,7 +52,7 @@ def eliminar_maquina_base(request, maquina_id):
         except Exception as e:
             messages.error(request, 'No se puede eliminar la máquina porque tiene unidades asociadas.')
             return redirect('maquinas:detalle_maquina', maquina_id=maquina_id)
-    
+
     return render(request, 'maquinas/eliminar_maquina_base.html', {'maquina': maquina})
 
 @login_required
@@ -63,6 +71,9 @@ def lista_unidades(request):
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def cargar_unidad(request):
     if request.method == 'POST':
         form = UnidadForm(request.POST)
@@ -79,6 +90,9 @@ def cargar_unidad(request):
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def eliminar_unidad(request, unidad_id):
     unidad = get_object_or_404(Unidad, id=unidad_id)
     if request.method == 'POST':

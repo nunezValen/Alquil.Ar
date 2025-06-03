@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Editar Datos Personales{% endblock %}
+
+{% block content %}
+<style>
+    .edit-box {
+        max-width: 500px;
+        margin: 60px auto 40px auto;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        padding: 32px 32px 18px 32px;
+    }
+    .edit-box h2 {
+        text-align: center;
+        margin-bottom: 24px;
+        color: #333;
+    }
+    .edit-box .user-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 18px;
+        color: #bdbdbd;
+        background: #f2f2f2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .edit-box .form-group {
+        margin-bottom: 16px;
+    }
+    .edit-box label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #555;
+    }
+    .edit-box .error {
+        color: #d32f2f;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    .edit-box .form-errors {
+        background: #ffd6d6;
+        color: #b71c1c;
+        border: 1px solid #d32f2f;
+        border-radius: 3px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+        text-align: left;
+        font-size: 15px;
+    }
+    .edit-box button {
+        width: 100%;
+        background: #2176d2;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 12px 0;
+        font-size: 17px;
+        font-weight: 500;
+        margin-top: 20px;
+        transition: background 0.2s;
+    }
+    .edit-box button:hover {
+        background: #185a9d;
+    }
+</style>
+<div class="edit-box">
+    <h2>Editar Datos Personales</h2>
+    
+    {% if form.errors %}
+    <div class="form-errors">
+        <ul style="margin:0;padding-left:18px;">
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.nombre_completo.id_for_label }}">Nombre Completo</label>
+            {{ form.nombre_completo }}
+            {% if form.nombre_completo.errors %}
+                <div class="error">{{ form.nombre_completo.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.dni.id_for_label }}">DNI</label>
+            {{ form.dni }}
+            {% if form.dni.errors %}
+                <div class="error">{{ form.dni.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="error">{{ form.email.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.telefono.id_for_label }}">Teléfono</label>
+            {{ form.telefono }}
+            {% if form.telefono.errors %}
+                <div class="error">{{ form.telefono.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de Nacimiento</label>
+            {{ form.fecha_nacimiento }}
+            {% if form.fecha_nacimiento.errors %}
+                <div class="error">{{ form.fecha_nacimiento.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.direccion.id_for_label }}">Dirección</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}
+                <div class="error">{{ form.direccion.errors.0 }}</div>
+            {% endif %}
+        </div>
+        
+        <button type="submit">Guardar Cambios</button>
+    </form>
+</div>
+{% endblock %}

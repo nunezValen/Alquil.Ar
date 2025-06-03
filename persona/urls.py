@@ -4,7 +4,8 @@ from .views import (
     pagina_principal, registrar_empleado, cambiar_password,
     cambiar_password_empleado, cambiar_password_logueado,
     cambiar_password_empleado_logueado, login_as_persona,
-    login_unificado2, logout_view
+    login_unificado2, logout_view, switch_back_to_employee,
+    editar_datos_personales
 )
 from . import views
 
@@ -24,9 +25,9 @@ urlpatterns = [
     path('cambiar-password-logueado/', cambiar_password_logueado, name='cambiar_password_logueado'),
     path('cambiar-password-empleado-logueado/', cambiar_password_empleado_logueado, name='cambiar_password_empleado_logueado'),
     path('login-as-persona/', login_as_persona, name='login_as_persona'),
+    path('switch-back-to-employee/', switch_back_to_employee, name='switch_back_to_employee'),
     path('gestion/', views.gestion, name='gestion'),
     path('estadisticas/', views.estadisticas, name='estadisticas'),
     path('logout/', logout_view, name='logout'),
+    path('editar-datos-personales/', editar_datos_personales, name='editar_datos_personales'),
 ]
-
-

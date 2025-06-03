@@ -125,6 +125,12 @@
             <input type="text" name="fecha_anio" maxlength="4" placeholder="AAAA" pattern="\d{4}" required>
         </div>
         <input type="hidden" name="fecha_nacimiento" id="fecha_nacimiento_hidden">
+
+        <div style="text-align: left; margin: 15px 0; display: flex; align-items: center;">
+            {{ form.es_empleado }}
+            <label for="{{ form.es_empleado.id_for_label }}" style="margin-left: 8px; font-size: 15px;">{{ form.es_empleado.label }}</label>
+        </div>
+
         <button type="submit">Crear Cuenta</button>
     </form>
     <div class="info">
