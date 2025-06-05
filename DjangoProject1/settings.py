@@ -168,7 +168,7 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 
 # Configuración de login
-LOGIN_URL = '/persona/login/'
+LOGIN_URL = 'persona:login_unificado2'
 LOGIN_REDIRECT_URL = '/persona/catalogo/'
 LOGOUT_REDIRECT_URL = '/persona/login/'
 

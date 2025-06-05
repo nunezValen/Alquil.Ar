@@ -9,16 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<<<<<<< HEAD
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
     <link href="{% static 'css/styles.css' %}" rel="stylesheet">
-=======
-    {% block extra_head %}{% endblock %}
->>>>>>> Alquileres-y-pagos
     <style>
         /* Navbar Styles */
         .navbar {
@@ -239,13 +235,13 @@
                         <a class="nav-link" href="{% url 'persona:inicio' %}">Inicio</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'persona:lista_maquinas' %}">Catálogo</a>
+                        <a class="nav-link" href="{% url 'maquinas:catalogo_publico' %}">Catálogo</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Sucursales</a>
+                        <a class="nav-link" href="{% url 'sucursales:lista_sucursales' %}">Sucursales</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Contacto</a>
+                        <a class="nav-link" href="{% url 'contacto' %}">Contacto</a>
                     </li>
                     {% if user.is_authenticated and user.is_superuser or user.email in empleados_emails and not es_empleado_actuando_como_cliente %}
                     <li class="nav-item">

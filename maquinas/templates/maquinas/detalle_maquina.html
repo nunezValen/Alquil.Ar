@@ -53,6 +53,31 @@
         margin: 0 auto;
         padding: 0 15px;
     }
+    .modal-content {
+        border-radius: 1rem;
+    }
+    .modal-header {
+        border-bottom: none;
+        padding: 1.5rem;
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .modal-footer {
+        border-top: none;
+        padding: 1.5rem;
+    }
+    .form-label {
+        font-weight: 500;
+    }
+    .form-text {
+        color: #666;
+    }
+    .btn-close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+    }
 </style>
 
 <div class="section-container py-5">
@@ -85,9 +110,11 @@
             <p class="description mb-4">{{ maquina.descripcion_corta }}</p>
             <div class="d-flex gap-3">
                 {% if maquina.stock > 0 %}
-                    <a href="#" class="btn boton-principal">Alquilar</a>
+                    <button type="button" class="btn boton-principal" data-bs-toggle="modal" data-bs-target="#alquilerModal">
+                        Alquilar
+                    </button>
                 {% endif %}
-                <a href="{% url 'persona:lista_maquinas' %}" class="btn boton-principal">Regresar al Catálogo</a>
+                <a href="{% url 'maquinas:catalogo_publico' %}" class="btn boton-principal">Regresar al Catálogo</a>
             </div>
         </div>
     </div>
@@ -117,4 +144,150 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Alquiler -->
+<div class="modal fade" id="alquilerModal" tabindex="-1" aria-labelledby="alquilerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alquilerModalLabel">Alquilar {{ maquina.nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            <img src="{{ maquina.imagen.url }}" class="card-img-top" alt="{{ maquina.nombre }}">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ maquina.nombre }}</h5>
+                                <div class="specs-list">
+                                    <p><strong>Precio por día:</strong> ${{ maquina.precio_por_dia }}</p>
+                                    <p><strong>Días mínimos:</strong> {{ maquina.dias_alquiler_min }} días</p>
+                                    <p><strong>Días máximos:</strong> {{ maquina.dias_alquiler_max }} días</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <form id="alquiler-form">
+                            {% csrf_token %}
+                            
+                            <!-- Cantidad de días -->
+                            <div class="mb-4">
+                                <label for="dias" class="form-label">Cantidad de días</label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="dias" 
+                                       name="dias" 
+                                       min="{{ maquina.dias_alquiler_min }}" 
+                                       max="{{ maquina.dias_alquiler_max }}"
+                                       value="{{ maquina.dias_alquiler_min }}"
+                                       required>
+                                <div class="form-text">
+                                    Mínimo: {{ maquina.dias_alquiler_min }} días - Máximo: {{ maquina.dias_alquiler_max }} días
+                                </div>
+                            </div>
+
+                            <!-- Fecha de inicio -->
+                            <div class="mb-4">
+                                <label for="fecha_inicio" class="form-label">Fecha de inicio</label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="fecha_inicio" 
+                                       name="fecha_inicio"
+                                       min="{{ fecha_minima|date:'Y-m-d' }}"
+                                       required>
+                            </div>
+
+                            <!-- Resumen del costo -->
+                            <div class="card bg-light mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Resumen del costo</h5>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Precio por día:</span>
+                                        <span>${{ maquina.precio_por_dia }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Cantidad de días:</span>
+                                        <span id="cantidad-dias">1</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Total:</strong>
+                                        <strong id="total-costo">${{ maquina.precio_por_dia }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Método de pago -->
+                            <div class="mb-4">
+                                <label class="form-label">Método de pago</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="metodo_pago" id="mercadopago" value="mercadopago" checked>
+                                        <label class="form-check-label" for="mercadopago">
+                                            <img src="https://http2.mlstatic.com/frontend-assets/mp-branding/assets/MP_logo_2019.png" alt="Mercado Pago" style="height: 30px;">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3">
+                                <button type="submit" class="btn boton-principal">Continuar con el pago</button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const diasInput = document.getElementById('dias');
+    const cantidadDiasSpan = document.getElementById('cantidad-dias');
+    const totalCostoSpan = document.getElementById('total-costo');
+    const precioPorDia = Number('{{ maquina.precio_por_dia }}');
+    const alquilerForm = document.getElementById('alquiler-form');
+
+    function actualizarCosto() {
+        const dias = parseInt(diasInput.value);
+        const total = dias * precioPorDia;
+        cantidadDiasSpan.textContent = dias;
+        totalCostoSpan.textContent = '$' + total.toFixed(2);
+    }
+
+    diasInput.addEventListener('change', actualizarCosto);
+    actualizarCosto();
+
+    alquilerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const alquilerUrl = `{% url 'maquinas:alquilar_maquina' maquina.id %}`;
+        
+        fetch(alquilerUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else if (data.init_point) {
+                window.location.href = data.init_point;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al procesar el pago. Por favor, intente nuevamente.');
+        });
+    });
+});
+</script>
 {% endblock %} 

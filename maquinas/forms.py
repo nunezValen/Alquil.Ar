@@ -1,8 +1,9 @@
 from django import forms
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import MaquinaBase, Unidad
+from .models import MaquinaBase, Unidad, Alquiler
 from sucursales.models import Sucursal
 from django.core.exceptions import ValidationError
+from datetime import date
 
 
 class MaquinaBaseForm(forms.ModelForm):
@@ -155,3 +156,40 @@ class UnidadForm(forms.ModelForm):
         if commit:
             unidad.save()
         return unidad
+
+
+class AlquilerForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha de inicio'
+    )
+    fecha_fin = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha de fin'
+    )
+    metodo_pago = forms.ChoiceField(
+        choices=Alquiler.METODOS_PAGO,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Método de pago'
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        
+        if fecha_inicio and fecha_fin:
+            # Validar que la fecha de inicio no sea en el pasado
+            if fecha_inicio < date.today():
+                raise forms.ValidationError("La fecha de inicio no puede ser en el pasado.")
+            
+            # Validar que la fecha de fin sea posterior a la fecha de inicio
+            if fecha_fin < fecha_inicio:
+                raise forms.ValidationError("La fecha de fin debe ser posterior a la fecha de inicio.")
+            
+            # Validar que el período no sea mayor a 30 días
+            dias = (fecha_fin - fecha_inicio).days + 1
+            if dias > 30:
+                raise forms.ValidationError("El período máximo de alquiler es de 30 días.")
+        
+        return cleaned_data

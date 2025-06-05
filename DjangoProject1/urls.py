@@ -20,18 +20,16 @@ from django.shortcuts import redirect
 from persona import views
 from django.conf import settings
 from django.conf.urls.static import static
-<<<<<<< HEAD
 from django.contrib.auth import views as auth_views
-=======
-
->>>>>>> Alquileres-y-pagos
+from django.views.generic import RedirectView, TemplateView
 
 urlpatterns = [
-    path('', lambda request: redirect('persona:inicio', permanent=False)),  # Redirige / a la vista de inicio
     path('admin/', admin.site.urls),
-    path('persona/', include('persona.urls')),  # La aplicación personas.
-<<<<<<< HEAD
-    path('maquinas/', include('maquinas.urls')),  # La aplicación maquinas
+    path('persona/', include('persona.urls')),
+    path('maquinas/', include('maquinas.urls')),
+    path('sucursales/', include('sucursales.urls')),
+    path('contacto/', TemplateView.as_view(template_name='contacto.html'), name='contacto'),
+    path('', RedirectView.as_view(url='/persona/', permanent=False)),
     
     # URLs de autenticación
     path('accounts/login/', views.login_unificado2, name='login'),
@@ -49,8 +47,6 @@ urlpatterns = [
     path('accounts/reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='persona/password_reset_complete.html'
     ), name='password_reset_complete'),
-=======
->>>>>>> Alquileres-y-pagos
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

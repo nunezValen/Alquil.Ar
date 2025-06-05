@@ -1,32 +1,25 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from .models import Persona, Maquina
-from maquinas.models import MaquinaBase
-from .forms import PersonaForm, EditarPersonaForm
-from datetime import date
-from django.contrib.auth import authenticate, login, update_session_auth_hash, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import authenticate, login, update_session_auth_hash, logout
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
-from .models import Persona, Maquina, Empleado, Alquiler
-from .forms import PersonaForm, AlquilerForm
-from datetime import date, datetime
-from django.contrib.auth.forms import PasswordChangeForm
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
+from django.urls import reverse
+from .models import Persona, Maquina, Alquiler
+from maquinas.models import MaquinaBase
+from .forms import PersonaForm, EditarPersonaForm, AlquilerForm
+from datetime import date, datetime
+from django.contrib.auth.forms import PasswordChangeForm
 import random, string
 import mercadopago
 import binance
 from pyngrok import ngrok
 import json
-from django.urls import reverse
 
 def es_admin(user):
     """
@@ -191,7 +184,6 @@ def lista_maquinas(request):
     return render(request, 'persona/catalogo.html', {'maquinas': maquinas})
 
 def lista_empleados(request):
-    empleados = Empleado.objects.all()
     empleados = Persona.objects.filter(es_empleado=True)  # Consulta todos los empleados
     return render(request, 'lista_empleado.html', {'empleados': empleados})
 
@@ -299,7 +291,7 @@ def login_view(request):
 
 @login_required
 def pagina_principal(request):
-    return redirect('persona:inicio')
+    return redirect('persona:inicio_blanco')
 
 @login_required
 @user_passes_test(es_admin)
@@ -495,6 +487,17 @@ def login_as_persona(request):
 
     return render(request, 'login_as_persona.html', {'error': error, 'success': success})
 
+@login_required
+def inicio_blanco(request):
+    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
+    for maquina in maquinas:
+        # Creamos un atributo temporal solo para la vista
+        if len(maquina.descripcion_corta) > 300:
+            maquina.descripcion_vista = maquina.descripcion_corta[:297] + "..."
+        else:
+            maquina.descripcion_vista = maquina.descripcion_corta
+    return render(request, 'persona/inicio_blanco.html', {'maquinas': maquinas})
+
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -514,7 +517,7 @@ def login_unificado2(request):
                 user = authenticate(request, username=email, password=password)
                 if user is not None:
                     login(request, user)
-                    return redirect('persona:pagina_principal')
+                    return redirect('persona:inicio')
                 else:
                     return render(request, 'persona/login_unificado2.html', {
                         'error': 'Email o contraseña incorrectos'

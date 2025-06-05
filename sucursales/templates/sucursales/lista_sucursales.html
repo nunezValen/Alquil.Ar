@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Sucursales - Alquil.ar{% endblock %}
+{% block content %}
+<h2 class="mb-4">Nuestras Sucursales</h2>
+<div class="row">
+    {% for suc in sucursales %}
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ suc.nombre }}</h5>
+                <p class="card-text"><strong>Dirección:</strong> {{ suc.direccion }}</p>
+                <p class="card-text"><strong>Teléfono:</strong> {{ suc.telefono }}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

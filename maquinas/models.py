@@ -137,3 +137,67 @@ def restar_stock_maquina(sender, instance, **kwargs):
     if maquina.stock > 0:
         maquina.stock -= 1
         maquina.save()
+
+class Alquiler(models.Model):
+    ESTADOS = [
+        ('pendiente', 'Pendiente de Pago'),
+        ('confirmado', 'Confirmado'),
+        ('en_curso', 'En Curso'),
+        ('finalizado', 'Finalizado'),
+        ('cancelado', 'Cancelado'),
+    ]
+    
+    METODOS_PAGO = [
+        ('mercadopago', 'Mercado Pago'),
+        ('binance', 'Binance Pay'),
+    ]
+
+    numero = models.CharField(max_length=10, unique=True)
+    maquina_base = models.ForeignKey(MaquinaBase, on_delete=models.PROTECT)
+    unidad = models.ForeignKey(Unidad, on_delete=models.PROTECT, null=True, blank=True)
+    persona = models.ForeignKey('persona.Persona', on_delete=models.PROTECT, related_name='alquileres_maquinas')
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+    metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO)
+    monto_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    preference_id = models.CharField(max_length=255, null=True, blank=True)
+
+    def __str__(self):
+        return f"Alquiler {self.numero} - {self.maquina_base.nombre}"
+
+    class Meta:
+        verbose_name = "Alquiler"
+        verbose_name_plural = "Alquileres"
+        ordering = ['-fecha_creacion']
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            # Generar número de alquiler único
+            ultimo_alquiler = Alquiler.objects.order_by('-id').first()
+            if ultimo_alquiler:
+                ultimo_numero = int(ultimo_alquiler.numero.split('-')[1])
+                self.numero = f"A-{ultimo_numero + 1}"
+            else:
+                self.numero = "A-1"
+        
+        # Calcular monto total si no está establecido
+        if not self.monto_total and self.maquina_base and self.fecha_inicio and self.fecha_fin:
+            dias = (self.fecha_fin - self.fecha_inicio).days + 1
+            self.monto_total = self.maquina_base.precio_por_dia * dias
+            
+        super().save(*args, **kwargs)
+
+    def migrar_desde_persona(self, alquiler_persona):
+        """Método para migrar un alquiler desde la app persona"""
+        self.maquina_base = alquiler_persona.maquina
+        self.persona = alquiler_persona.persona
+        self.fecha_inicio = alquiler_persona.fecha_inicio
+        self.fecha_fin = alquiler_persona.fecha_fin
+        self.estado = alquiler_persona.estado
+        self.metodo_pago = alquiler_persona.metodo_pago
+        self.monto_total = alquiler_persona.monto_total
+        self.preference_id = alquiler_persona.preference_id
+        self.save()

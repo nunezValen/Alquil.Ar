@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Catálogo - Alquil.ar{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="section-container">
+        <h1 class="text-center mb-4">Catálogo de Máquinas</h1>
+        <p class="text-center lead mb-5">Encontrá la máquina que necesitás para tu proyecto</p>
+        
+        {% if maquinas %}
+            <div class="catalog-grid">
+                {% for maquina in maquinas %}
+                    <div class="machine-card">
+                        {% if maquina.imagen %}
+                            <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}">
+                        {% else %}
+                            <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen">
+                        {% endif %}
+                        <div class="card-body">
+                            <h3>{{ maquina.nombre }}</h3>
+                            <p class="price">${{ maquina.precio_por_dia }}</p>
+                            <p class="description">{{ maquina.descripcion_vista }}</p>
+                            <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="btn btn-primary">Saber más</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <h2 class="mb-4">¡Próximamente más máquinas!</h2>
+                <p class="lead">Estamos trabajando para traerte el mejor catálogo de maquinaria.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        padding: 2rem 0;
+    }
+
+    .machine-card {
+        background: var(--color-white);
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+    }
+
+    .machine-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .machine-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+
+    .machine-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .machine-card h3 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    .machine-card .price {
+        font-size: 1.1rem;
+        color: var(--color-gray);
+        font-weight: bold;
+        margin-bottom: 1rem;
+        font-family: var(--font-primary);
+    }
+
+    .machine-card .description {
+        color: var(--color-gray);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+        .catalog-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .machine-card img {
+            height: 200px;
+        }
+    }
+</style>
+{% endblock %} 
