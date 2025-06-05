@@ -1,1 +1,48 @@
- 
+ # Entorno virtual (puede variar el nombre)
+venv/
+env/
+.venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de base de datos SQLite (si no quieres versionarlos)
+*.sqlite3
+
+# Archivos de configuración local o sensibles
+*.env
+.env
+.env.*
+
+# Archivos de logs
+*.log
+
+# Archivos generados por el servidor
+*.pid
+
+# Archivos del IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de cobertura de pruebas
+htmlcov/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Carpeta de compilación de static
+staticfiles/
+static/
+
+# Archivos personales
+Cosas que hacer.txt
