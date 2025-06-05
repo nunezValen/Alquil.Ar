@@ -256,7 +256,7 @@
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Mi cuenta
+                            <i class="bi bi-person-circle"></i> {{ user.first_name|add:" "|add:user.last_name|truncatechars:20 }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {% if es_empleado_actuando_como_cliente %}
