@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout - {{ maquina.nombre }}{% endblock %}
+
+{% block extra_head %}
+<!-- SDK MercadoPago.js -->
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Confirmar pago por alquiler de {{ maquina.nombre }}</h2>
+
+                    {% if messages %}
+                    <div class="messages mb-4">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <h5>Detalles del alquiler:</h5>
+                        <p>
+                            <strong>Máquina:</strong> {{ maquina.nombre }}<br>
+                            <strong>Fecha de inicio:</strong> {{ alquiler.fecha_inicio|date:"d/m/Y" }}<br>
+                            <strong>Fecha de fin:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}<br>
+                            <strong>Total a pagar:</strong> ${{ alquiler.monto_total }}
+                        </p>
+                    </div>
+
+                    <div id="wallet_container" class="mb-4"></div>
+                    
+                    <div class="text-center">
+                        <a href="{% url 'detalle_maquina' maquina.id %}" class="btn btn-secondary">Volver</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        try {
+            const mp = new MercadoPago('{{ mercadopago_public_key }}', {
+                locale: 'es-AR'
+            });
+
+            mp.checkout({
+                preference: {
+                    id: '{{ preference_id }}'
+                },
+                render: {
+                    container: '#wallet_container',
+                    label: 'Pagar alquiler'
+                }
+            });
+        } catch (error) {
+            console.error('Error al inicializar MercadoPago:', error);
+            alert('Error al inicializar el sistema de pagos. Por favor, recarga la página.');
+        }
+    });
+</script>
+{% endblock %} 

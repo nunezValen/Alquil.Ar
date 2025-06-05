@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from pyngrok import ngrok, conf
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-c_&j0lq^_c0)hv5%n_rm1y)$+%us1m@2j!j1!1g8e)2^=(3qez
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok.io', '.ngrok-free.app']
 
 
 # Application definition
@@ -152,6 +153,34 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Configuración de archivos multimedia
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Configuración de CSRF y sesiones
+CSRF_TRUSTED_ORIGINS = [
+    'https://nearby-cat-mildly.ngrok-free.app',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://*.ngrok-free.app'
+]
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+
+# Configuración de login
+LOGIN_URL = '/persona/login/'
+LOGIN_REDIRECT_URL = '/persona/catalogo/'
+LOGOUT_REDIRECT_URL = '/persona/login/'
+
+# Configuración de APIs de pago
+MERCADOPAGO_PUBLIC_KEY = 'APP_USR-4b4258c9-acf2-4e22-8586-b90a515a544e'
+MERCADOPAGO_ACCESS_TOKEN = 'APP_USR-7053661504074875-052821-12dcd00682fb1fc064c283d1929e2ce2-343205143'
+MERCADOPAGO_CLIENT_ID = '7053661504074875'
+MERCADOPAGO_CLIENT_SECRET = 'dgkDfbZ7xBJE0DP8kXV2YnJHzQCRcQ7T'
+BINANCE_API_KEY = 'TU_API_KEY'
+BINANCE_API_SECRET = 'TU_API_SECRET'
+
+# Configuración de correo electrónico
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -159,3 +188,37 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'contacto.alquilar@gmail.com'
 EMAIL_HOST_PASSWORD = 'ulwc rybt birv dqfg'
 DEFAULT_FROM_EMAIL = 'Alquil.ar <no-reply@alquilar.com.ar>'
+
+# Configuración de ngrok
+NGROK_URL = 'https://nearby-cat-mildly.ngrok-free.app'
+NGROK_PORT = 8000
+
+try:
+    from pyngrok import ngrok, conf
+    
+    # Configurar el token de autenticación
+    ngrok.set_auth_token('2uyTAlh8cddAMkkwfvQz9dVQTMU_658cQYhnPUBoK9gXuSjEX')
+    
+    # Configurar el puerto
+    ngrok_port = 8000  # Mismo puerto donde corre Django
+    
+    # Cerrar cualquier túnel existente
+    ngrok.kill()
+    
+    # Configurar opciones de ngrok
+    conf.get_default().monitor_thread = False
+    conf.get_default().console_ui = False
+    
+    # Crear nuevo túnel especificando el puerto correcto
+    public_url = ngrok.connect(addr=f"http://localhost:{ngrok_port}").public_url
+    print(f' * ngrok tunnel "{public_url}" -> http://localhost:{ngrok_port}/')
+    
+    # Agregar la URL de ngrok a ALLOWED_HOSTS y CSRF_TRUSTED_ORIGINS
+    if public_url:
+        ngrok_host = public_url.replace('https://', '').replace('http://', '')
+        ALLOWED_HOSTS.append(ngrok_host)
+        CSRF_TRUSTED_ORIGINS.append(f'https://{ngrok_host}')
+except Exception as e:
+    print(f' * Error al iniciar ngrok: {str(e)}')
+    print(' * Continuando sin ngrok...')
+    public_url = None

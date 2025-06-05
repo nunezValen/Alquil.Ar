@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Catálogo de Máquinas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Catálogo de Máquinas Disponibles</h1>
+    
+    <div class="row">
+        {% for maquina in maquinas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                {% if maquina.imagen %}
+                <img src="{{ maquina.imagen.url }}" class="card-img-top" alt="{{ maquina.nombre }}">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="bi bi-tools" style="font-size: 4rem; color: #ccc;"></i>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ maquina.nombre }}</h5>
+                    <p class="card-text">
+                        <strong>Tipo:</strong> {{ maquina.tipo }}<br>
+                        <strong>Modelo:</strong> {{ maquina.modelo }}<br>
+                        <strong>Precio por día:</strong> ${{ maquina.precio_dia }}<br>
+                        <strong>Días mínimos:</strong> {{ maquina.dias_minimos }}
+                    </p>
+                    <p class="card-text">{{ maquina.descripcion|truncatewords:30 }}</p>
+                </div>
+                <div class="card-footer bg-white border-top-0">
+                    <a href="{% url 'detalle_maquina' maquina.id %}" class="btn btn-primary w-100">Ver Detalles</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay máquinas disponibles en este momento.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

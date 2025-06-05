@@ -1,3 +1,11 @@
+<<<<<<< HEAD
 Django>=5.2.1
 Pillow>=10.0.0
 django-widget-tweaks>=1.4.8
+=======
+Django>=5.0.0
+Pillow>=10.0.0
+mercadopago>=2.2.0
+python-binance>=1.0.19
+django-widget-tweaks>=1.5.0 
+>>>>>>> Alquileres-y-pagos
