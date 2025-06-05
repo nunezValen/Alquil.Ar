@@ -33,8 +33,22 @@ class PersonaForm(forms.ModelForm):
 
     def clean_dni(self):
         dni = self.cleaned_data.get('dni')
-        if dni and Persona.objects.filter(dni=dni).exists():
-            raise forms.ValidationError('El DNI ya se encuentra registrado.')
+        if dni:
+            # Verificar si el DNI ya existe
+            if Persona.objects.filter(dni=dni).exists():
+                raise forms.ValidationError('El DNI ya se encuentra registrado.')
+            
+            # Eliminar cualquier espacio en blanco
+            dni = dni.strip()
+            
+            # Verificar que solo contenga números
+            if not dni.isdigit():
+                raise forms.ValidationError('El DNI debe contener solo números.')
+            
+            # Verificar la longitud (entre 2 y 7 números)
+            if len(dni) < 2 or len(dni) > 7:
+                raise forms.ValidationError('El DNI debe tener entre 2 y 7 números.')
+        
         return dni
 
     def save(self, commit=True):
