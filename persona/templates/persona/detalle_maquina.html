@@ -41,18 +41,8 @@
                         </p>
                     </div>
 
-                    {% if form.errors %}
-                    <div class="alert alert-danger">
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                                <p>{{ error }}</p>
-                            {% endfor %}
-                        {% endfor %}
-                        {% for error in form.non_field_errors %}
-                            <p>{{ error }}</p>
-                        {% endfor %}
+                    <div id="form-errors" class="alert alert-danger" style="display: none;">
                     </div>
-                    {% endif %}
 
                     <form method="post" id="alquiler-form">
                         {% csrf_token %}
@@ -73,7 +63,7 @@
                         </div>
                         
                         <div class="text-center">
-                            <button type="submit" class="btn btn-primary">Confirmar Alquiler</button>
+                            <button type="submit" class="btn btn-primary">Continuar con el pago</button>
                         </div>
                     </form>
                 </div>
@@ -82,9 +72,25 @@
     </div>
 </div>
 
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Procesando...</span>
+                </div>
+                <h5>Procesando tu solicitud</h5>
+                <p class="mb-0">Por favor, espera un momento...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('alquiler-form');
+    const formErrors = document.getElementById('form-errors');
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -95,16 +101,52 @@ document.addEventListener('DOMContentLoaded', function() {
         hoy.setHours(0, 0, 0, 0);
         
         if (fechaInicio < hoy) {
-            alert('La fecha de inicio no puede ser en el pasado.');
+            formErrors.textContent = 'La fecha de inicio no puede ser en el pasado.';
+            formErrors.style.display = 'block';
             return;
         }
         
         if (fechaFin < fechaInicio) {
-            alert('La fecha de fin debe ser posterior a la fecha de inicio.');
+            formErrors.textContent = 'La fecha de fin debe ser posterior a la fecha de inicio.';
+            formErrors.style.display = 'block';
             return;
         }
+
+        // Ocultar errores previos
+        formErrors.style.display = 'none';
         
-        form.submit();
+        // Mostrar modal de carga
+        loadingModal.show();
+
+        // Enviar formulario vía AJAX
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Abrir MercadoPago en nueva pestaña
+                window.open(data.redirect_url, '_blank');
+                
+                // Redirigir la pestaña actual a mis alquileres después de un breve delay
+                setTimeout(() => {
+                    window.location.href = '{% url "persona:mis-alquileres" %}';
+                }, 1000);
+            } else {
+                throw new Error(data.message || 'Error al procesar la solicitud');
+            }
+        })
+        .catch(error => {
+            formErrors.textContent = error.message;
+            formErrors.style.display = 'block';
+        })
+        .finally(() => {
+            loadingModal.hide();
+        });
     });
 });
 </script>

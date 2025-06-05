@@ -2,12 +2,13 @@ from django.urls import path
 from .views import (
     lista_personas, lista_maquinas, lista_empleados, login_view, 
     registrar_persona, catalogo_maquinas, 
-    detalle_maquina, mis_alquileres, webhook_mercadopago, checkout_mp,
+    detalle_maquina, mis_alquileres, webhook_mercadopago,
     pagina_principal, registrar_empleado, cambiar_password,
     cambiar_password_empleado, cambiar_password_logueado,
     cambiar_password_empleado_logueado, login_as_persona,
     login_unificado2, logout_view, switch_back_to_employee,
-    editar_datos_personales, gestion, estadisticas, inicio
+    editar_datos_personales, gestion, estadisticas, inicio,
+    lista_alquileres, checkout, recuperar_password
 )
 
 app_name = 'persona'
@@ -23,7 +24,7 @@ urlpatterns = [
     path('login-unificado2/', login_unificado2, name='login_unificado2'),
     path('catalogo/', catalogo_maquinas, name='catalogo_maquinas'),
     path('maquina/<int:maquina_id>/', detalle_maquina, name='detalle_maquina'),
-    path('checkout/<int:alquiler_id>/', checkout_mp, name='checkout_mp'),
+    path('checkout/<int:alquiler_id>/', checkout, name='checkout'),
     path('mis-alquileres/', mis_alquileres, name='mis_alquileres'),
     path('webhook/mercadopago/', webhook_mercadopago, name='webhook_mercadopago'),
     path('cambiar-password/', cambiar_password, name='cambiar_password'),
@@ -36,6 +37,8 @@ urlpatterns = [
     path('estadisticas/', estadisticas, name='estadisticas'),
     path('logout/', logout_view, name='logout'),
     path('editar-datos-personales/', editar_datos_personales, name='editar_datos_personales'),
+    path('alquileres/', lista_alquileres, name='lista_alquileres'),
+    path('recuperar-password/', recuperar_password, name='recuperar_password'),
 ]
 
 

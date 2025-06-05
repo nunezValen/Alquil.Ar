@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from .models import Persona, Maquina, Alquiler
 from maquinas.models import MaquinaBase
-from .forms import PersonaForm, EditarPersonaForm, AlquilerForm
+from .forms import PersonaForm, EditarPersonaForm, AlquilerForm, CambiarPasswordForm
 from datetime import date, datetime
 from django.contrib.auth.forms import PasswordChangeForm
 import random, string
@@ -20,6 +20,7 @@ import mercadopago
 import binance
 from pyngrok import ngrok
 import json
+from .utils import generar_password_random
 
 def es_admin(user):
     """
@@ -52,7 +53,7 @@ def detalle_maquina(request, maquina_id):
     
     if request.method == 'POST':
         print(">>> POST recibido en detalle_maquina")
-        form = AlquilerForm(request.POST)
+        form = AlquilerForm(request.POST, maquina=maquina)
         if form.is_valid():
             print(">>> Formulario válido")
             fecha_inicio = form.cleaned_data['fecha_inicio']
@@ -103,13 +104,14 @@ def detalle_maquina(request, maquina_id):
                                 "title": f"Alquiler de {maquina.nombre}",
                                 "quantity": 1,
                                 "currency_id": "ARS",
-                                "unit_price": float(maquina.precio_dia * dias + 1) #+1 para que el precio sea el correcto porque si no da el precio por ser precio 0
+                                "unit_price": float(maquina.precio_dia * dias + 1)
                             }],
                             "back_urls": {
-                                "success": f"{base_url}/persona/checkout/{alquiler.id}/",
-                                "failure": f"{base_url}/persona/maquina/{maquina.id}/",
-                                "pending": f"{base_url}/persona/checkout/{alquiler.id}/"
+                                "success": f"{base_url}/persona/checkout/{alquiler.id}/?status=approved",
+                                "failure": f"{base_url}/persona/checkout/{alquiler.id}/?status=failure",
+                                "pending": f"{base_url}/persona/checkout/{alquiler.id}/?status=pending"
                             },
+                            "auto_return": "approved",
                             "external_reference": str(alquiler.id),
                             "notification_url": f"{base_url}/persona/webhook/mercadopago/",
                             "payer": {
@@ -137,8 +139,11 @@ def detalle_maquina(request, maquina_id):
                             alquiler.preference_id = preference["id"]
                             alquiler.save()
                             
-                            # Redirigir al checkout de Mercado Pago
-                            return redirect(preference["init_point"])
+                            # Retornar la URL de MercadoPago
+                            return JsonResponse({
+                                'status': 'success',
+                                'redirect_url': preference["init_point"]
+                            })
                         else:
                             error_msg = f"Error al crear preferencia: {preference_response.get('message', 'Error desconocido')}"
                             print(f">>> {error_msg}")
@@ -153,10 +158,19 @@ def detalle_maquina(request, maquina_id):
                     if alquiler:
                         alquiler.delete()
                     form.add_error(None, f"Error al procesar el pago: {str(e)}")
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': str(e)
+                    }, status=400)
         else:
             print(f">>> Errores en el formulario: {form.errors}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Formulario inválido',
+                'errors': dict(form.errors)
+            }, status=400)
     else:
-        form = AlquilerForm()
+        form = AlquilerForm(maquina=maquina)
     
     return render(request, 'persona/detalle_maquina.html', {
         'maquina': maquina,
@@ -166,7 +180,7 @@ def detalle_maquina(request, maquina_id):
 
 @login_required
 def mis_alquileres(request):
-    alquileres = Alquiler.objects.filter(cliente=request.user).order_by('-fecha_creacion')
+    alquileres = Alquiler.objects.filter(persona__email=request.user.email).order_by('-fecha_creacion')
     return render(request, 'persona/mis_alquileres.html', {'alquileres': alquileres})
 
 def lista_maquinas(request):
@@ -199,40 +213,29 @@ def lista_personas(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def registrar_persona(request):
-    error = None
     if request.method == 'POST':
         form = PersonaForm(request.POST)
         if form.is_valid():
-            try:
-                # Crear la persona
-                persona = form.save(commit=False)
-                persona.es_cliente = True  # Marcar como cliente
-                persona.fecha_registro = timezone.now()
-                persona.save()
-
-                # Crear el usuario
-                username = persona.email
-                password = form.cleaned_data['password']
-                user = User.objects.create_user(username=username, email=username, password=password)
-                user.save()
-
-                # Enviar email de bienvenida
-                send_mail(
-                    'Bienvenido a Alquil.ar',
-                    f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente.\n\nPuedes iniciar sesión con:\nEmail: {username}\nContraseña: {password}\n\nBienvenido a Alquil.ar!',
-                    'no-reply@alquilar.com.ar',
-                    [username],
-                    fail_silently=False,
-                )
-
-                messages.success(request, f'Cliente registrado exitosamente. El usuario podrá iniciar sesión con el email: {username}')
-                return redirect('persona:inicio')
-            except Exception as e:
-                error = str(e)
+            persona = form.save(commit=False)
+            # Generar contraseña aleatoria
+            password = generar_password_random()
+            persona.set_password(password)
+            persona.save()
+            
+            # Enviar email con la contraseña
+            send_mail(
+                'Bienvenido a Alquil.Ar - Tu contraseña',
+                f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente. Tu contraseña es: {password}\n\nPor favor, cambia tu contraseña la próxima vez que inicies sesión.\n\nSaludos,\nEquipo Alquil.Ar',
+                settings.DEFAULT_FROM_EMAIL,
+                [persona.email],
+                fail_silently=False,
+            )
+            
+            messages.success(request, 'Te has registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
+            return redirect('persona:login_unificado2')
     else:
         form = PersonaForm()
-
-    return render(request, 'persona/registrar_persona.html', {'form': form, 'error': error})
+    return render(request, 'persona/registrar_persona.html', {'form': form})
 
 @csrf_protect
 @ensure_csrf_cookie
@@ -335,24 +338,42 @@ def login_empleado(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def cambiar_password(request):
-    error = None
-    success = None
     if request.method == 'POST':
-        password1 = request.POST.get('password1')
-        password2 = request.POST.get('password2')
-
-        if password1 != password2:
-            error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 8:
-            error = 'La contraseña debe tener al menos 8 caracteres.'
-        else:
-            user = request.user
-            user.set_password(password1)
-            user.save()
-            update_session_auth_hash(request, user)  # Mantiene la sesión activa
-            success = 'Contraseña cambiada exitosamente.'
-
-    return render(request, 'cambiar_password.html', {'error': error, 'success': success})
+        password_actual = request.POST.get('password_actual')
+        password_nuevo = request.POST.get('password_nuevo')
+        password_confirmacion = request.POST.get('password_confirmacion')
+        
+        # Validar longitud de la nueva contraseña
+        if len(password_nuevo) < 6:
+            messages.error(request, 'La nueva contraseña debe tener al menos 6 caracteres.')
+            return redirect('persona:cambiar_password')
+        
+        if len(password_nuevo) > 16:
+            messages.error(request, 'La nueva contraseña no puede tener más de 16 caracteres.')
+            return redirect('persona:cambiar_password')
+        
+        # Validar que las contraseñas coincidan
+        if password_nuevo != password_confirmacion:
+            messages.error(request, 'Las contraseñas no coinciden.')
+            return redirect('persona:cambiar_password')
+        
+        # Verificar la contraseña actual
+        user = request.user
+        if not user.check_password(password_actual):
+            messages.error(request, 'La contraseña actual es incorrecta.')
+            return redirect('persona:cambiar_password')
+        
+        # Cambiar la contraseña
+        user.set_password(password_nuevo)
+        user.save()
+        
+        # Actualizar la sesión para que el usuario no tenga que volver a iniciar sesión
+        update_session_auth_hash(request, user)
+        
+        messages.success(request, 'Tu contraseña ha sido cambiada exitosamente.')
+        return redirect('persona:inicio')
+    
+    return render(request, 'persona/cambiar_password.html')
 
 @csrf_protect
 @ensure_csrf_cookie
@@ -361,25 +382,24 @@ def cambiar_password_empleado(request):
     error = None
     success = None
     if request.method == 'POST':
-        email = request.POST.get('email')
-        try:
-            user = User.objects.get(username=f"emp_{email}")
-            password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-            user.set_password(password)
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+
+        if password1 != password2:
+            error = 'Las contraseñas no coinciden.'
+        elif len(password1) < 6:
+            error = 'La contraseña debe tener al menos 6 caracteres.'
+        elif len(password1) > 16:
+            error = 'La contraseña no puede tener más de 16 caracteres.'
+        else:
+            user = request.user
+            user.set_password(password1)
             user.save()
-            send_mail(
-                'Tu nueva contraseña de empleado en Alquil.ar',
-                f'Hola {user.first_name},\n\nTu contraseña ha sido cambiada.\n\nNueva contraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.',
-                'no-reply@alquilar.com.ar',
-                [email],
-                fail_silently=False,
-            )
-            success = 'Se ha enviado una nueva contraseña a tu email.'
-        except User.DoesNotExist:
-            error = 'No existe una cuenta de empleado con ese email.'
+            update_session_auth_hash(request, user)  # Mantiene la sesión activa
+            success = 'Contraseña cambiada exitosamente.'
+
     return render(request, 'cambiar_password_empleado.html', {'error': error, 'success': success})
 
-@login_required
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -392,8 +412,10 @@ def cambiar_password_logueado(request):
 
         if password1 != password2:
             error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 8:
-            error = 'La contraseña debe tener al menos 8 caracteres.'
+        elif len(password1) < 6:
+            error = 'La contraseña debe tener al menos 6 caracteres.'
+        elif len(password1) > 16:
+            error = 'La contraseña no puede tener más de 16 caracteres.'
         else:
             user = request.user
             user.set_password(password1)
@@ -403,7 +425,6 @@ def cambiar_password_logueado(request):
 
     return render(request, 'cambiar_password_logueado.html', {'error': error, 'success': success})
 
-@login_required
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -416,8 +437,10 @@ def cambiar_password_empleado_logueado(request):
 
         if password1 != password2:
             error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 8:
-            error = 'La contraseña debe tener al menos 8 caracteres.'
+        elif len(password1) < 6:
+            error = 'La contraseña debe tener al menos 6 caracteres.'
+        elif len(password1) > 16:
+            error = 'La contraseña no puede tener más de 16 caracteres.'
         else:
             user = request.user
             user.set_password(password1)
@@ -592,9 +615,14 @@ def webhook_mercadopago(request):
                         # Actualizar el estado del alquiler según el estado del pago
                         if status == 'approved':
                             alquiler.estado = 'confirmado'
+                            # Actualizar el estado de la máquina a 'alquilada'
+                            maquina = alquiler.maquina
+                            maquina.estado = 'alquilada'
+                            maquina.save()
+                            print(f"Máquina actualizada: {maquina.id} - Estado: {maquina.estado}")
                             messages.success(request, 'Pago aprobado exitosamente')
                         elif status == 'rejected':
-                            alquiler.estado = 'rechazado'
+                            alquiler.estado = 'cancelado'
                             messages.error(request, 'El pago fue rechazado')
                         elif status == 'pending':
                             alquiler.estado = 'pendiente'
@@ -622,19 +650,84 @@ def webhook_mercadopago(request):
     return HttpResponse(status=405)  # Method Not Allowed
 
 @login_required
-def checkout_mp(request, alquiler_id):
+def checkout(request, alquiler_id):
     alquiler = get_object_or_404(Alquiler, id=alquiler_id)
+    status = request.GET.get('status')
     
     # Verificar que el alquiler pertenece al usuario actual
     if alquiler.persona.email != request.user.email:
-        messages.error(request, "No tienes permiso para ver este alquiler.")
-        return redirect('catalogo_maquinas')
+        messages.error(request, "No tienes permiso para acceder a este alquiler.")
+        return redirect('persona:mis_alquileres')
     
-    return render(request, 'persona/checkout_mp.html', {
-        'maquina': alquiler.maquina,
-        'alquiler': alquiler,
-        'preference_id': alquiler.preference_id,
-        'mercadopago_public_key': settings.MERCADOPAGO_PUBLIC_KEY
-    })
+    if status == 'approved':
+        # Actualizar el estado del alquiler
+        alquiler.estado = 'confirmado'
+        alquiler.save()
+        
+        # Marcar la máquina como alquilada
+        maquina = alquiler.maquina
+        maquina.estado = 'alquilada'
+        maquina.save()
+        
+        messages.success(request, "¡Pago exitoso! Tu alquiler ha sido confirmado.")
+    elif status == 'pending':
+        alquiler.estado = 'pendiente'
+        alquiler.save()
+        messages.info(request, "El pago está pendiente de confirmación.")
+    else:
+        alquiler.estado = 'fallido'
+        alquiler.save()
+        messages.error(request, "El pago no pudo ser procesado. Por favor, intenta nuevamente.")
+    
+    return redirect('persona:mis_alquileres')
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+def lista_alquileres(request):
+    alquileres = Alquiler.objects.all().order_by('-fecha_creacion')
+    return render(request, 'persona/lista_alquileres.html', {'alquileres': alquileres})
+
+def recuperar_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            # Buscar la persona por email
+            persona = Persona.objects.get(email=email)
+            
+            # Buscar todos los usuarios asociados
+            users = User.objects.filter(email=email)
+            if not users.exists():
+                raise User.DoesNotExist
+            
+            # Generar nueva contraseña aleatoria
+            nueva_password = generar_password_random()
+            
+            # Actualizar la contraseña de todos los usuarios con ese email
+            for user in users:
+                user.set_password(nueva_password)
+                user.save()
+            
+            # Enviar email con la nueva contraseña
+            send_mail(
+                'Alquil.Ar - Tu nueva contraseña',
+                f'Hola {persona.nombre},\n\n'
+                f'Has solicitado una nueva contraseña.\n\n'
+                f'Tu nueva contraseña es: {nueva_password}\n\n'
+                f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                f'Saludos,\n'
+                f'Equipo Alquil.Ar',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            
+            messages.success(request, 'Se ha enviado una nueva contraseña a tu email.')
+            return redirect('persona:login_unificado2')
+            
+        except (Persona.DoesNotExist, User.DoesNotExist):
+            messages.error(request, 'No existe una cuenta con ese email.')
+            return redirect('persona:recuperar_password')
+    
+    return render(request, 'persona/recuperar_password.html')
 
 # Create your views here.

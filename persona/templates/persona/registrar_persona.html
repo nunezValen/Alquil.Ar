@@ -76,11 +76,25 @@
         margin-bottom: 20px;
         color: #2e7d32;
     }
+    .info-message {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 20px;
+        color: #1565c0;
+        text-align: center;
+        font-size: 0.9em;
+    }
 </style>
 
 <div class="register-box">
     <h2>Registrar Nuevo Cliente</h2>
     
+    <div class="info-message">
+        La contraseña será generada automáticamente y enviada al email del cliente.
+    </div>
+
     {% if messages %}
         {% for message in messages %}
             <div class="{% if message.tags == 'success' %}success-message{% else %}error-list{% endif %}">
@@ -133,16 +147,6 @@
         <div class="form-group">
             <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de Nacimiento</label>
             {{ form.fecha_nacimiento }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.password.id_for_label }}">Contraseña</label>
-            {{ form.password }}
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.password_confirmation.id_for_label }}">Confirmar Contraseña</label>
-            {{ form.password_confirmation }}
         </div>
 
         <button type="submit" class="btn-primary">Registrar Cliente</button>

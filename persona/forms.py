@@ -2,40 +2,14 @@ from django import forms
 from .models import Persona, Alquiler
 from datetime import date
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 class PersonaForm(forms.ModelForm):
-    nombre_completo = forms.CharField(
-        max_length=200,
-        label='',
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Nombre Completo',
-            'autocomplete': 'off',
-            'class': 'form-control',
-        })
-    )
-
-    password = forms.CharField(
-        label='',
-        widget=forms.PasswordInput(attrs={
-            'placeholder': 'Contraseña',
-            'autocomplete': 'new-password',
-            'class': 'form-control',
-        })
-    )
-
-    password_confirmation = forms.CharField(
-        label='',
-        widget=forms.PasswordInput(attrs={
-            'placeholder': 'Confirmar Contraseña',
-            'autocomplete': 'new-password',
-            'class': 'form-control',
-        })
-    )
-
     class Meta:
         model = Persona
-        fields = ['nombre_completo', 'dni', 'email', 'fecha_nacimiento']
+        fields = ['nombre', 'dni', 'email', 'fecha_nacimiento']
         widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Nombre', 'autocomplete': 'off', 'class': 'form-control'}),
             'dni': forms.TextInput(attrs={'placeholder': 'DNI', 'autocomplete': 'off', 'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control'}),
             'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off'}),
@@ -62,21 +36,9 @@ class PersonaForm(forms.ModelForm):
             raise forms.ValidationError('El DNI ya se encuentra registrado.')
         return dni
 
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        password_confirmation = cleaned_data.get('password_confirmation')
-
-        if password and password_confirmation:
-            if password != password_confirmation:
-                raise forms.ValidationError('Las contraseñas no coinciden.')
-            if len(password) < 8:
-                raise forms.ValidationError('La contraseña debe tener al menos 8 caracteres.')
-        return cleaned_data
-
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre_completo', '').strip()
+        nombre_completo = self.cleaned_data.get('nombre', '').strip()
         partes = nombre_completo.split(' ', 1)
         instance.nombre = partes[0]
         instance.apellido = partes[1] if len(partes) > 1 else ''
@@ -97,6 +59,10 @@ class AlquilerForm(forms.ModelForm):
             ])
         }
 
+    def __init__(self, *args, maquina=None, **kwargs):
+        self.maquina = maquina
+        super().__init__(*args, **kwargs)
+
     def clean(self):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
@@ -108,8 +74,20 @@ class AlquilerForm(forms.ModelForm):
             
             if fecha_inicio < timezone.now().date():
                 raise forms.ValidationError("La fecha de inicio no puede ser en el pasado.")
+            
+            # Verificar si la máquina está disponible para las fechas seleccionadas
+            if self.maquina:
+                alquileres_existentes = Alquiler.objects.filter(
+                    maquina=self.maquina,
+                    estado__in=['pendiente', 'confirmado', 'en_curso'],
+                    fecha_inicio__lte=fecha_fin,
+                    fecha_fin__gte=fecha_inicio
+                )
+                
+                if alquileres_existentes.exists():
+                    raise forms.ValidationError("La máquina no está disponible para las fechas seleccionadas.")
         
-        return cleaned_data 
+        return cleaned_data
 
 class EditarPersonaForm(forms.ModelForm):
     class Meta:
@@ -156,3 +134,35 @@ class EditarPersonaForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+class CambiarPasswordForm(forms.Form):
+    password_actual = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Contraseña actual'}),
+        label='Contraseña actual'
+    )
+    password_nuevo = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Nueva contraseña'}),
+        label='Nueva contraseña'
+    )
+    password_confirmacion = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirmar nueva contraseña'}),
+        label='Confirmar nueva contraseña'
+    )
+
+    def clean_password_nuevo(self):
+        password = self.cleaned_data.get('password_nuevo')
+        if len(password) < 6:
+            raise ValidationError('La contraseña debe tener al menos 6 caracteres.')
+        if len(password) > 16:
+            raise ValidationError('La contraseña no puede tener más de 16 caracteres.')
+        return password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password_nuevo = cleaned_data.get('password_nuevo')
+        password_confirmacion = cleaned_data.get('password_confirmacion')
+
+        if password_nuevo and password_confirmacion:
+            if password_nuevo != password_confirmacion:
+                raise ValidationError('Las contraseñas no coinciden.')
+        return cleaned_data

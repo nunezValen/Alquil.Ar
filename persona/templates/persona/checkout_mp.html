@@ -35,12 +35,33 @@
                         </p>
                     </div>
 
+                    <div class="alert alert-info mb-4">
+                        <p class="mb-0">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Una vez realizado el pago, serás redirigido automáticamente a tu lista de alquileres.
+                        </p>
+                    </div>
+
                     <div id="wallet_container" class="mb-4"></div>
                     
                     <div class="text-center">
-                        <a href="{% url 'detalle_maquina' maquina.id %}" class="btn btn-secondary">Volver</a>
+                        <a href="{% url 'persona:detalle_maquina' maquina.id %}" class="btn btn-secondary">Cancelar y volver</a>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Procesando pago...</span>
+                </div>
+                <h5>Procesando tu pago</h5>
+                <p class="mb-0">Por favor, no cierres esta ventana...</p>
             </div>
         </div>
     </div>
@@ -62,10 +83,33 @@
                     label: 'Pagar alquiler'
                 }
             });
+
+            // Mostrar modal de carga cuando se hace clic en el botón de pago
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length) {
+                        const payButton = document.querySelector('.mercadopago-button');
+                        if (payButton) {
+                            payButton.addEventListener('click', function() {
+                                const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+                                loadingModal.show();
+                            });
+                            observer.disconnect();
+                        }
+                    }
+                });
+            });
+
+            observer.observe(document.getElementById('wallet_container'), {
+                childList: true,
+                subtree: true
+            });
+
         } catch (error) {
             console.error('Error al inicializar MercadoPago:', error);
             alert('Error al inicializar el sistema de pagos. Por favor, recarga la página.');
         }
     });
 </script>
+{% endblock %} 
 {% endblock %} 

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Alquileres - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Lista de Alquileres</h1>
+        <a href="{% url 'persona:gestion' %}" class="btn btn-secondary">Volver a Gestión</a>
+    </div>
+
+    {% if alquileres %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Número</th>
+                    <th>Cliente</th>
+                    <th>Máquina</th>
+                    <th>Fechas</th>
+                    <th>Estado</th>
+                    <th>Método de Pago</th>
+                    <th>Monto</th>
+                    <th>Fecha de Creación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alquiler in alquileres %}
+                <tr>
+                    <td>{{ alquiler.numero }}</td>
+                    <td>
+                        {% if alquiler.persona %}
+                            {{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}<br>
+                            <small class="text-muted">{{ alquiler.persona.email }}</small>
+                        {% else %}
+                            <span class="text-muted">Sin asignar</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ alquiler.maquina.nombre }}</td>
+                    <td>
+                        <strong>Inicio:</strong> {{ alquiler.fecha_inicio|date:"d/m/Y" }}<br>
+                        <strong>Fin:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}
+                    </td>
+                    <td>
+                        <span class="badge {% if alquiler.estado == 'confirmado' %}bg-success
+                                         {% elif alquiler.estado == 'pendiente' %}bg-warning
+                                         {% elif alquiler.estado == 'en_curso' %}bg-info
+                                         {% elif alquiler.estado == 'finalizado' %}bg-secondary
+                                         {% else %}bg-danger{% endif %}">
+                            {{ alquiler.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>{{ alquiler.get_metodo_pago_display }}</td>
+                    <td>${{ alquiler.monto_total|default:"0.00" }}</td>
+                    <td>{{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No hay alquileres registrados en el sistema.
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.table th, .table td {
+    vertical-align: middle;
+}
+.badge {
+    font-size: 0.9em;
+    padding: 0.5em 0.7em;
+}
+</style>
+{% endblock %} 
