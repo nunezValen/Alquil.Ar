@@ -39,6 +39,7 @@ urlpatterns = [
     path('editar-datos-personales/', editar_datos_personales, name='editar_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('recuperar-password/', recuperar_password, name='recuperar_password'),
+    path('sucursales/', views.mapa_sucursales, name='mapa_sucursales'),
 ]
 
 

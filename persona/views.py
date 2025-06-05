@@ -3,6 +3,10 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, update_session_auth_hash, logout
+from .models import Persona, Maquina, Empleado, Sucursal
+from .forms import PersonaForm, EmpleadoForm
+from datetime import date
+from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -762,5 +766,25 @@ def recuperar_password(request):
         return redirect('persona:login_unificado2')
     
     return render(request, 'persona/recuperar_password.html')
+
+def mapa_sucursales(request):
+    try:
+        sucursales = Sucursal.objects.all()
+        
+        # Validar que las coordenadas sean válidas
+        for sucursal in sucursales:
+            if not (-90 <= sucursal.latitud <= 90) or not (-180 <= sucursal.longitud <= 180):
+                raise ValueError(f'Coordenadas inválidas en sucursal {sucursal.id_sucursal}')
+        
+        return render(request, 'mapa_sucursales.html', {
+            'sucursales': sucursales,
+            'centro_mapa': [-34.9214, -57.9544]  # Coordenadas de La Plata
+        })
+    except ValueError as e:
+        messages.error(request, f'Error en las coordenadas: {str(e)}')
+        return redirect('inicio')
+    except Exception as e:
+        messages.error(request, 'Ocurrió un error al cargar el mapa de sucursales')
+        return redirect('inicio')
 
 # Create your views here.
