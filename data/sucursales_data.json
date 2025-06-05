@@ -1,0 +1,11 @@
+[
+{
+  "model": "sucursales.sucursal",
+  "pk": 1,
+  "fields": {
+    "nombre": "Sucursal de Ejemplo",
+    "direccion": "34°36'00.000\"S 058°22'00.000\"O",
+    "visible": true
+  }
+}
+]

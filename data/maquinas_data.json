@@ -1,0 +1,456 @@
+[
+{
+  "model": "maquinas.maquinabase",
+  "pk": 7,
+  "fields": {
+    "nombre": "a",
+    "tipo": "retroexcavadora",
+    "marca": "caterpillar",
+    "modelo": "a",
+    "precio_por_dia": "131.00",
+    "descripcion_corta": "12",
+    "descripcion_larga": "11",
+    "imagen": "maquinas/תיקונים_למריאנה-09_1.jpg",
+    "dias_alquiler_min": 11,
+    "dias_alquiler_max": 20,
+    "stock": 1
+  }
+},
+{
+  "model": "maquinas.maquinabase",
+  "pk": 8,
+  "fields": {
+    "nombre": "josejose",
+    "tipo": "retroexcavadora",
+    "marca": "caterpillar",
+    "modelo": "12",
+    "precio_por_dia": "0.10",
+    "descripcion_corta": "alta maquinola",
+    "descripcion_larga": "posta esta buena",
+    "imagen": "maquinas/banan.gif",
+    "dias_alquiler_min": 1,
+    "dias_alquiler_max": 2,
+    "stock": 1
+  }
+},
+{
+  "model": "maquinas.maquinabase",
+  "pk": 9,
+  "fields": {
+    "nombre": "lilo",
+    "tipo": "dumper",
+    "marca": "komatsu",
+    "modelo": "3",
+    "precio_por_dia": "1.00",
+    "descripcion_corta": "fdgdfsgd",
+    "descripcion_larga": "fgdgefg",
+    "imagen": "maquinas/8FiP8t7.jpeg",
+    "dias_alquiler_min": 1,
+    "dias_alquiler_max": 10,
+    "stock": 1
+  }
+},
+{
+  "model": "maquinas.maquinabase",
+  "pk": 10,
+  "fields": {
+    "nombre": "Sigma male",
+    "tipo": "dumper",
+    "marca": "john_deere",
+    "modelo": "Sigma",
+    "precio_por_dia": "2.00",
+    "descripcion_corta": "Skibidi Toilet",
+    "descripcion_larga": "Gigachat Rizz",
+    "imagen": "maquinas/200.gif",
+    "dias_alquiler_min": 1,
+    "dias_alquiler_max": 4,
+    "stock": 1
+  }
+},
+{
+  "model": "maquinas.unidad",
+  "pk": 7,
+  "fields": {
+    "maquina_base": 7,
+    "patente": "1111",
+    "sucursal": 1,
+    "estado": "disponible",
+    "visible": true
+  }
+},
+{
+  "model": "maquinas.unidad",
+  "pk": 8,
+  "fields": {
+    "maquina_base": 8,
+    "patente": "123",
+    "sucursal": 1,
+    "estado": "disponible",
+    "visible": true
+  }
+},
+{
+  "model": "maquinas.unidad",
+  "pk": 9,
+  "fields": {
+    "maquina_base": 9,
+    "patente": "456",
+    "sucursal": 1,
+    "estado": "disponible",
+    "visible": true
+  }
+},
+{
+  "model": "maquinas.unidad",
+  "pk": 10,
+  "fields": {
+    "maquina_base": 10,
+    "patente": "566",
+    "sucursal": 1,
+    "estado": "disponible",
+    "visible": true
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 8,
+  "fields": {
+    "numero": "A-1",
+    "maquina_base": 7,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-05",
+    "fecha_fin": "2025-06-15",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1441.00",
+    "fecha_creacion": "2025-06-05T01:23:57.792Z",
+    "fecha_actualizacion": "2025-06-05T01:23:58.698Z",
+    "preference_id": "343205143-1f23b5f2-481a-4c4d-8b7b-757d202d2170"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 9,
+  "fields": {
+    "numero": "A-2",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 9,
+    "fecha_inicio": "2025-07-01",
+    "fecha_fin": "2025-07-01",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T01:36:24.432Z",
+    "fecha_actualizacion": "2025-06-05T01:36:25.508Z",
+    "preference_id": "343205143-6f9a2f7b-0ce2-4c53-bcca-60eb6c683a7c"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 10,
+  "fields": {
+    "numero": "A-3",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-13",
+    "fecha_fin": "2025-06-13",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T01:39:15.016Z",
+    "fecha_actualizacion": "2025-06-05T01:39:15.852Z",
+    "preference_id": "343205143-f9bfe122-0720-4048-96fd-43973dded38c"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 11,
+  "fields": {
+    "numero": "A-4",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 9,
+    "fecha_inicio": "2025-06-04",
+    "fecha_fin": "2025-06-04",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T01:43:18.275Z",
+    "fecha_actualizacion": "2025-06-05T01:43:19.196Z",
+    "preference_id": "343205143-66d62865-5f47-44ed-8e7e-31c90535def1"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 12,
+  "fields": {
+    "numero": "A-5",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-19",
+    "fecha_fin": "2025-06-28",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "10.00",
+    "fecha_creacion": "2025-06-05T01:44:06.098Z",
+    "fecha_actualizacion": "2025-06-05T01:44:06.819Z",
+    "preference_id": "343205143-9627a308-e50e-45a8-a07a-1424974ae911"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 13,
+  "fields": {
+    "numero": "A-6",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 4,
+    "fecha_inicio": "2025-06-26",
+    "fecha_fin": "2025-06-27",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T01:45:24.796Z",
+    "fecha_actualizacion": "2025-06-05T01:45:25.675Z",
+    "preference_id": "343205143-c2c36ccd-15fd-4e6f-b543-866aff11393a"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 17,
+  "fields": {
+    "numero": "A-7",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-05",
+    "fecha_fin": "2025-06-05",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T02:01:45.064Z",
+    "fecha_actualizacion": "2025-06-05T02:01:45.909Z",
+    "preference_id": "343205143-b70015ce-5a4f-4d76-9afb-d3e8c502b2f4"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 18,
+  "fields": {
+    "numero": "A-8",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 4,
+    "fecha_inicio": "2025-06-24",
+    "fecha_fin": "2025-06-24",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T02:02:27.957Z",
+    "fecha_actualizacion": "2025-06-05T02:02:28.705Z",
+    "preference_id": "343205143-c2d1e8fa-e5c2-4eed-b798-7d6ef23db35e"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 19,
+  "fields": {
+    "numero": "A-9",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-05",
+    "fecha_fin": "2025-06-05",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T04:02:53.633Z",
+    "fecha_actualizacion": "2025-06-05T04:02:54.530Z",
+    "preference_id": "343205143-dcfafc95-8b13-4dff-a7ed-8d8cb1262190"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 20,
+  "fields": {
+    "numero": "A-10",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 8,
+    "fecha_inicio": "2025-06-05",
+    "fecha_fin": "2025-06-05",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T04:02:54.070Z",
+    "fecha_actualizacion": "2025-06-05T04:02:54.812Z",
+    "preference_id": "343205143-aeddbe85-e55b-45b7-b1d5-e9c488b03efd"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 21,
+  "fields": {
+    "numero": "A-11",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 13,
+    "fecha_inicio": "2025-06-26",
+    "fecha_fin": "2025-06-26",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T04:11:41.701Z",
+    "fecha_actualizacion": "2025-06-05T04:11:42.522Z",
+    "preference_id": "343205143-82cce1f0-3008-40e1-b15c-46bf4bf7aaeb"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 22,
+  "fields": {
+    "numero": "A-12",
+    "maquina_base": 9,
+    "unidad": null,
+    "persona": 13,
+    "fecha_inicio": "2025-06-26",
+    "fecha_fin": "2025-06-26",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "1.00",
+    "fecha_creacion": "2025-06-05T04:12:19.080Z",
+    "fecha_actualizacion": "2025-06-05T04:12:19.756Z",
+    "preference_id": "343205143-d47f0317-7b64-4751-b504-18740b9fce95"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 23,
+  "fields": {
+    "numero": "A-13",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-27",
+    "fecha_fin": "2025-06-27",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:26:37.739Z",
+    "fecha_actualizacion": "2025-06-05T04:26:38.623Z",
+    "preference_id": "343205143-e1244203-c2c7-4a3b-8fc7-3fd78cd80e9c"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 24,
+  "fields": {
+    "numero": "A-14",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:29:11.787Z",
+    "fecha_actualizacion": "2025-06-05T04:29:12.588Z",
+    "preference_id": "343205143-6d0b879b-c9a9-40e7-bf45-629c36db660e"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 25,
+  "fields": {
+    "numero": "A-15",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:29:49.797Z",
+    "fecha_actualizacion": "2025-06-05T04:29:50.462Z",
+    "preference_id": "343205143-d6031d24-2b7e-48f4-8eff-1e269b5bc24a"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 26,
+  "fields": {
+    "numero": "A-16",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:39:23.428Z",
+    "fecha_actualizacion": "2025-06-05T04:39:24.331Z",
+    "preference_id": "343205143-2a22b4c1-c23b-4807-81d3-cd79d7a43294"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 27,
+  "fields": {
+    "numero": "A-17",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:44:16.199Z",
+    "fecha_actualizacion": "2025-06-05T04:44:17.054Z",
+    "preference_id": "343205143-4d024bcf-c4c7-4f4c-bcdc-514382ac41f1"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 28,
+  "fields": {
+    "numero": "A-18",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:46:09.494Z",
+    "fecha_actualizacion": "2025-06-05T04:46:10.545Z",
+    "preference_id": "343205143-bf624717-8a54-4e8d-bd66-3acb93d60c2b"
+  }
+},
+{
+  "model": "maquinas.alquiler",
+  "pk": 29,
+  "fields": {
+    "numero": "A-19",
+    "maquina_base": 10,
+    "unidad": null,
+    "persona": 7,
+    "fecha_inicio": "2025-06-25",
+    "fecha_fin": "2025-06-25",
+    "estado": "pendiente",
+    "metodo_pago": "mercadopago",
+    "monto_total": "2.00",
+    "fecha_creacion": "2025-06-05T04:51:17.342Z",
+    "fecha_actualizacion": "2025-06-05T04:51:18.349Z",
+    "preference_id": "343205143-21e4203c-ce01-458f-a191-c5defb100e9c"
+  }
+}
+]

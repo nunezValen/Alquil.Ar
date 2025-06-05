@@ -1,0 +1,110 @@
+[
+{
+  "model": "persona.persona",
+  "pk": 4,
+  "fields": {
+    "nombre": "uzielrtty",
+    "apellido": "",
+    "dni": "234567",
+    "email": "rockhojp@gmail.com",
+    "telefono": null,
+    "fecha_nacimiento": "2000-12-12",
+    "direccion": "",
+    "fecha_registro": "2025-06-03T03:05:05.992Z",
+    "es_cliente": false,
+    "es_empleado": false,
+    "es_admin": false,
+    "es_baneado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 7,
+  "fields": {
+    "nombre": "pocodo",
+    "apellido": "",
+    "dni": "76725425",
+    "email": "docepocoyo@gmail.com",
+    "telefono": null,
+    "fecha_nacimiento": "2000-12-12",
+    "direccion": null,
+    "fecha_registro": "2025-06-03T03:37:55.302Z",
+    "es_cliente": true,
+    "es_empleado": true,
+    "es_admin": false,
+    "es_baneado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 8,
+  "fields": {
+    "nombre": "valen",
+    "apellido": "",
+    "dni": "131",
+    "email": "valentin1333@hotmail.com",
+    "telefono": null,
+    "fecha_nacimiento": "2004-01-12",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T00:36:52.109Z",
+    "es_cliente": true,
+    "es_empleado": true,
+    "es_admin": false,
+    "es_baneado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 9,
+  "fields": {
+    "nombre": "uziel",
+    "apellido": "",
+    "dni": "67887",
+    "email": "konaxos752@acedby.com",
+    "telefono": null,
+    "fecha_nacimiento": "2000-12-12",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T01:28:35.831Z",
+    "es_cliente": true,
+    "es_empleado": true,
+    "es_admin": false,
+    "es_baneado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 12,
+  "fields": {
+    "nombre": "josejopse",
+    "apellido": "",
+    "dni": "2348796745832",
+    "email": "joaco1205@gmail.com",
+    "telefono": null,
+    "fecha_nacimiento": "2000-06-07",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T03:14:20.671Z",
+    "es_cliente": true,
+    "es_empleado": false,
+    "es_admin": false,
+    "es_baneado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 13,
+  "fields": {
+    "nombre": "iojdjd",
+    "apellido": "",
+    "dni": "908908403",
+    "email": "uzielpineiroj@gmail.com",
+    "telefono": null,
+    "fecha_nacimiento": "2000-02-16",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T03:16:33.420Z",
+    "es_cliente": true,
+    "es_empleado": false,
+    "es_admin": false,
+    "es_baneado": false
+  }
+}
+]
