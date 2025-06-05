@@ -11,9 +11,24 @@ class PersonaForm(forms.ModelForm):
         widgets = {
             'nombre': forms.TextInput(attrs={'placeholder': 'Nombre', 'autocomplete': 'off', 'class': 'form-control'}),
             'apellido': forms.TextInput(attrs={'placeholder': 'Apellido', 'autocomplete': 'off', 'class': 'form-control'}),
-            'dni': forms.TextInput(attrs={'placeholder': 'DNI', 'autocomplete': 'off', 'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control'}),
+            'dni': forms.NumberInput(attrs={
+                'placeholder': 'DNI', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'type': 'number',
+                'min': '1000000',  # 7 dígitos mínimo
+                'max': '999999999',  # 9 dígitos máximo
+                'oninput': 'javascript: if (this.value.length > 9) this.value = this.value.slice(0, 9);'
+            }),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control', 'required': True}),
             'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off'}),
+        }
+        error_messages = {
+            'email': {
+                'required': 'El email es obligatorio.',
+                'invalid': 'Por favor, ingresa una dirección de email válida.',
+                'unique': 'Este email ya está registrado.'
+            }
         }
 
     def clean_fecha_nacimiento(self):
@@ -27,7 +42,9 @@ class PersonaForm(forms.ModelForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if email and Persona.objects.filter(email=email).exists():
+        if not email:
+            raise forms.ValidationError('El email es obligatorio.')
+        if Persona.objects.filter(email=email).exists():
             raise forms.ValidationError('El email ya se encuentra registrado.')
         return email
 
@@ -45,9 +62,9 @@ class PersonaForm(forms.ModelForm):
             if not dni.isdigit():
                 raise forms.ValidationError('El DNI debe contener solo números.')
             
-            # Verificar la longitud (entre 2 y 7 números)
-            if len(dni) < 2 or len(dni) > 7:
-                raise forms.ValidationError('El DNI debe tener entre 2 y 7 números.')
+            # Verificar la longitud (entre 7 y 9 números)
+            if len(dni) < 7 or len(dni) > 9:
+                raise forms.ValidationError('El DNI debe tener entre 7 y 9 números.')
         
         return dni
 

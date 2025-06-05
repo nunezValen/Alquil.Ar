@@ -225,31 +225,44 @@ def registrar_persona(request):
         if form.is_valid():
             persona = form.save(commit=False)
             persona.es_cliente = True
+            
+            # Verificar que el email exista
+            if not persona.email:
+                form.add_error('email', 'El email es obligatorio para registrar un cliente.')
+                return render(request, 'persona/registrar_persona.html', {'form': form})
+            
             # Generar contraseña aleatoria
             password = generar_password_random()
             
-            # Crear usuario en Django
-            user = User.objects.create_user(
-                username=persona.email,
-                email=persona.email,
-                password=password,
-                first_name=persona.nombre,
-                last_name=persona.apellido
-            )
-            
-            persona.save()
-            
-            # Enviar email con la contraseña
-            send_mail(
-                'Bienvenido a Alquil.Ar - Tu contraseña',
-                f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente. Tu contraseña es: {password}\n\nPor favor, cambia tu contraseña la próxima vez que inicies sesión.\n\nSaludos,\nEquipo Alquil.Ar',
-                settings.DEFAULT_FROM_EMAIL,
-                [persona.email],
-                fail_silently=False,
-            )
-            
-            messages.success(request, 'Te has registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
-            return redirect('persona:login_unificado2')
+            try:
+                # Crear usuario en Django
+                user = User.objects.create_user(
+                    username=persona.email,
+                    email=persona.email,
+                    password=password,
+                    first_name=persona.nombre,
+                    last_name=persona.apellido
+                )
+                
+                persona.save()
+                
+                # Enviar email con la contraseña
+                send_mail(
+                    'Bienvenido a Alquil.Ar - Tu contraseña',
+                    f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente. Tu contraseña es: {password}\n\nPor favor, cambia tu contraseña la próxima vez que inicies sesión.\n\nSaludos,\nEquipo Alquil.Ar',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [persona.email],
+                    fail_silently=False,
+                )
+                
+                messages.success(request, 'Te has registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
+                return redirect('persona:login_unificado2')
+            except Exception as e:
+                # Si algo falla, eliminar el usuario si fue creado
+                if 'user' in locals():
+                    user.delete()
+                form.add_error(None, f'Error al crear el usuario: {str(e)}')
+                return render(request, 'persona/registrar_persona.html', {'form': form})
     else:
         form = PersonaForm()
     return render(request, 'persona/registrar_persona.html', {'form': form})
