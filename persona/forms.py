@@ -10,23 +10,34 @@ class PersonaForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             'placeholder': 'Nombre Completo',
             'autocomplete': 'off',
+            'class': 'form-control',
         })
     )
 
-    es_empleado = forms.BooleanField(
-        required=False,
-        label='Registrarme como empleado',
-        widget=forms.CheckboxInput(attrs={
-            'class': 'employee-checkbox',
+    password = forms.CharField(
+        label='',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Contraseña',
+            'autocomplete': 'new-password',
+            'class': 'form-control',
+        })
+    )
+
+    password_confirmation = forms.CharField(
+        label='',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Confirmar Contraseña',
+            'autocomplete': 'new-password',
+            'class': 'form-control',
         })
     )
 
     class Meta:
         model = Persona
-        fields = ['nombre_completo', 'dni', 'email', 'fecha_nacimiento', 'es_empleado']
+        fields = ['nombre_completo', 'dni', 'email', 'fecha_nacimiento']
         widgets = {
-            'dni': forms.TextInput(attrs={'placeholder': 'DNI', 'autocomplete': 'off'}),
-            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off'}),
+            'dni': forms.TextInput(attrs={'placeholder': 'DNI', 'autocomplete': 'off', 'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control'}),
             'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off'}),
         }
 
@@ -50,6 +61,18 @@ class PersonaForm(forms.ModelForm):
         if dni and Persona.objects.filter(dni=dni).exists():
             raise forms.ValidationError('El DNI ya se encuentra registrado.')
         return dni
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        password_confirmation = cleaned_data.get('password_confirmation')
+
+        if password and password_confirmation:
+            if password != password_confirmation:
+                raise forms.ValidationError('Las contraseñas no coinciden.')
+            if len(password) < 8:
+                raise forms.ValidationError('La contraseña debe tener al menos 8 caracteres.')
+        return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -89,35 +112,21 @@ class AlquilerForm(forms.ModelForm):
         return cleaned_data 
 
 class EditarPersonaForm(forms.ModelForm):
-    nombre_completo = forms.CharField(
-        max_length=200,
-        label='Nombre Completo',
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Nombre Completo',
-            'autocomplete': 'off',
-            'class': 'form-control',
-        })
-    )
-
     class Meta:
         model = Persona
-        fields = ['nombre_completo', 'dni', 'email', 'telefono', 'fecha_nacimiento', 'direccion']
+        fields = ['nombre', 'apellido', 'email']
         widgets = {
-            'dni': forms.TextInput(attrs={'placeholder': 'DNI', 'autocomplete': 'off', 'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control'}),
-            'telefono': forms.TextInput(attrs={'placeholder': 'Teléfono', 'autocomplete': 'off', 'class': 'form-control'}),
-            'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off'}),
-            'direccion': forms.Textarea(attrs={'placeholder': 'Dirección', 'class': 'form-control', 'rows': 3}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
-        self.instance_id = kwargs.pop('instance_id', None)
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.fields['nombre_completo'].initial = f"{self.instance.nombre} {self.instance.apellido}"
-            # Make DNI and email fields read-only
-            self.fields['dni'].widget.attrs['readonly'] = True
-            self.fields['email'].widget.attrs['readonly'] = True
+            self.fields['nombre'].initial = self.instance.nombre
+            self.fields['apellido'].initial = self.instance.apellido
+            self.fields['email'].initial = self.instance.email
 
     def clean_fecha_nacimiento(self):
         fecha = self.cleaned_data.get('fecha_nacimiento')
@@ -129,20 +138,18 @@ class EditarPersonaForm(forms.ModelForm):
         return fecha
 
     def clean_email(self):
-        # Always return the original email value from the instance
         if self.instance and self.instance.pk:
             return self.instance.email
         return self.cleaned_data.get('email')
 
     def clean_dni(self):
-        # Always return the original DNI value from the instance
         if self.instance and self.instance.pk:
             return self.instance.dni
         return self.cleaned_data.get('dni')
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre_completo', '').strip()
+        nombre_completo = self.cleaned_data.get('nombre', '').strip()
         partes = nombre_completo.split(' ', 1)
         instance.nombre = partes[0]
         instance.apellido = partes[1] if len(partes) > 1 else ''

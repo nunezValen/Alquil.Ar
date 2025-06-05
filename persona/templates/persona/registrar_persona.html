@@ -1,99 +1,97 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
 
-{% block title %}Crear Cuenta{% endblock %}
+{% block title %}Registrar Nuevo Cliente{% endblock %}
 
 {% block content %}
 <style>
     .register-box {
-        max-width: 350px;
-        margin: 60px auto 40px auto;
+        max-width: 450px;
+        margin: 40px auto;
         background: #fff;
         border: 1px solid #d9d9d9;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        padding: 32px 32px 18px 32px;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        padding: 32px;
+    }
+    .register-box h2 {
         text-align: center;
+        margin-bottom: 24px;
+        color: #333;
     }
-    .register-box .user-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 18px;
-        color: #bdbdbd;
-        background: #f2f2f2;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 38px;
-        margin-left: auto;
-        margin-right: auto;
+    .form-group {
+        margin-bottom: 20px;
     }
-    .register-box input[type="text"],
-    .register-box input[type="email"],
-    .register-box input[type="date"] {
-        margin-bottom: 14px;
-        border-radius: 2px;
-        border: 1px solid #bdbdbd;
-        font-size: 16px;
-        padding: 8px 12px;
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: #555;
+        font-weight: 500;
+    }
+    .form-control {
         width: 100%;
-        box-sizing: border-box;
-    }
-    .register-box .date-fields {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 14px;
-    }
-    .register-box .date-fields input {
-        text-align: center;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
         font-size: 16px;
-        border-radius: 2px;
-        border: 1px solid #bdbdbd;
-        padding: 8px 0;
-        width: 33.33%;
+        transition: border-color 0.2s;
     }
-    .register-box button {
+    .form-control:focus {
+        border-color: #2176d2;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(33, 118, 210, 0.2);
+    }
+    .btn-primary {
         width: 100%;
         background: #2176d2;
         color: #fff;
         border: none;
-        border-radius: 2px;
-        padding: 10px 0;
-        font-size: 17px;
+        border-radius: 4px;
+        padding: 12px;
+        font-size: 16px;
         font-weight: 500;
-        margin-top: 8px;
-        margin-bottom: 10px;
+        cursor: pointer;
         transition: background 0.2s;
     }
-    .register-box button:hover {
+    .btn-primary:hover {
         background: #185a9d;
     }
-    .register-box .info {
-        font-size: 12px;
-        color: #888;
-        margin-top: 8px;
-    }
-    .register-box .error {
+    .error-list {
+        background: #fff2f2;
+        border: 1px solid #ffcdd2;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 20px;
         color: #d32f2f;
-        font-size: 14px;
-        margin-bottom: 10px;
     }
-    .register-box .form-errors {
-        background: #ffd6d6;
-        color: #b71c1c;
-        border: 1px solid #d32f2f;
-        border-radius: 3px;
-        padding: 10px 12px;
-        margin-bottom: 16px;
-        text-align: left;
-        font-size: 15px;
+    .error-list ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    .success-message {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 20px;
+        color: #2e7d32;
     }
 </style>
+
 <div class="register-box">
+    <h2>Registrar Nuevo Cliente</h2>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="{% if message.tags == 'success' %}success-message{% else %}error-list{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
     {% if form.errors %}
-    <div class="form-errors">
-        <ul style="margin:0;padding-left:18px;">
+    <div class="error-list">
+        <ul>
         {% for field in form %}
             {% for error in field.errors %}
                 <li>{{ error }}</li>
@@ -105,48 +103,49 @@
         </ul>
     </div>
     {% endif %}
+
     {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
-    <div class="user-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
-            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-            <path fill-rule="evenodd" d="M8 9a5 5 0 0 0-5 5v.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V14a5 5 0 0 0-5-5z"/>
-        </svg>
+    <div class="error-list">
+        <ul>
+            <li>{{ error }}</li>
+        </ul>
     </div>
+    {% endif %}
+
     <form method="post" autocomplete="off">
         {% csrf_token %}
-        {{ form.nombre_completo|add_class:"" }}
-        {{ form.dni|add_class:"" }}
-        {{ form.email|add_class:"" }}
-        <div class="date-fields">
-            <input type="text" name="fecha_dia" maxlength="2" placeholder="DD" pattern="\d{1,2}" required>
-            <input type="text" name="fecha_mes" maxlength="2" placeholder="MM" pattern="\d{1,2}" required>
-            <input type="text" name="fecha_anio" maxlength="4" placeholder="AAAA" pattern="\d{4}" required>
-        </div>
-        <input type="hidden" name="fecha_nacimiento" id="fecha_nacimiento_hidden">
-
-        <div style="text-align: left; margin: 15px 0; display: flex; align-items: center;">
-            {{ form.es_empleado }}
-            <label for="{{ form.es_empleado.id_for_label }}" style="margin-left: 8px; font-size: 15px;">{{ form.es_empleado.label }}</label>
+        
+        <div class="form-group">
+            <label for="{{ form.nombre_completo.id_for_label }}">Nombre Completo</label>
+            {{ form.nombre_completo }}
         </div>
 
-        <button type="submit">Crear Cuenta</button>
+        <div class="form-group">
+            <label for="{{ form.dni.id_for_label }}">DNI</label>
+            {{ form.dni }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de Nacimiento</label>
+            {{ form.fecha_nacimiento }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.password.id_for_label }}">Contraseña</label>
+            {{ form.password }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.password_confirmation.id_for_label }}">Confirmar Contraseña</label>
+            {{ form.password_confirmation }}
+        </div>
+
+        <button type="submit" class="btn-primary">Registrar Cliente</button>
     </form>
-    <div class="info">
-        Recibirás tu contraseña vía email.<br>Luego podrás cambiarla.
-    </div>
 </div>
-<script>
-// Unir los campos de fecha y poner el valor en el input oculto antes de enviar
-const form = document.querySelector('.register-box form');
-form.addEventListener('submit', function(e) {
-    const dia = form.querySelector('input[name="fecha_dia"]').value.padStart(2, '0');
-    const mes = form.querySelector('input[name="fecha_mes"]').value.padStart(2, '0');
-    const anio = form.querySelector('input[name="fecha_anio"]').value;
-    if (dia && mes && anio) {
-        form.querySelector('#fecha_nacimiento_hidden').value = `${anio}-${mes}-${dia}`;
-    }
-});
-</script>
 {% endblock %} 

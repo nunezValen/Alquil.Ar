@@ -7,9 +7,9 @@ class Persona(models.Model):
     apellido = models.CharField(max_length=100)
     dni = models.CharField(max_length=20, unique=True)
     email = models.EmailField(unique=True, null=True, blank=True)
-    telefono = models.CharField(max_length=20, null=True, blank=True)
+    telefono = models.CharField(max_length=20, null=True, blank=True, editable=False)
     fecha_nacimiento = models.DateField(null=True, blank=True)
-    direccion = models.TextField(null=True, blank=True)
+    direccion = models.TextField(null=True, blank=True, editable=False)
     fecha_registro = models.DateTimeField(default=timezone.now)
     
     # Nuevos campos booleanos para roles

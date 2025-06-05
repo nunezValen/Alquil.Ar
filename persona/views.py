@@ -27,6 +27,9 @@ def es_admin(user):
     """
     return user.is_authenticated and user.is_superuser
 
+def es_empleado_o_admin(user):
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
+
 def inicio(request):
     maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
     for maquina in maquinas:
@@ -167,8 +170,6 @@ def mis_alquileres(request):
     return render(request, 'persona/mis_alquileres.html', {'alquileres': alquileres})
 
 def lista_maquinas(request):
-    maquinas = Maquina.objects.all()
-    return render(request, 'lista_maquina.html', {'maquinas': maquinas})
     search_query = request.GET.get('q', '')
     maquinas = MaquinaBase.objects.filter(stock__gt=0)  # Solo máquinas con stock
 
@@ -192,71 +193,45 @@ def lista_personas(request):
     personas = Persona.objects.all()  # Consulta todas las personas
     return render(request, 'lista_persona.html', {'personas': personas})
 
+@login_required
+@user_passes_test(es_empleado_o_admin)
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def registrar_persona(request):
     error = None
     if request.method == 'POST':
-        post = request.POST.copy()
-        dia = post.get('fecha_dia')
-        mes = post.get('fecha_mes')
-        anio = post.get('fecha_anio')
-        if dia and mes and anio:
-            post['fecha_nacimiento'] = f"{anio}-{mes.zfill(2)}-{dia.zfill(2)}"
-        form = PersonaForm(post)
+        form = PersonaForm(request.POST)
         if form.is_valid():
-            persona = form.save(commit=False)
-            # Verificar si el usuario quiere registrarse como empleado
-            if form.cleaned_data.get('es_empleado'):
-                persona.es_empleado = True
-                persona.es_cliente = True  # Todo empleado es cliente
-            else:
-                persona.es_cliente = True
-            persona.save()
+            try:
+                # Crear la persona
+                persona = form.save(commit=False)
+                persona.es_cliente = True  # Marcar como cliente
+                persona.fecha_registro = timezone.now()
+                persona.save()
 
-            email = persona.email
-            print('EMAIL CAPTURADO EN REGISTRO:', email)
-            if email:
-                if User.objects.filter(username=email).exists():
-                    error = 'Ya existe un usuario con ese email. Si no recibiste el correo, contacta al administrador.'
-                else:
-                    try:
-                        password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-                        user = User.objects.create_user(
-                            username=email,
-                            email=email,
-                            password=password,
-                            first_name=persona.nombre,
-                            last_name=persona.apellido,
-                            is_staff=persona.es_empleado  # Si es empleado, darle permisos de staff
-                        )
+                # Crear el usuario
+                username = persona.email
+                password = form.cleaned_data['password']
+                user = User.objects.create_user(username=username, email=username, password=password)
+                user.save()
 
-                        # Mensaje personalizado según el tipo de cuenta
-                        if persona.es_empleado:
-                            subject = 'Tu cuenta de empleado en Alquil.ar'
-                            message = f'Hola {persona.nombre},\n\nTu usuario de empleado ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.'
-                        else:
-                            subject = 'Tu cuenta en Alquil.ar'
-                            message = f'Hola {persona.nombre},\n\nTu usuario ha sido creado.\n\nUsuario: {email}\nContraseña: {password}\n\nPor favor, cambia tu contraseña después de iniciar sesión.'
+                # Enviar email de bienvenida
+                send_mail(
+                    'Bienvenido a Alquil.ar',
+                    f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente.\n\nPuedes iniciar sesión con:\nEmail: {username}\nContraseña: {password}\n\nBienvenido a Alquil.ar!',
+                    'no-reply@alquilar.com.ar',
+                    [username],
+                    fail_silently=False,
+                )
 
-                        send_mail(
-                            subject,
-                            message,
-                            'no-reply@alquilar.com.ar',
-                            [email],
-                            fail_silently=False,
-                        )
-
-                        if persona.es_empleado:
-                            messages.success(request, 'Tu cuenta de empleado fue registrada exitosamente. Recibirás tu contraseña por email.')
-                        else:
-                            messages.success(request, 'El usuario fue registrado exitosamente. Recibirás tu contraseña por email.')
-                        return redirect('persona:registrar_persona')
-                    except Exception as e:
-                        error = f'Error al enviar el correo: {e}'
+                messages.success(request, f'Cliente registrado exitosamente. El usuario podrá iniciar sesión con el email: {username}')
+                return redirect('persona:inicio')
+            except Exception as e:
+                error = str(e)
     else:
         form = PersonaForm()
+
     return render(request, 'persona/registrar_persona.html', {'form': form, 'error': error})
 
 @csrf_protect
@@ -277,9 +252,9 @@ def login_view(request):
                 if user is not None:
                     login(request, user)
                     if persona.es_empleado or persona.es_admin:
-                        return redirect('persona:pagina_principal')
+                        return redirect('persona:inicio')
                     elif persona.es_cliente:
-                        return redirect('persona:pagina_principal')
+                        return redirect('persona:inicio')
                     else:
                         error = 'No tienes permisos para acceder.'
                 else:
@@ -291,7 +266,7 @@ def login_view(request):
 
 @login_required
 def pagina_principal(request):
-    return redirect('persona:inicio_blanco')
+    return redirect('persona:inicio')
 
 @login_required
 @user_passes_test(es_admin)
@@ -350,7 +325,7 @@ def login_empleado(request):
         user = authenticate(request, username=f"emp_{username}", password=password)
         if user is not None:
             login(request, user)
-            return redirect('persona:pagina_principal')
+            return redirect('persona:inicio')
         else:
             error = 'Usuario o contraseña incorrectos.'
     return render(request, 'login_empleado.html', {'error': error})
@@ -464,9 +439,9 @@ def login_as_persona(request):
     try:
         persona = Persona.objects.get(email=request.user.email)
         if not persona.es_empleado and not request.user.is_staff:
-            return redirect('persona:pagina_principal')
+            return redirect('persona:inicio')
     except Persona.DoesNotExist:
-        return redirect('persona:pagina_principal')
+        return redirect('persona:inicio')
 
     if request.method == 'POST':
         email = request.user.email  # El email del empleado actual
@@ -479,7 +454,7 @@ def login_as_persona(request):
                 # Guardar en la sesión que el usuario es un empleado actuando como cliente
                 request.session['es_empleado_actuando_como_cliente'] = True
                 messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
-                return redirect('persona:pagina_principal')
+                return redirect('persona:inicio')
             else:
                 error = 'No tienes una cuenta personal asociada a este email'
         except Persona.DoesNotExist:
@@ -530,26 +505,6 @@ def login_unificado2(request):
     # Si es GET, mostrar el formulario
     return render(request, 'persona/login_unificado2.html')
 
-def es_empleado_o_admin(user):
-    # Verificar si el usuario está autenticado
-    if not user.is_authenticated:
-        return False
-
-    # Obtener el objeto request desde el middleware
-    from persona.middleware import get_current_request
-    request = get_current_request()
-
-    # Si el usuario es un empleado actuando como cliente, no tiene permisos de empleado
-    if request and request.session.get('es_empleado_actuando_como_cliente', False):
-        return False
-
-    # Verificar en el modelo Persona
-    try:
-        persona = Persona.objects.get(email=user.email)
-        return persona.es_empleado or persona.es_admin
-    except Persona.DoesNotExist:
-        return False
-
 @login_required
 @user_passes_test(es_empleado_o_admin)
 def gestion(request):
@@ -585,7 +540,7 @@ def switch_back_to_employee(request):
         # Eliminar la variable de sesión
         del request.session['es_empleado_actuando_como_cliente']
         messages.success(request, 'Has vuelto a tu cuenta de empleado exitosamente.')
-    return redirect('persona:pagina_principal')
+    return redirect('persona:inicio')
 
 def logout_view(request):
     """Vista para cerrar sesión"""
@@ -600,32 +555,7 @@ def logout_view(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def editar_datos_personales(request):
-    """Vista para editar los datos personales del usuario logueado"""
-    try:
-        # Obtener la persona asociada al usuario logueado
-        persona = Persona.objects.get(email=request.user.email)
-
-        if request.method == 'POST':
-            form = EditarPersonaForm(request.POST, instance=persona)
-            if form.is_valid():
-                # Guardar los cambios en el modelo Persona
-                form.save()
-
-                # Actualizar también los datos en el modelo User
-                user = request.user
-                user.first_name = persona.nombre
-                user.last_name = persona.apellido
-                user.save()
-
-                messages.success(request, 'Datos personales actualizados exitosamente.')
-                return redirect('persona:editar_datos_personales')
-        else:
-            form = EditarPersonaForm(instance=persona)
-
-        return render(request, 'persona/editar_datos_personales.html', {'form': form})
-    except Persona.DoesNotExist:
-        messages.error(request, 'No se encontró una cuenta asociada a este usuario.')
-        return redirect('persona:inicio')
+    return redirect('persona:inicio')
 
 @login_required
 def webhook_mercadopago(request):
