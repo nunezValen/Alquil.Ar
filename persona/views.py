@@ -604,6 +604,7 @@ def logout_view(request):
     if 'es_empleado_actuando_como_cliente' in request.session:
         del request.session['es_empleado_actuando_como_cliente']
     logout(request)
+    messages.success(request, 'Cierre de sesión exitoso')
     return redirect('persona:inicio')
 
 @login_required
