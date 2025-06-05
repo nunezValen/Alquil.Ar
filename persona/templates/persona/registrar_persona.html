@@ -76,24 +76,18 @@
         margin-bottom: 20px;
         color: #2e7d32;
     }
-    .info-message {
-        background: #e3f2fd;
-        border: 1px solid #bbdefb;
-        border-radius: 4px;
-        padding: 12px;
+    .row {
+        display: flex;
+        gap: 20px;
         margin-bottom: 20px;
-        color: #1565c0;
-        text-align: center;
-        font-size: 0.9em;
+    }
+    .col {
+        flex: 1;
     }
 </style>
 
 <div class="register-box">
     <h2>Registrar Nuevo Cliente</h2>
-    
-    <div class="info-message">
-        La contraseña será generada automáticamente y enviada al email del cliente.
-    </div>
 
     {% if messages %}
         {% for message in messages %}
@@ -129,9 +123,19 @@
     <form method="post" autocomplete="off">
         {% csrf_token %}
         
-        <div class="form-group">
-            <label for="{{ form.nombre_completo.id_for_label }}">Nombre Completo</label>
-            {{ form.nombre_completo }}
+        <div class="row">
+            <div class="col">
+                <div class="form-group">
+                    <label for="{{ form.nombre.id_for_label }}">Nombre</label>
+                    {{ form.nombre }}
+                </div>
+            </div>
+            <div class="col">
+                <div class="form-group">
+                    <label for="{{ form.apellido.id_for_label }}">Apellido</label>
+                    {{ form.apellido }}
+                </div>
+            </div>
         </div>
 
         <div class="form-group">

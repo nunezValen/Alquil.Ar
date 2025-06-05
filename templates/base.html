@@ -247,6 +247,8 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'persona:gestion' %}">Gestión</a>
                     </li>
+                    {% endif %}
+                    {% if user.is_authenticated and user.is_superuser %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'persona:estadisticas' %}">Estadísticas</a>
                     </li>

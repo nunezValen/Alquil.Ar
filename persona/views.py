@@ -29,7 +29,14 @@ def es_admin(user):
     return user.is_authenticated and user.is_superuser
 
 def es_empleado_o_admin(user):
-    return user.is_authenticated and (user.is_staff or user.is_superuser)
+    """Verifica si el usuario es empleado o administrador"""
+    if not user.is_authenticated:
+        return False
+    try:
+        persona = Persona.objects.get(email=user.email)
+        return persona.es_empleado or user.is_superuser
+    except Persona.DoesNotExist:
+        return user.is_superuser
 
 def inicio(request):
     maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
@@ -217,9 +224,19 @@ def registrar_persona(request):
         form = PersonaForm(request.POST)
         if form.is_valid():
             persona = form.save(commit=False)
+            persona.es_cliente = True
             # Generar contraseña aleatoria
             password = generar_password_random()
-            persona.set_password(password)
+            
+            # Crear usuario en Django
+            user = User.objects.create_user(
+                username=persona.email,
+                email=persona.email,
+                password=password,
+                first_name=persona.nombre,
+                last_name=persona.apellido
+            )
+            
             persona.save()
             
             # Enviar email con la contraseña
@@ -535,9 +552,12 @@ def gestion(request):
     return render(request, 'persona/gestion.html')
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def estadisticas(request):
-    """Vista de estadísticas accesible para empleados y administradores"""
+    """Vista de estadísticas accesible solo para administradores"""
     return render(request, 'persona/estadisticas.html')
 
 def empleados_processor(request):
@@ -696,37 +716,36 @@ def recuperar_password(request):
             
             # Buscar todos los usuarios asociados
             users = User.objects.filter(email=email)
-            if not users.exists():
-                raise User.DoesNotExist
+            if users.exists():
+                # Generar nueva contraseña aleatoria
+                nueva_password = generar_password_random()
+                
+                # Actualizar la contraseña de todos los usuarios con ese email
+                for user in users:
+                    user.set_password(nueva_password)
+                    user.save()
+                
+                # Enviar email con la nueva contraseña
+                send_mail(
+                    'Alquil.Ar - Tu nueva contraseña',
+                    f'Hola {persona.nombre},\n\n'
+                    f'Has solicitado una nueva contraseña.\n\n'
+                    f'Tu nueva contraseña es: {nueva_password}\n\n'
+                    f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                    f'Saludos,\n'
+                    f'Equipo Alquil.Ar',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
             
-            # Generar nueva contraseña aleatoria
-            nueva_password = generar_password_random()
-            
-            # Actualizar la contraseña de todos los usuarios con ese email
-            for user in users:
-                user.set_password(nueva_password)
-                user.save()
-            
-            # Enviar email con la nueva contraseña
-            send_mail(
-                'Alquil.Ar - Tu nueva contraseña',
-                f'Hola {persona.nombre},\n\n'
-                f'Has solicitado una nueva contraseña.\n\n'
-                f'Tu nueva contraseña es: {nueva_password}\n\n'
-                f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
-                f'Saludos,\n'
-                f'Equipo Alquil.Ar',
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-            
-            messages.success(request, 'Se ha enviado una nueva contraseña a tu email.')
-            return redirect('persona:login_unificado2')
-            
-        except (Persona.DoesNotExist, User.DoesNotExist):
-            messages.error(request, 'No existe una cuenta con ese email.')
-            return redirect('persona:recuperar_password')
+        except (Persona.DoesNotExist, User.DoesNotExist, Exception):
+            # Si el email no existe o hay algún error, simplemente continuamos
+            pass
+        
+        # Siempre mostramos mensaje de éxito
+        messages.success(request, 'Se ha enviado una nueva contraseña a tu email.')
+        return redirect('persona:login_unificado2')
     
     return render(request, 'persona/recuperar_password.html')
 
