@@ -27,7 +27,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('persona/', include('persona.urls')),
     path('maquinas/', include('maquinas.urls')),
-    path('sucursales/', include('sucursales.urls')),
     path('contacto/', TemplateView.as_view(template_name='contacto.html'), name='contacto'),
     path('', RedirectView.as_view(url='/persona/', permanent=False)),
     

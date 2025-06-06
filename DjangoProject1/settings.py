@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     'persona',
     'widget_tweaks',
     'maquinas',
-    'sucursales',
 ]
 
 MIDDLEWARE = [

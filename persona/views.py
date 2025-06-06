@@ -3,8 +3,8 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, update_session_auth_hash, logout
-from .models import Persona, Maquina, Empleado, Sucursal
-from .forms import PersonaForm, EmpleadoForm
+from .models import Persona, Maquina, Sucursal
+from .forms import PersonaForm
 from datetime import date
 from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.auth.models import User
@@ -782,9 +782,9 @@ def mapa_sucursales(request):
         })
     except ValueError as e:
         messages.error(request, f'Error en las coordenadas: {str(e)}')
-        return redirect('inicio')
+        return redirect('persona:inicio')
     except Exception as e:
         messages.error(request, 'Ocurrió un error al cargar el mapa de sucursales')
-        return redirect('inicio')
+        return redirect('persona:inicio')
 
 # Create your views here.

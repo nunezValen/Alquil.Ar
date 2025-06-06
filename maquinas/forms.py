@@ -1,7 +1,7 @@
 from django import forms
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import MaquinaBase, Unidad, Alquiler
-from sucursales.models import Sucursal
+from persona.models import Sucursal
 from django.core.exceptions import ValidationError
 from datetime import date
 
@@ -109,7 +109,6 @@ class MaquinaBaseForm(forms.ModelForm):
 class UnidadForm(forms.ModelForm):
     class Meta:
         model = Unidad
-
         fields = [
             'maquina_base',
             'patente',
@@ -141,6 +140,9 @@ class UnidadForm(forms.ModelForm):
         if not self.instance.pk:
             self.instance.estado = 'disponible'
             self.instance.visible = True
+        
+        # Modificar el queryset de sucursales para mostrar la dirección
+        self.fields['sucursal'].label_from_instance = lambda obj: f"{obj.direccion}"
 
     def clean_patente(self):
         patente = self.cleaned_data.get('patente', '').strip().upper()

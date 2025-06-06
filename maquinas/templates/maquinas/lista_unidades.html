@@ -73,7 +73,7 @@
                 <tr>
                     <td>{{ unidad.maquina_base.nombre }}</td>
                     <td>{{ unidad.patente }}</td>
-                    <td>{{ unidad.sucursal.nombre }}</td>
+                    <td>{{ unidad.sucursal.direccion }}</td>
                     <td>{{ unidad.get_estado_display }}</td>
                     <td>
                         <a href="{% url 'maquinas:eliminar_unidad' unidad.id %}" class="action-icon delete" title="Eliminar">

@@ -101,7 +101,7 @@ class Unidad(models.Model):
         verbose_name='Patente'
     )
     sucursal = models.ForeignKey(
-        'sucursales.Sucursal',
+        'persona.Sucursal',
         on_delete=models.PROTECT,
         verbose_name='Sucursal'
     )
