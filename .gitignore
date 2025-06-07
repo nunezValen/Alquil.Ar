@@ -42,7 +42,6 @@ coverage.xml
 
 # Carpeta de compilación de static
 staticfiles/
-static/
 
 # Archivos personales
 Cosas que hacer.txt

@@ -1,0 +1,170 @@
+/* Variables CSS */
+:root {
+    --color-primary: #2D7DD2;
+    --color-dark: #111;
+    --color-black: #000;
+    --color-white: #fff;
+    --color-text: #333;
+    --color-gray: #666;
+    --color-light-gray: #ddd;
+    --color-danger: #dc3545;
+    --font-primary: 'Poppins', sans-serif;
+    --font-secondary: 'Inter', sans-serif;
+    --shadow-sm: 0 2px 5px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --shadow-lg: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+/* Reset y estilos generales */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-secondary);
+}
+
+main {
+    flex: 1;
+}
+
+/* Container principal */
+.section-container {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 15px;
+    width: 100%;
+}
+
+/* Tipografías */
+h1, h2, h3, h4, h5, h6, .nav-link, .btn {
+    font-family: var(--font-primary) !important;
+}
+
+h1 {
+    font-size: 40px !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5rem;
+}
+
+h2 {
+    font-size: 30px !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5rem;
+}
+
+h3 {
+    font-size: 25px !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5rem;
+}
+
+h4, h5, h6 {
+    font-size: 20px !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5rem;
+}
+
+p, span, div, input, textarea, label {
+    font-family: var(--font-secondary) !important;
+}
+
+/* Reset de bordes redondeados */
+.card,
+.btn,
+.form-control,
+.dropdown-menu,
+.machine-card,
+.machine-detail,
+.form-container,
+.machine-detail img,
+.alert,
+.nav-tabs .nav-link,
+.modal-content,
+.input-group-text {
+    border-radius: 0 !important;
+}
+
+/* Botones */
+.boton-principal,
+.btn-primary {
+    background-color: var(--color-primary) !important;
+    border: 2px solid var(--color-primary) !important;
+    color: var(--color-white) !important;
+    font-family: var(--font-primary) !important;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.boton-principal:hover,
+.btn-primary:hover {
+    background-color: var(--color-white) !important;
+    border: 2px solid var(--color-primary) !important;
+    color: var(--color-primary) !important;
+}
+
+.boton-secundario,
+.btn-outline-primary {
+    background-color: var(--color-white) !important;
+    border: 2px solid var(--color-primary) !important;
+    color: var(--color-primary) !important;
+    font-family: var(--font-primary) !important;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.boton-secundario:hover,
+.btn-outline-primary:hover {
+    background-color: var(--color-primary) !important;
+    border: 2px solid var(--color-primary) !important;
+    color: var(--color-white) !important;
+}
+
+.boton-cancelar,
+.btn-danger {
+    background-color: var(--color-danger) !important;
+    border: 2px solid var(--color-danger) !important;
+    color: var(--color-white) !important;
+    font-family: var(--font-primary) !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1.5rem !important;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.boton-cancelar:hover,
+.btn-danger:hover {
+    background-color: var(--color-white) !important;
+    color: var(--color-danger) !important;
+    border: 2px solid var(--color-danger) !important;
+    text-decoration: none;
+}
+
+/* Formularios base */
+.form-control {
+    border: 1px solid var(--color-light-gray);
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.2rem rgba(45, 125, 210, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+/* Alerts */
+.alert {
+    border: none;
+    padding: 1rem;
+}
+
+/* Media Queries globales */
+@media (max-width: 768px) {
+    .section-container {
+        padding: 0 10px;
+    }
+} 
