@@ -32,9 +32,13 @@
                     <p class="card-text">Administrar inventario de máquinas.</p>
                     <div class="mt-auto">
                         <a href="{% url 'maquinas:lista_maquinas' %}" class="btn btn-primary mb-2 w-100">Ver Máquinas Base</a>
+                        {% if user.is_superuser %}
                         <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mb-2 w-100">Cargar Máquina Base</a>
+                        {% endif %}
                         <a href="{% url 'maquinas:lista_unidades' %}" class="btn btn-primary mb-2 w-100">Ver Unidades</a>
+                        {% if user.is_superuser %}
                         <a href="{% url 'maquinas:cargar_unidad' %}" class="btn btn-primary w-100">Cargar Unidad</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

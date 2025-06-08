@@ -16,7 +16,7 @@ from django.urls import reverse
 from persona.models import Persona
 
 def es_admin(user):
-    return user.is_authenticated and user.is_staff
+    return user.is_authenticated and user.is_superuser
 
 def detalle_maquina(request, maquina_id):
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
@@ -156,7 +156,7 @@ def checkout_mp(request, alquiler_id):
     })
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -175,7 +175,7 @@ def cargar_maquina_base(request):
     })
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -209,7 +209,7 @@ def lista_unidades(request):
     })
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -228,7 +228,7 @@ def cargar_unidad(request):
     })
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])

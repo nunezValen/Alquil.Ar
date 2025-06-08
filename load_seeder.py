@@ -8,7 +8,7 @@ def load_seeder():
     data_dir = 'data'
     
     if not os.path.exists(data_dir):
-        print('❌ El directorio "data" no existe. Primero debes ejecutar create_seeder.py')
+        print('El directorio "data" no existe. Primero debes ejecutar create_seeder.py')
         return
 
     # Orden específico para cargar los datos
@@ -25,16 +25,16 @@ def load_seeder():
         file_path = os.path.join(data_dir, json_file)
         if os.path.exists(file_path):
             try:
-                print(f'📦 Cargando datos desde {json_file}...')
+                print(f'Cargando datos desde {json_file}...')
                 call_command('loaddata', file_path, verbosity=1)
-                print(f'✅ Datos de {json_file} cargados exitosamente')
+                print(f'Datos de {json_file} cargados exitosamente')
             except Exception as e:
-                print(f'❌ Error al cargar datos de {json_file}: {str(e)}')
-                print('⚠️ Continuando con el siguiente archivo...')
+                print(f'Error al cargar datos de {json_file}: {str(e)}')
+                print('Continuando con el siguiente archivo...')
         else:
-            print(f'⚠️ Archivo {json_file} no encontrado, saltando...')
+            print(f'Archivo {json_file} no encontrado, saltando...')
 
-    print('\n✨ Proceso completado. Los datos han sido cargados en la base de datos.')
+    print('\nProceso completado. Los datos han sido cargados en la base de datos.')
 
 if __name__ == '__main__':
     # Configurar el entorno de Django

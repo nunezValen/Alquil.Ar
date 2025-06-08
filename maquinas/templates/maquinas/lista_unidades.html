@@ -51,9 +51,11 @@
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Gestión de Unidades de Máquinas</h2>
+        {% if user.is_superuser %}
         <a href="{% url 'maquinas:cargar_unidad' %}" class="btn boton-principal">
             Agregar Unidad de Máquina
         </a>
+        {% endif %}
     </div>
 
     {% if unidades %}
@@ -76,9 +78,11 @@
                     <td>{{ unidad.sucursal.direccion }}</td>
                     <td>{{ unidad.get_estado_display }}</td>
                     <td>
+                        {% if user.is_superuser %}
                         <a href="{% url 'maquinas:eliminar_unidad' unidad.id %}" class="action-icon delete" title="Eliminar">
                             <i class="fas fa-trash"></i>
                         </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
