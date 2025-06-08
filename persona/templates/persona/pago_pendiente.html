@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Pendiente - ALQUIL.AR</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .pending-container {
+            max-width: 600px;
+            margin: 3rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .pending-icon {
+            font-size: 5rem;
+            color: #f39c12;
+            margin-bottom: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .pending-title {
+            color: #f39c12;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .pending-subtitle {
+            color: #6c757d;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .pending-info {
+            background: #fff3cd;
+            border-left: 5px solid #f39c12;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 10px;
+            text-align: left;
+        }
+        
+        .pending-info h5 {
+            color: #f39c12;
+            margin-bottom: 1rem;
+        }
+        
+        .pending-info ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+        
+        .pending-info li {
+            margin-bottom: 0.5rem;
+            color: #856404;
+        }
+        
+        .action-buttons {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-custom {
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,123,255,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-secondary-custom {
+            background: #6c757d;
+            color: white;
+            box-shadow: 0 5px 15px rgba(108,117,125,0.3);
+        }
+        
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(108,117,125,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .support-info {
+            background: #e2e3e5;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .support-info h6 {
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+        
+        .timeline {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        
+        .timeline h6 {
+            color: #495057;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .timeline-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .timeline-step:last-child {
+            margin-bottom: 0;
+        }
+        
+        .timeline-step .step-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #f39c12;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .timeline-step.completed .step-icon {
+            background: #28a745;
+        }
+        
+        .timeline-step.current .step-icon {
+            background: #f39c12;
+            animation: pulse 2s infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .pending-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .pending-title {
+                font-size: 2rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn-custom {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="pending-container">
+            <!-- Icono de pendiente -->
+            <div class="pending-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            
+            <!-- Título principal -->
+            <h1 class="pending-title">Pago Pendiente</h1>
+            <p class="pending-subtitle">Tu pago está siendo procesado</p>
+            
+            <!-- Información del estado -->
+            <div class="pending-info">
+                <h5><i class="fas fa-info-circle"></i> ¿Qué significa esto?</h5>
+                <ul>
+                    <li>Tu pago está siendo verificado por el banco</li>
+                    <li>Esto puede tomar unos minutos o hasta 24 horas</li>
+                    <li>Te notificaremos por email cuando se complete</li>
+                    <li>No realices otro pago por el mismo alquiler</li>
+                </ul>
+            </div>
+            
+            <!-- Timeline del proceso -->
+            <div class="timeline">
+                <h6><i class="fas fa-tasks"></i> Estado del Proceso</h6>
+                
+                <div class="timeline-step completed">
+                    <div class="step-icon">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <strong>Pago Iniciado</strong>
+                        <br><small class="text-muted">Tu pago fue enviado correctamente</small>
+                    </div>
+                </div>
+                
+                <div class="timeline-step current">
+                    <div class="step-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <strong>Verificación Bancaria</strong>
+                        <br><small class="text-muted">El banco está procesando tu pago</small>
+                    </div>
+                </div>
+                
+                <div class="timeline-step">
+                    <div class="step-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <strong>Confirmación</strong>
+                        <br><small class="text-muted">Te enviaremos los detalles por email</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información de soporte -->
+            <div class="support-info">
+                <h6><i class="fas fa-lightbulb"></i> ¿Qué puedes hacer mientras esperas?</h6>
+                <p class="mb-2">• Revisa tu email periódicamente</p>
+                <p class="mb-2">• Puedes verificar el estado en tu banco</p>
+                <p class="mb-0">• Si no recibes confirmación en 24hs, contáctanos</p>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="action-buttons">
+                <a href="/persona/mis-alquileres/" class="btn-custom btn-primary-custom">
+                    <i class="fas fa-list"></i> Ver Mis Alquileres
+                </a>
+                <a href="/persona/inicio/" class="btn-custom btn-secondary-custom">
+                    <i class="fas fa-home"></i> Volver al Inicio
+                </a>
+            </div>
+            
+            <!-- Información adicional -->
+            <div class="mt-4 text-muted">
+                <small>
+                    <i class="fas fa-shield-alt"></i>
+                    Tu reserva está asegurada. No pierdas tu lugar en la cola.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

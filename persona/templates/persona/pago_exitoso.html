@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Pago Exitoso! - ALQUIL.AR</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .success-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 5rem;
+            color: #28a745;
+            margin-bottom: 1.5rem;
+            animation: bounceIn 1s ease-in-out;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .success-title {
+            color: #28a745;
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .success-subtitle {
+            color: #6c757d;
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .rental-details {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: left;
+            border-left: 5px solid #28a745;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 1.1rem;
+        }
+        
+        .detail-value {
+            color: #212529;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        
+        .pickup-code {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(40,167,69,0.3);
+        }
+        
+        .pickup-code h4 {
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+        
+        .pickup-code .code {
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 5px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .action-buttons {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-custom {
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,123,255,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-secondary-custom {
+            background: #6c757d;
+            color: white;
+            box-shadow: 0 5px 15px rgba(108,117,125,0.3);
+        }
+        
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(108,117,125,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .email-info {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-left: 5px solid #2196f3;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 10px;
+        }
+        
+        .email-info i {
+            color: #2196f3;
+            margin-right: 0.5rem;
+            font-size: 1.2rem;
+        }
+        
+        .confetti {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 768px) {
+            .success-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .success-title {
+                font-size: 2.5rem;
+            }
+            
+            .detail-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn-custom {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="confetti" id="confetti"></div>
+    
+    <div class="container">
+        <div class="success-container">
+            <!-- Icono de éxito -->
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            
+            <!-- Título principal -->
+            <h1 class="success-title">¡Pago Exitoso!</h1>
+            {% if cliente_alquiler %}
+                <p class="success-subtitle">El alquiler para <strong>{{ cliente_alquiler.nombre }} {{ cliente_alquiler.apellido }}</strong> ha sido confirmado correctamente</p>
+            {% else %}
+                <p class="success-subtitle">Tu alquiler ha sido confirmado correctamente</p>
+            {% endif %}
+            
+            <!-- Información sobre el email -->
+            <div class="email-info">
+                <i class="fas fa-envelope"></i>
+                {% if cliente_alquiler %}
+                    <strong>Se han enviado todos los detalles al email del cliente: {{ cliente_alquiler.email }}</strong>
+                    <br><small>El cliente recibirá toda la información necesaria en su correo electrónico.</small>
+                {% else %}
+                    <strong>Te hemos enviado todos los detalles a tu email.</strong>
+                    <br><small>Si no recibes el email en unos minutos, revisa tu carpeta de spam.</small>
+                {% endif %}
+            </div>
+            
+            <!-- Detalles del alquiler -->
+            <div class="rental-details">
+                <h3 style="margin-bottom: 1.5rem; color: #495057; text-align: center;">
+                    <i class="fas fa-file-contract"></i> Detalles del Alquiler
+                </h3>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-hashtag"></i> Número de Alquiler:
+                    </span>
+                    <span class="detail-value">{{ alquiler.numero }}</span>
+                </div>
+                
+                {% if cliente_alquiler %}
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-user"></i> Cliente:
+                    </span>
+                    <span class="detail-value">{{ cliente_alquiler.nombre }} {{ cliente_alquiler.apellido }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-envelope"></i> Email del Cliente:
+                    </span>
+                    <span class="detail-value">{{ cliente_alquiler.email }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-id-card"></i> DNI del Cliente:
+                    </span>
+                    <span class="detail-value">{{ cliente_alquiler.dni }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-cogs"></i> Máquina:
+                    </span>
+                    <span class="detail-value">{{ alquiler.maquina_base.nombre }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-calendar-alt"></i> Fecha de Inicio:
+                    </span>
+                    <span class="detail-value">{{ alquiler.fecha_inicio|date:"d/m/Y" }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-calendar-check"></i> Fecha de Fin:
+                    </span>
+                    <span class="detail-value">{{ alquiler.fecha_fin|date:"d/m/Y" }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-calendar-day"></i> Cantidad de Días:
+                    </span>
+                    <span class="detail-value">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-dollar-sign"></i> Monto Total:
+                    </span>
+                    <span class="detail-value">${{ alquiler.monto_total }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-info-circle"></i> Estado:
+                    </span>
+                    <span class="detail-value">
+                        <span class="badge bg-success">{{ alquiler.get_estado_display }}</span>
+                    </span>
+                </div>
+                
+                {% if alquiler.unidad %}
+                <div class="detail-row">
+                    <span class="detail-label">
+                        <i class="fas fa-truck"></i> Unidad Asignada:
+                    </span>
+                    <span class="detail-value">{{ alquiler.unidad.patente }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Código de retiro -->
+            <div class="pickup-code">
+                <h4><i class="fas fa-key"></i> Código de Retiro</h4>
+                <div class="code">{{ alquiler.codigo_retiro }}</div>
+                <small>Presenta este código cuando vayas a retirar la máquina</small>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="action-buttons">
+                {% if es_empleado %}
+                    <a href="{% url 'persona:lista_alquileres' %}" class="btn-custom btn-primary-custom">
+                        <i class="fas fa-list"></i> Ver Todos los Alquileres
+                    </a>
+                    <a href="{% url 'maquinas:catalogo_publico' %}" class="btn-custom btn-secondary-custom">
+                        <i class="fas fa-cogs"></i> Volver al Catálogo
+                    </a>
+                {% else %}
+                    <a href="/persona/mis-alquileres/" class="btn-custom btn-primary-custom">
+                        <i class="fas fa-list"></i> Ver Mis Alquileres
+                    </a>
+                    <a href="/persona/inicio/" class="btn-custom btn-secondary-custom">
+                        <i class="fas fa-home"></i> Volver al Inicio
+                    </a>
+                {% endif %}
+            </div>
+            
+            <!-- Información adicional -->
+            <div class="mt-4 text-muted">
+                <small>
+                    <i class="fas fa-info-circle"></i>
+                    Para cualquier consulta, puedes contactarnos o revisar el estado de tu alquiler en la sección "Mis Alquileres".
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Efecto confetti para celebrar
+        function createConfetti() {
+            const confetti = document.getElementById('confetti');
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confettiPiece = document.createElement('div');
+                confettiPiece.style.position = 'absolute';
+                confettiPiece.style.width = '10px';
+                confettiPiece.style.height = '10px';
+                confettiPiece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confettiPiece.style.left = Math.random() * 100 + '%';
+                confettiPiece.style.top = '-10px';
+                confettiPiece.style.animation = `fall ${Math.random() * 2 + 3}s linear forwards`;
+                confetti.appendChild(confettiPiece);
+                
+                setTimeout(() => {
+                    confettiPiece.remove();
+                }, 5000);
+            }
+        }
+        
+        // CSS para la animación
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fall {
+                0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Ejecutar confetti al cargar
+        window.addEventListener('load', () => {
+            setTimeout(createConfetti, 500);
+        });
+    </script>
+</body>
+</html> 
