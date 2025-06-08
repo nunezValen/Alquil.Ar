@@ -1,70 +1,105 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Pago No Procesado - Alquil.ar{% endblock %}
+{% block title %}Pago Rechazado - Alquil.ar{% endblock %}
 
 {% block extra_css %}
 <style>
-    .failure-container {
-        text-align: center;
-        padding: 50px 20px;
+    body {
+        margin: 0;
+        padding: 0;
         background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        font-family: 'Arial', sans-serif;
+        min-height: 100vh;
+    }
+    
+    .failure-container {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 20px;
     }
     
     .failure-card {
         background: white;
-        border-radius: 20px;
-        padding: 40px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border-radius: 25px;
+        padding: 50px 40px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
         max-width: 500px;
         width: 100%;
+        text-align: center;
         position: relative;
         overflow: hidden;
+        animation: slideInUp 0.8s ease-out;
+    }
+    
+    .failure-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #ff6b6b, #ee5a52, #dc3545);
     }
     
     .failure-icon {
-        width: 120px;
-        height: 120px;
-        background: linear-gradient(45deg, #dc3545, #c82333);
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #dc3545, #c82333);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 30px;
-        animation: shake 1s ease-out;
+        animation: bounceIn 1s ease-out 0.2s both;
+        box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
     }
     
     .failure-icon i {
-        font-size: 60px;
+        font-size: 50px;
         color: white;
     }
     
     .failure-title {
         color: #dc3545;
-        font-size: 2.2rem;
-        font-weight: bold;
-        margin-bottom: 20px;
-        animation: fadeInUp 1s ease-out 0.3s both;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 15px;
+        letter-spacing: -1px;
+        animation: fadeInUp 1s ease-out 0.4s both;
     }
     
     .failure-subtitle {
         color: #6c757d;
         font-size: 1.1rem;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
+        font-weight: 400;
         animation: fadeInUp 1s ease-out 0.6s both;
     }
     
     .failure-reasons {
-        background: #f8f9fa;
-        border-radius: 15px;
-        padding: 25px;
-        margin: 30px 0;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 20px;
+        padding: 30px 25px;
+        margin: 35px 0;
         text-align: left;
-        animation: fadeInUp 1s ease-out 0.9s both;
+        border: 1px solid #e9ecef;
+        animation: fadeInUp 1s ease-out 0.8s both;
+    }
+    
+    .failure-reasons h6 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #495057;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .failure-reasons h6 i {
+        color: #ffc107;
+        margin-right: 8px;
     }
     
     .reason-item {
@@ -72,81 +107,205 @@
         align-items: center;
         margin-bottom: 15px;
         color: #495057;
+        padding: 8px 0;
+        transition: all 0.3s ease;
     }
     
     .reason-item:last-child {
         margin-bottom: 0;
     }
     
+    .reason-item:hover {
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 10px;
+        padding: 8px 10px;
+    }
+    
     .reason-item i {
         color: #ffc107;
-        margin-right: 10px;
+        margin-right: 15px;
         width: 20px;
+        font-size: 1.1rem;
+    }
+    
+    .solutions {
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        border-radius: 20px;
+        padding: 25px;
+        margin: 25px 0;
+        text-align: left;
+        border: 1px solid #bbdefb;
+        animation: fadeInUp 1s ease-out 1.0s both;
+    }
+    
+    .solutions h6 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #1976d2;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .solutions h6 i {
+        margin-right: 8px;
+    }
+    
+    .solution-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        color: #1976d2;
+        font-size: 0.95rem;
+    }
+    
+    .solution-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .solution-item i {
+        color: #4caf50;
+        margin-right: 12px;
+        margin-top: 3px;
+        font-size: 0.9rem;
     }
     
     .action-buttons {
-        margin-top: 30px;
+        margin-top: 40px;
         animation: fadeInUp 1s ease-out 1.2s both;
     }
     
-    .btn-danger-custom {
-        background: linear-gradient(45deg, #dc3545, #c82333);
+    .btn-retry {
+        background: linear-gradient(135deg, #28a745, #20c997);
         border: none;
-        padding: 12px 30px;
-        border-radius: 25px;
+        padding: 15px 40px;
+        border-radius: 50px;
         color: white;
         font-weight: 600;
-        margin: 0 10px 10px;
+        font-size: 1.1rem;
+        margin: 0 10px 15px;
         transition: all 0.3s ease;
         display: inline-block;
+        text-decoration: none;
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
     }
     
-    .btn-danger-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+    .btn-retry:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(40, 167, 69, 0.4);
         color: white;
+        text-decoration: none;
     }
     
-    .btn-outline-primary-custom {
-        border: 2px solid #007bff;
-        color: #007bff;
-        padding: 12px 30px;
-        border-radius: 25px;
+    .btn-home {
+        border: 2px solid #6c757d;
+        color: #6c757d;
         background: transparent;
+        padding: 15px 40px;
+        border-radius: 50px;
         font-weight: 600;
-        margin: 0 10px 10px;
+        font-size: 1.1rem;
+        margin: 0 10px 15px;
         transition: all 0.3s ease;
         display: inline-block;
         text-decoration: none;
     }
     
-    .btn-outline-primary-custom:hover {
-        background: #007bff;
+    .btn-home:hover {
+        background: #6c757d;
         color: white;
         transform: translateY(-2px);
         text-decoration: none;
+    }
+    
+    .contact-info {
+        margin-top: 35px;
+        padding-top: 25px;
+        border-top: 2px solid #e9ecef;
+        animation: fadeInUp 1s ease-out 1.4s both;
+    }
+    
+    .contact-info p {
+        color: #6c757d;
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .contact-details {
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 15px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .contact-details strong {
+        color: #007bff;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .contact-details i {
+        color: #28a745;
+        margin-right: 8px;
     }
 
-    @keyframes shake {
-        0%, 100% {
-            transform: translateX(0);
+    /* Animaciones */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
         }
-        10%, 30%, 50%, 70%, 90% {
-            transform: translateX(-5px);
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
-        20%, 40%, 60%, 80% {
-            transform: translateX(5px);
+    }
+    
+    @keyframes bounceIn {
+        0% {
+            opacity: 0;
+            transform: scale(0.3);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        70% {
+            transform: scale(0.9);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
         }
     }
     
     @keyframes fadeInUp {
         from {
             opacity: 0;
-            transform: translate3d(0, 40px, 0);
+            transform: translate3d(0, 30px, 0);
         }
         to {
             opacity: 1;
             transform: translate3d(0, 0, 0);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .failure-card {
+            padding: 40px 25px;
+            margin: 10px;
+        }
+        
+        .failure-title {
+            font-size: 2rem;
+        }
+        
+        .btn-retry, .btn-home {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
         }
     }
 </style>
@@ -159,58 +318,81 @@
             <i class="fas fa-times"></i>
         </div>
         
-        <h1 class="failure-title">Pago No Procesado</h1>
-        <p class="failure-subtitle">No se pudo completar tu transacción</p>
+        <h1 class="failure-title">Pago Rechazado</h1>
+        <p class="failure-subtitle">Tu pago no pudo ser procesado</p>
         
         <div class="failure-reasons">
-            <h6 style="text-align: center; margin-bottom: 20px; color: #495057;">
-                <i class="fas fa-question-circle"></i> Posibles causas:
+            <h6>
+                <i class="fas fa-exclamation-triangle"></i> ¿Qué pudo haber sucedido?
             </h6>
             
             <div class="reason-item">
                 <i class="fas fa-credit-card"></i>
-                <span>Fondos insuficientes en tu tarjeta</span>
+                <span>Fondos insuficientes en tu cuenta o tarjeta</span>
             </div>
             
             <div class="reason-item">
                 <i class="fas fa-ban"></i>
-                <span>La transacción fue rechazada por tu banco</span>
+                <span>Datos de la tarjeta incorrectos</span>
             </div>
             
             <div class="reason-item">
                 <i class="fas fa-clock"></i>
-                <span>Se agotó el tiempo límite para completar el pago</span>
+                <span>La tarjeta ha expirado</span>
+            </div>
+            
+            <div class="reason-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>Límite de la tarjeta excedido</span>
             </div>
             
             <div class="reason-item">
                 <i class="fas fa-wifi"></i>
-                <span>Problemas de conexión durante el proceso</span>
+                <span>Problemas técnicos temporales</span>
+            </div>
+        </div>
+        
+        <div class="solutions">
+            <h6>
+                <i class="fas fa-lightbulb"></i> ¿Qué puedes hacer?
+            </h6>
+            
+            <div class="solution-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Verifica los datos de tu tarjeta y saldo disponible</span>
             </div>
             
-            <div class="reason-item">
-                <i class="fas fa-user-times"></i>
-                <span>Cancelaste el pago manualmente</span>
+            <div class="solution-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Intenta con otra forma de pago</span>
+            </div>
+            
+            <div class="solution-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Si el problema persiste, contacta a tu banco</span>
             </div>
         </div>
         
         <div class="action-buttons">
-            <a href="{% url 'maquinas:catalogo_publico' %}" class="btn btn-danger-custom">
+            <a href="{% url 'maquinas:catalogo_publico' %}" class="btn-retry">
                 <i class="fas fa-redo"></i> Intentar Nuevamente
             </a>
-            <a href="{% url 'persona:inicio' %}" class="btn btn-outline-primary-custom">
+            <a href="{% url 'persona:inicio' %}" class="btn-home">
                 <i class="fas fa-home"></i> Volver al Inicio
             </a>
         </div>
         
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
-            <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 10px;">
-                <i class="fas fa-phone"></i> ¿Necesitas ayuda? Contactanos:
+        <div class="contact-info">
+            <p>
+                <i class="fas fa-headset"></i> <strong>¿Necesitas ayuda?</strong>
             </p>
-            <p style="color: #007bff; font-weight: 600; margin: 0;">
-                <i class="fas fa-envelope"></i> soporte@alquil.ar
-                <br>
-                <i class="fas fa-phone"></i> +54 11 1234-5678
-            </p>
+            <div class="contact-details">
+                <strong><i class="fas fa-envelope"></i> soporte@alquil.ar</strong>
+                <strong><i class="fas fa-phone"></i> +54 11 1234-5678</strong>
+                <small style="color: #6c757d; font-style: italic;">
+                    Horario de atención: Lunes a Viernes de 9:00 a 18:00 hs
+                </small>
+            </div>
         </div>
     </div>
 </div>

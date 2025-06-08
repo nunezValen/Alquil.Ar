@@ -5,143 +5,317 @@
 
 {% block extra_css %}
 <style>
-    .success-container {
-        text-align: center;
-        padding: 50px 20px;
+    body {
+        margin: 0;
+        padding: 0;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Arial', sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+    
+    .success-container {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 20px;
+        position: relative;
     }
     
     .success-card {
         background: white;
-        border-radius: 20px;
-        padding: 40px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        max-width: 600px;
+        border-radius: 25px;
+        padding: 50px 40px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        max-width: 700px;
         width: 100%;
+        text-align: center;
         position: relative;
         overflow: hidden;
+        animation: bounceInUp 1s ease-out;
+    }
+    
+    .success-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #28a745, #20c997, #17a2b8);
     }
     
     .success-icon {
         width: 120px;
         height: 120px;
-        background: linear-gradient(45deg, #28a745, #20c997);
+        background: linear-gradient(135deg, #28a745, #20c997);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 30px;
-        animation: bounceIn 1s ease-out;
+        animation: bounceIn 1.2s ease-out 0.3s both;
+        box-shadow: 0 15px 40px rgba(40, 167, 69, 0.3);
     }
     
     .success-icon i {
         font-size: 60px;
         color: white;
+        animation: checkPulse 2s ease-in-out infinite 1.5s;
     }
     
     .success-title {
         color: #28a745;
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 20px;
-        animation: fadeInUp 1s ease-out 0.3s both;
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 15px;
+        letter-spacing: -1px;
+        animation: fadeInUp 1s ease-out 0.6s both;
+        text-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
     }
     
     .success-subtitle {
         color: #6c757d;
-        font-size: 1.2rem;
-        margin-bottom: 30px;
-        animation: fadeInUp 1s ease-out 0.6s both;
+        font-size: 1.3rem;
+        margin-bottom: 40px;
+        font-weight: 400;
+        animation: fadeInUp 1s ease-out 0.8s both;
     }
     
     .alquiler-details {
-        background: #f8f9fa;
-        border-radius: 15px;
-        padding: 25px;
-        margin: 30px 0;
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        border-radius: 20px;
+        padding: 35px 30px;
+        margin: 35px 0;
         text-align: left;
-        animation: fadeInUp 1s ease-out 0.9s both;
+        border: 1px solid #e9ecef;
+        animation: fadeInUp 1s ease-out 1.0s both;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    
+    .alquiler-details h5 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #495057;
+        font-weight: 700;
+        font-size: 1.3rem;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 15px;
+    }
+    
+    .alquiler-details h5 i {
+        color: #28a745;
+        margin-right: 10px;
     }
     
     .detail-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e9ecef;
+        align-items: center;
+        margin-bottom: 18px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f3f4;
+        transition: all 0.3s ease;
     }
     
     .detail-row:last-child {
         border-bottom: none;
         margin-bottom: 0;
+        font-weight: 600;
+        background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-top: 10px;
+    }
+    
+    .detail-row:hover {
+        background: rgba(40, 167, 69, 0.05);
+        border-radius: 8px;
+        padding: 12px 15px;
     }
     
     .detail-label {
         font-weight: 600;
         color: #495057;
+        font-size: 1rem;
     }
     
     .detail-value {
         color: #28a745;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 1rem;
     }
     
     .codigo-retiro {
-        background: linear-gradient(45deg, #ffc107, #ff8c00);
+        background: linear-gradient(135deg, #ffc107, #ff8c00);
         color: white;
-        padding: 15px;
-        border-radius: 10px;
+        padding: 25px 20px;
+        border-radius: 15px;
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: 3px;
+        margin: 30px 0 20px;
+        animation: pulse 2s infinite 2s;
+        box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .codigo-retiro::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        animation: shine 3s infinite 3s;
+    }
+    
+    .codigo-retiro i {
+        margin-right: 15px;
         font-size: 1.5rem;
-        font-weight: bold;
-        letter-spacing: 2px;
-        margin: 20px 0;
-        animation: pulse 2s infinite;
+    }
+    
+    .codigo-info {
+        color: #6c757d;
+        font-size: 1rem;
+        margin-bottom: 30px;
+        animation: fadeInUp 1s ease-out 1.4s both;
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        padding: 15px 20px;
+        border-radius: 12px;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .codigo-info i {
+        color: #2196f3;
+        margin-right: 8px;
     }
     
     .action-buttons {
-        margin-top: 30px;
-        animation: fadeInUp 1s ease-out 1.2s both;
+        margin-top: 40px;
+        animation: fadeInUp 1s ease-out 1.6s both;
     }
     
     .btn-success-custom {
-        background: linear-gradient(45deg, #28a745, #20c997);
+        background: linear-gradient(135deg, #28a745, #20c997);
         border: none;
-        padding: 12px 30px;
-        border-radius: 25px;
+        padding: 18px 45px;
+        border-radius: 50px;
         color: white;
-        font-weight: 600;
-        margin: 0 10px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin: 0 15px 15px;
         transition: all 0.3s ease;
+        display: inline-block;
+        text-decoration: none;
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
     }
     
     .btn-success-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(40, 167, 69, 0.4);
         color: white;
+        text-decoration: none;
     }
     
     .btn-outline-success-custom {
         border: 2px solid #28a745;
         color: #28a745;
-        padding: 12px 30px;
-        border-radius: 25px;
         background: transparent;
-        font-weight: 600;
-        margin: 0 10px;
+        padding: 18px 45px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin: 0 15px 15px;
         transition: all 0.3s ease;
+        display: inline-block;
+        text-decoration: none;
     }
     
     .btn-outline-success-custom:hover {
         background: #28a745;
         color: white;
         transform: translateY(-2px);
+        text-decoration: none;
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+    
+    .email-confirmation {
+        margin-top: 35px;
+        padding-top: 25px;
+        border-top: 2px solid #e9ecef;
+        animation: fadeInUp 1s ease-out 1.8s both;
+    }
+    
+    .email-confirmation p {
+        color: #6c757d;
+        font-size: 1rem;
+        margin: 0;
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .email-confirmation i {
+        color: #28a745;
+        margin-right: 10px;
+        font-size: 1.1rem;
+    }
+
+    /* Confetis */
+    .confetti {
+        position: fixed;
+        top: -10px;
+        z-index: 1000;
+        width: 8px;
+        height: 8px;
+        animation: fall linear infinite;
+        pointer-events: none;
+    }
+    
+    .confetti:nth-child(odd) {
+        background: #28a745;
+        border-radius: 50%;
+    }
+    
+    .confetti:nth-child(even) {
+        background: #ffc107;
+        transform: rotate(45deg);
+    }
+    
+    .confetti:nth-child(3n) {
+        background: #17a2b8;
+        border-radius: 50%;
+    }
+    
+    .confetti:nth-child(4n) {
+        background: #dc3545;
+        transform: rotate(45deg);
     }
 
     /* Animaciones */
+    @keyframes bounceInUp {
+        0% {
+            opacity: 0;
+            transform: translateY(100px) scale(0.8);
+        }
+        60% {
+            opacity: 1;
+            transform: translateY(-20px) scale(1.05);
+        }
+        80% {
+            transform: translateY(10px) scale(0.98);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
     @keyframes bounceIn {
         0% {
             opacity: 0;
@@ -149,7 +323,7 @@
         }
         50% {
             opacity: 1;
-            transform: scale(1.05);
+            transform: scale(1.1);
         }
         70% {
             transform: scale(0.9);
@@ -163,7 +337,7 @@
     @keyframes fadeInUp {
         from {
             opacity: 0;
-            transform: translate3d(0, 40px, 0);
+            transform: translate3d(0, 30px, 0);
         }
         to {
             opacity: 1;
@@ -182,20 +356,57 @@
             transform: scale(1);
         }
     }
-
-    /* Confetis */
-    .confetti {
-        position: fixed;
-        top: -10px;
-        z-index: 1000;
-        width: 10px;
-        height: 10px;
-        animation: fall linear infinite;
+    
+    @keyframes checkPulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+    }
+    
+    @keyframes shine {
+        0% {
+            left: -100%;
+        }
+        100% {
+            left: 100%;
+        }
     }
     
     @keyframes fall {
         to {
             transform: translateY(100vh) rotate(360deg);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .success-card {
+            padding: 40px 25px;
+            margin: 10px;
+        }
+        
+        .success-title {
+            font-size: 2.5rem;
+        }
+        
+        .codigo-retiro {
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+        }
+        
+        .btn-success-custom, .btn-outline-success-custom {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .detail-row {
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
         }
     }
 </style>
@@ -213,104 +424,99 @@
         
         {% if alquiler %}
         <div class="alquiler-details">
-            <h5 style="text-align: center; margin-bottom: 20px; color: #495057;">
-                <i class="fas fa-clipboard-list"></i> Detalles del Alquiler
+            <h5>
+                <i class="fas fa-clipboard-check"></i> Detalles del Alquiler
             </h5>
             
             <div class="detail-row">
-                <span class="detail-label">Número de Alquiler:</span>
+                <span class="detail-label"><i class="fas fa-hashtag"></i> Número de Alquiler:</span>
                 <span class="detail-value">{{ alquiler.numero }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Máquina:</span>
+                <span class="detail-label"><i class="fas fa-tools"></i> Máquina:</span>
                 <span class="detail-value">{{ alquiler.maquina_base.nombre }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Marca y Modelo:</span>
+                <span class="detail-label"><i class="fas fa-industry"></i> Marca y Modelo:</span>
                 <span class="detail-value">{{ alquiler.maquina_base.get_marca_display }} {{ alquiler.maquina_base.modelo }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Fecha de Inicio:</span>
+                <span class="detail-label"><i class="fas fa-calendar-alt"></i> Fecha de Inicio:</span>
                 <span class="detail-value">{{ alquiler.fecha_inicio|date:"d/m/Y" }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Fecha de Fin:</span>
+                <span class="detail-label"><i class="fas fa-calendar-check"></i> Fecha de Fin:</span>
                 <span class="detail-value">{{ alquiler.fecha_fin|date:"d/m/Y" }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Duración:</span>
+                <span class="detail-label"><i class="fas fa-clock"></i> Duración:</span>
                 <span class="detail-value">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</span>
             </div>
             
             <div class="detail-row">
-                <span class="detail-label">Monto Total:</span>
+                <span class="detail-label"><i class="fas fa-dollar-sign"></i> Monto Total:</span>
                 <span class="detail-value">${{ alquiler.monto_total|floatformat:2 }}</span>
             </div>
         </div>
         
         {% if alquiler.codigo_retiro %}
         <div class="codigo-retiro">
-            <i class="fas fa-key"></i> Código de Retiro: {{ alquiler.codigo_retiro }}
+            <i class="fas fa-key"></i> {{ alquiler.codigo_retiro }}
         </div>
-        <p style="color: #6c757d; font-size: 0.9rem;">
-            <i class="fas fa-info-circle"></i> Presenta este código en la sucursal para retirar tu máquina
-        </p>
+        <div class="codigo-info">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Presenta este código en la sucursal para retirar tu máquina.</strong>
+            Guarda bien este número, lo necesitarás para la entrega.
+        </div>
         {% endif %}
         {% endif %}
         
         <div class="action-buttons">
-            <a href="{% url 'persona:mis_alquileres' %}" class="btn btn-success-custom">
-                <i class="fas fa-list"></i> Ver Mis Alquileres
+            <a href="{% url 'persona:mis_alquileres' %}" class="btn-success-custom">
+                <i class="fas fa-list-alt"></i> Ver Mis Alquileres
             </a>
-            <a href="{% url 'maquinas:catalogo_publico' %}" class="btn btn-outline-success-custom">
+            <a href="{% url 'maquinas:catalogo_publico' %}" class="btn-outline-success-custom">
                 <i class="fas fa-tools"></i> Alquilar Otra Máquina
             </a>
         </div>
         
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
-            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">
-                <i class="fas fa-envelope"></i> Se ha enviado un correo de confirmación a tu email con todos los detalles
+        <div class="email-confirmation">
+            <p>
+                <i class="fas fa-envelope-check"></i> 
+                <strong>¡Confirmación enviada!</strong> Hemos enviado todos los detalles de tu alquiler a tu correo electrónico.
             </p>
         </div>
     </div>
 </div>
 
 <script>
-// Crear confetis
+// Crear confetis animados
 function createConfetti() {
-    const colors = ['#f43f5e', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'];
-    
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        document.body.appendChild(confetti);
+        
+        // Remover confetti después de la animación
         setTimeout(() => {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.left = Math.random() * 100 + 'vw';
-            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
-            confetti.style.animationDelay = Math.random() * 2 + 's';
-            
-            document.body.appendChild(confetti);
-            
-            setTimeout(() => {
-                confetti.remove();
-            }, 5000);
-        }, i * 100);
+            if (confetti.parentNode) {
+                confetti.parentNode.removeChild(confetti);
+            }
+        }, 5000);
     }
 }
 
-// Ejecutar confetis al cargar la página
-document.addEventListener('DOMContentLoaded', function() {
-    createConfetti();
-    
-    // Repetir confetis cada 3 segundos durante los primeros 10 segundos
-    setTimeout(() => createConfetti(), 3000);
-    setTimeout(() => createConfetti(), 6000);
-    setTimeout(() => createConfetti(), 9000);
+// Iniciar confetis cuando se carga la página
+window.addEventListener('load', function() {
+    setTimeout(createConfetti, 500);
 });
 </script>
 {% endblock %} 

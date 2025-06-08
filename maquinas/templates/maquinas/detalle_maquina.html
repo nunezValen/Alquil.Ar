@@ -306,8 +306,40 @@ document.addEventListener('DOMContentLoaded', function() {
     diasInput.addEventListener('change', actualizarCosto);
     actualizarCosto();
 
+    // Verificar al abrir el modal si el usuario puede alquilar
+    const btnAlquilar = document.querySelector('button[data-bs-target="#alquilerModal"]');
+    if (btnAlquilar) {
+        btnAlquilar.addEventListener('click', function(e) {
+            // Verificar estado del usuario antes de abrir el modal
+            fetch(`{% url 'maquinas:alquilar_maquina' maquina.id %}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.tiene_alquiler_activo) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alert('Ya tienes un alquiler activo. Solo puedes tener un alquiler a la vez.');
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error al verificar estado:', error);
+            });
+        });
+    }
+
     alquilerForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Mostrar spinner de carga
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
         
         const formData = new FormData(this);
         const alquilerUrl = `{% url 'maquinas:alquilar_maquina' maquina.id %}`;
@@ -323,6 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.error) {
                 alert(data.error);
+                // Restaurar botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             } else if (data.init_point) {
                 window.location.href = data.init_point;
             }
@@ -330,6 +365,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error:', error);
             alert('Error al procesar el pago. Por favor, intente nuevamente.');
+            // Restaurar botón
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         });
     });
 });

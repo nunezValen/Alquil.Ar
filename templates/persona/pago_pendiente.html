@@ -5,101 +5,157 @@
 
 {% block extra_css %}
 <style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #ff8a00 0%, #e52e71 100%);
+        font-family: 'Arial', sans-serif;
+        min-height: 100vh;
+    }
+    
     .pending-container {
-        text-align: center;
-        padding: 50px 20px;
-        background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 20px;
     }
     
     .pending-card {
         background: white;
-        border-radius: 20px;
-        padding: 40px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        max-width: 500px;
+        border-radius: 25px;
+        padding: 50px 40px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        max-width: 550px;
         width: 100%;
+        text-align: center;
         position: relative;
         overflow: hidden;
+        animation: slideInUp 0.8s ease-out;
+    }
+    
+    .pending-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #ff8a00, #e52e71, #ff6b00);
     }
     
     .pending-icon {
-        width: 120px;
-        height: 120px;
-        background: linear-gradient(45deg, #ffc107, #ff8c00);
+        width: 110px;
+        height: 110px;
+        background: linear-gradient(135deg, #ff8a00, #e52e71);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 30px;
-        animation: pulse 2s infinite;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 10px 30px rgba(255, 138, 0, 0.3);
     }
     
     .pending-icon i {
-        font-size: 60px;
+        font-size: 55px;
         color: white;
+        animation: rotate 2s linear infinite;
     }
     
     .pending-title {
-        color: #ff8c00;
-        font-size: 2.2rem;
-        font-weight: bold;
-        margin-bottom: 20px;
-        animation: fadeInUp 1s ease-out 0.3s both;
+        color: #e65100;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 15px;
+        letter-spacing: -1px;
+        animation: fadeInUp 1s ease-out 0.4s both;
     }
     
     .pending-subtitle {
         color: #6c757d;
-        font-size: 1.1rem;
-        margin-bottom: 30px;
+        font-size: 1.2rem;
+        margin-bottom: 40px;
+        font-weight: 400;
         animation: fadeInUp 1s ease-out 0.6s both;
     }
     
     .pending-info {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        border-radius: 15px;
-        padding: 25px;
-        margin: 30px 0;
+        background: linear-gradient(135deg, #fff8e1, #ffecb3);
+        border-radius: 20px;
+        padding: 30px 25px;
+        margin: 35px 0;
         text-align: left;
-        animation: fadeInUp 1s ease-out 0.9s both;
+        border: 1px solid #ffcc02;
+        animation: fadeInUp 1s ease-out 0.8s both;
+    }
+    
+    .pending-info h6 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #e65100;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    
+    .pending-info h6 i {
+        color: #ff8a00;
+        margin-right: 8px;
     }
     
     .info-item {
         display: flex;
-        align-items: flex-start;
-        margin-bottom: 15px;
-        color: #856404;
+        align-items: center;
+        margin-bottom: 18px;
+        color: #e65100;
+        padding: 10px 0;
+        transition: all 0.3s ease;
+        border-radius: 10px;
     }
     
     .info-item:last-child {
         margin-bottom: 0;
     }
     
+    .info-item:hover {
+        background: rgba(255, 138, 0, 0.1);
+        padding: 10px 15px;
+    }
+    
     .info-item i {
-        color: #ff8c00;
-        margin-right: 10px;
-        width: 20px;
-        margin-top: 2px;
+        color: #ff8a00;
+        margin-right: 15px;
+        width: 25px;
+        font-size: 1.2rem;
     }
     
     .next-steps {
-        background: #f8f9fa;
-        border-radius: 15px;
+        background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+        border-radius: 20px;
         padding: 25px;
-        margin: 30px 0;
+        margin: 25px 0;
         text-align: left;
-        animation: fadeInUp 1s ease-out 1.1s both;
+        border: 1px solid #4caf50;
+        animation: fadeInUp 1s ease-out 1.0s both;
+    }
+    
+    .next-steps h6 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #2e7d32;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    
+    .next-steps h6 i {
+        margin-right: 8px;
     }
     
     .step-item {
         display: flex;
         align-items: flex-start;
         margin-bottom: 15px;
-        color: #495057;
+        color: #2e7d32;
     }
     
     .step-item:last-child {
@@ -107,63 +163,114 @@
     }
     
     .step-number {
-        background: #007bff;
+        background: #4caf50;
         color: white;
-        width: 25px;
-        height: 25px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         font-weight: bold;
         margin-right: 15px;
         flex-shrink: 0;
+        box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3);
     }
     
     .action-buttons {
-        margin-top: 30px;
-        animation: fadeInUp 1s ease-out 1.3s both;
+        margin-top: 40px;
+        animation: fadeInUp 1s ease-out 1.2s both;
     }
     
     .btn-warning-custom {
-        background: linear-gradient(45deg, #ffc107, #ff8c00);
+        background: linear-gradient(135deg, #ff8a00, #e52e71);
         border: none;
-        padding: 12px 30px;
-        border-radius: 25px;
+        padding: 15px 40px;
+        border-radius: 50px;
         color: white;
         font-weight: 600;
-        margin: 0 10px 10px;
+        font-size: 1.1rem;
+        margin: 0 10px 15px;
         transition: all 0.3s ease;
         display: inline-block;
+        text-decoration: none;
+        box-shadow: 0 8px 25px rgba(255, 138, 0, 0.3);
     }
     
     .btn-warning-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(255, 138, 0, 0.4);
         color: white;
+        text-decoration: none;
     }
     
     .btn-outline-primary-custom {
-        border: 2px solid #007bff;
-        color: #007bff;
-        padding: 12px 30px;
-        border-radius: 25px;
+        border: 2px solid #6c757d;
+        color: #6c757d;
         background: transparent;
+        padding: 15px 40px;
+        border-radius: 50px;
         font-weight: 600;
-        margin: 0 10px 10px;
+        font-size: 1.1rem;
+        margin: 0 10px 15px;
         transition: all 0.3s ease;
         display: inline-block;
         text-decoration: none;
     }
     
     .btn-outline-primary-custom:hover {
-        background: #007bff;
+        background: #6c757d;
         color: white;
         transform: translateY(-2px);
         text-decoration: none;
     }
+    
+    .contact-info {
+        margin-top: 35px;
+        padding-top: 25px;
+        border-top: 2px solid #e9ecef;
+        animation: fadeInUp 1s ease-out 1.4s both;
+    }
+    
+    .contact-info p {
+        color: #6c757d;
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .contact-details {
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 15px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .contact-details strong {
+        color: #ff8a00;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .contact-details i {
+        color: #4caf50;
+        margin-right: 8px;
+    }
 
+    /* Animaciones */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     @keyframes pulse {
         0% {
             transform: scale(1);
@@ -176,14 +283,41 @@
         }
     }
     
+    @keyframes rotate {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
     @keyframes fadeInUp {
         from {
             opacity: 0;
-            transform: translate3d(0, 40px, 0);
+            transform: translate3d(0, 30px, 0);
         }
         to {
             opacity: 1;
             transform: translate3d(0, 0, 0);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .pending-card {
+            padding: 40px 25px;
+            margin: 10px;
+        }
+        
+        .pending-title {
+            font-size: 2rem;
+        }
+        
+        .btn-warning-custom, .btn-outline-primary-custom {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
         }
     }
 </style>
@@ -200,7 +334,7 @@
         <p class="pending-subtitle">Tu pago está siendo procesado</p>
         
         <div class="pending-info">
-            <h6 style="text-align: center; margin-bottom: 20px; color: #856404;">
+            <h6>
                 <i class="fas fa-info-circle"></i> Estado de tu transacción:
             </h6>
             
@@ -218,52 +352,54 @@
                 <i class="fas fa-bell"></i>
                 <span>Te notificaremos por email cuando se complete</span>
             </div>
+            
+            <div class="info-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Tu reserva está asegurada durante este tiempo</span>
+            </div>
         </div>
         
         <div class="next-steps">
-            <h6 style="text-align: center; margin-bottom: 20px; color: #495057;">
-                <i class="fas fa-list-ol"></i> ¿Qué hacer ahora?
+            <h6>
+                <i class="fas fa-list-check"></i> ¿Qué puedes hacer mientras esperas?
             </h6>
             
             <div class="step-item">
                 <div class="step-number">1</div>
-                <span>Mantén este código de referencia para seguimiento</span>
+                <span>Mantén tu email activo para recibir la confirmación</span>
             </div>
             
             <div class="step-item">
                 <div class="step-number">2</div>
-                <span>Revisa tu email periódicamente</span>
+                <span>Revisa tus notificaciones bancarias</span>
             </div>
             
             <div class="step-item">
                 <div class="step-number">3</div>
-                <span>Si no recibes confirmación en 24hs, contactanos</span>
-            </div>
-            
-            <div class="step-item">
-                <div class="step-number">4</div>
-                <span>Una vez aprobado, podrás retirar tu máquina</span>
+                <span>Si no recibes confirmación en 24 hs, contactanos</span>
             </div>
         </div>
         
         <div class="action-buttons">
-            <a href="{% url 'persona:mis_alquileres' %}" class="btn btn-warning-custom">
-                <i class="fas fa-list"></i> Ver Mis Alquileres
+            <a href="{% url 'persona:mis_alquileres' %}" class="btn-warning-custom">
+                <i class="fas fa-list-alt"></i> Ver Mis Alquileres
             </a>
-            <a href="{% url 'persona:inicio' %}" class="btn btn-outline-primary-custom">
+            <a href="{% url 'persona:inicio' %}" class="btn-outline-primary-custom">
                 <i class="fas fa-home"></i> Volver al Inicio
             </a>
         </div>
         
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
-            <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 10px;">
-                <i class="fas fa-phone"></i> ¿Consultas sobre tu pago?
+        <div class="contact-info">
+            <p>
+                <i class="fas fa-headset"></i> <strong>¿Necesitas ayuda?</strong>
             </p>
-            <p style="color: #007bff; font-weight: 600; margin: 0;">
-                <i class="fas fa-envelope"></i> pagos@alquil.ar
-                <br>
-                <i class="fas fa-phone"></i> +54 11 1234-5678
-            </p>
+            <div class="contact-details">
+                <strong><i class="fas fa-envelope"></i> soporte@alquil.ar</strong>
+                <strong><i class="fas fa-phone"></i> +54 11 1234-5678</strong>
+                <small style="color: #6c757d; font-style: italic;">
+                    Horario de atención: Lunes a Viernes de 9:00 a 18:00 hs
+                </small>
+            </div>
         </div>
     </div>
 </div>

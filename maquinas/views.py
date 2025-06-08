@@ -16,6 +16,7 @@ from django.urls import reverse
 from persona.models import Persona
 from django.db.models import Q
 from django.core.mail import send_mail
+from .utils import enviar_email_alquiler_simple
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -317,35 +318,25 @@ def webhook_mercadopago(request):
                                 ).first()
                                 
                                 if unidad:
-                                    # Crear el alquiler
+                                    # Crear el alquiler 
                                     alquiler = Alquiler.objects.create(
                                         maquina_base=maquina,
-                                        unidad=unidad,
                                         persona=persona,
                                         fecha_inicio=fecha_inicio,
                                         fecha_fin=fecha_fin,
                                         metodo_pago=metodo_pago,
-                                        estado='confirmado',
+                                        estado='reservado',  # Cambiar a reservado
                                         monto_total=total
                                     )
                                     
-                                    # Marcar la unidad como alquilada
-                                    unidad.estado = 'alquilada'
-                                    unidad.save()
+                                    # NO marcar la unidad como alquilada hasta que comience el alquiler
+                                    # El sistema manejará automáticamente las unidades disponibles por fechas
                                     
                                     print(f"Alquiler creado: {alquiler.numero}")
                                     
                                     # Enviar mail al cliente
                                     try:
-                                        send_mail(
-                                            'Alquiler confirmado - ALQUIL.AR',
-                                            f'Alquiler confirmado, gracias por alquilar con ALQUIL.AR.\n'
-                                            f'Aquí te dejamos tu número de retiro: {alquiler.numero}',
-                                            settings.DEFAULT_FROM_EMAIL,
-                                            [persona.email],
-                                            fail_silently=False,
-                                        )
-                                        print(f"Email enviado exitosamente a: {persona.email}")
+                                        enviar_email_alquiler_simple(alquiler)
                                     except Exception as e:
                                         print(f"Error al enviar email: {str(e)}")
                                 else:
@@ -362,20 +353,6 @@ def webhook_mercadopago(request):
                             if status == 'approved':
                                 alquiler.estado = 'confirmado'
                                 
-                                # Enviar mail al cliente
-                                try:
-                                    send_mail(
-                                        'Alquiler confirmado - ALQUIL.AR',
-                                        f'Alquiler confirmado, gracias por alquilar con ALQUIL.AR.\n'
-                                        f'Aquí te dejamos tu número de retiro: {alquiler.numero}',
-                                        settings.DEFAULT_FROM_EMAIL,
-                                        [alquiler.persona.email],
-                                        fail_silently=False,
-                                    )
-                                    print(f"Email enviado exitosamente a: {alquiler.persona.email}")
-                                except Exception as e:
-                                    print(f"Error al enviar email: {str(e)}")
-                                    
                             elif status == 'rejected':
                                 alquiler.estado = 'rechazado'
                                 print("Pago rechazado")
@@ -441,22 +418,58 @@ def alquilar_maquina(request, maquina_id):
                     'error': 'No se encontró tu perfil de persona. Por favor, regístrate primero.'
                 }, status=400)
             
-            # Verificar que el cliente no tenga otro alquiler activo
+            # VALIDACIÓN 1: Verificar que el cliente no tenga otro alquiler activo/reservado
+            # UN CLIENTE SOLO PUEDE TENER UN ALQUILER A LA VEZ (sin importar fechas)
             alquileres_activos = Alquiler.objects.filter(
                 persona=persona,
                 estado__in=['reservado', 'en_curso']
             )
             
             if alquileres_activos.exists():
+                alquiler_activo = alquileres_activos.first()
                 return JsonResponse({
-                    'error': 'Ya tienes un alquiler activo. Solo puedes tener un alquiler a la vez.'
+                    'error': f'Ya tienes un alquiler activo (#{alquiler_activo.numero}). '
+                            f'Solo puedes tener un alquiler a la vez. '
+                            f'Tu alquiler actual: {alquiler_activo.maquina_base.nombre} '
+                            f'del {alquiler_activo.fecha_inicio.strftime("%d/%m/%Y")} '
+                            f'al {alquiler_activo.fecha_fin.strftime("%d/%m/%Y")}. '
+                            f'Contacta al soporte si necesitas cancelarlo.'
                 }, status=400)
             
-            # Verificar disponibilidad
-            if not Alquiler.verificar_disponibilidad(maquina, fecha_inicio, fecha_fin):
-                return JsonResponse({
-                    'error': 'No hay unidades disponibles para las fechas seleccionadas.'
-                }, status=400)
+            # VALIDACIÓN 2: Verificar disponibilidad de unidades para las fechas
+            unidades_disponibles = Alquiler.obtener_unidades_disponibles(maquina, fecha_inicio, fecha_fin)
+            
+            if unidades_disponibles == 0:
+                # Verificar si hay unidades de la máquina en general
+                total_unidades = maquina.unidades.filter(estado='disponible', visible=True).count()
+                if total_unidades == 0:
+                    return JsonResponse({
+                        'error': f'No hay unidades de {maquina.nombre} disponibles en este momento. '
+                                f'Por favor, selecciona otra máquina o contacta al soporte.'
+                    }, status=400)
+                else:
+                    # Buscar próxima fecha disponible
+                    proxima_fecha = fecha_inicio
+                    while proxima_fecha <= fecha_inicio + timedelta(days=30):  # Buscar hasta 30 días
+                        proxima_fecha_fin = proxima_fecha + timedelta(days=dias-1)
+                        if Alquiler.obtener_unidades_disponibles(maquina, proxima_fecha, proxima_fecha_fin) > 0:
+                            return JsonResponse({
+                                'error': f'No hay unidades disponibles para las fechas {fecha_inicio.strftime("%d/%m/%Y")} - {fecha_fin.strftime("%d/%m/%Y")}. '
+                                        f'La próxima fecha disponible es: {proxima_fecha.strftime("%d/%m/%Y")}. '
+                                        f'Por favor, selecciona otras fechas.'
+                            }, status=400)
+                        proxima_fecha += timedelta(days=1)
+                    
+                    return JsonResponse({
+                        'error': f'No hay unidades disponibles para las fechas seleccionadas. '
+                                f'Todas las unidades de {maquina.nombre} están ocupadas en ese período. '
+                                f'Por favor, selecciona fechas más adelante o contacta al soporte.'
+                    }, status=400)
+            
+            print(f"=== VALIDACIONES PASADAS ===")
+            print(f"Unidades disponibles: {unidades_disponibles}")
+            print(f"Cliente: {persona.nombre} {persona.apellido}")
+            print(f"Fechas: {fecha_inicio} - {fecha_fin} ({dias} días)")
             
             # Calcular total
             total = dias * maquina.precio_por_dia
@@ -525,13 +538,30 @@ def alquilar_maquina(request, maquina_id):
                     'error': error_msg
                 }, status=500)
                 
+        except ValueError as e:
+            return JsonResponse({
+                'error': 'Datos de entrada inválidos. Por favor, verifica la información ingresada.'
+            }, status=400)
         except Exception as e:
+            print(f"Error en alquilar_maquina: {str(e)}")
             return JsonResponse({
                 'error': f'Error al procesar el pago: {str(e)}'
             }, status=500)
     
     # Para GET, devolver los datos necesarios para el modal
     fecha_minima = date.today()
+    
+    # Obtener información de disponibilidad
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+        # Verificar si tiene cualquier alquiler activo (reservado o en curso)
+        tiene_alquiler_activo = Alquiler.objects.filter(
+            persona=persona,
+            estado__in=['reservado', 'en_curso']
+        ).exists()
+    except:
+        tiene_alquiler_activo = False
+    
     return JsonResponse({
         'maquina': {
             'id': maquina.id,
@@ -539,9 +569,11 @@ def alquilar_maquina(request, maquina_id):
             'precio_por_dia': maquina.precio_por_dia,
             'dias_min': maquina.dias_alquiler_min,
             'dias_max': maquina.dias_alquiler_max,
-            'imagen_url': maquina.imagen.url if maquina.imagen else None
+            'imagen_url': maquina.imagen.url if maquina.imagen else None,
+            'unidades_totales': maquina.unidades.filter(estado='disponible', visible=True).count()
         },
-        'fecha_minima': fecha_minima.strftime('%Y-%m-%d')
+        'fecha_minima': fecha_minima.strftime('%Y-%m-%d'),
+        'tiene_alquiler_activo': tiene_alquiler_activo
     })
 
 @login_required

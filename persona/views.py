@@ -28,6 +28,7 @@ from .utils import generar_password_random
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from maquinas.models import Alquiler, MaquinaBase
+from maquinas.utils import enviar_email_alquiler_simple
 
 def es_admin(user):
     """
@@ -128,30 +129,18 @@ def inicio(request):
                                     print(f"Número: {alquiler.numero}")
                                     print(f"Código de retiro: {alquiler.codigo_retiro}")
                                     
-                                    # Enviar email al cliente
+                                    # Enviar email con PDF al cliente
                                     try:
-                                        send_mail(
-                                            'Alquiler Confirmado - ALQUIL.AR',
-                                            f'¡Tu alquiler ha sido confirmado!\n\n'
-                                            f'Detalles del alquiler:\n'
-                                            f'• Número de alquiler: {alquiler.numero}\n'
-                                            f'• Código de retiro: {alquiler.codigo_retiro}\n'
-                                            f'• Máquina: {maquina_base.nombre}\n'
-                                            f'• Fecha de inicio: {fecha_inicio.strftime("%d/%m/%Y")}\n'
-                                            f'• Fecha de fin: {fecha_fin.strftime("%d/%m/%Y")}\n'
-                                            f'• Días: {alquiler.cantidad_dias}\n'
-                                            f'• Monto total: ${alquiler.monto_total}\n\n'
-                                            f'Para retirar la máquina, presenta este código: {alquiler.codigo_retiro}\n\n'
-                                            f'Gracias por alquilar con ALQUIL.AR\n'
-                                            f'¡Te esperamos!',
-                                            settings.DEFAULT_FROM_EMAIL,
-                                            [persona.email],
-                                            fail_silently=False,
-                                        )
-                                        print(f"Email enviado exitosamente a: {persona.email}")
-                                        
+                                        print(f"🔄 Intentando enviar email desde persona webhook...")
+                                        resultado_email = enviar_email_alquiler_simple(alquiler)
+                                        if resultado_email:
+                                            print(f"✅ Email enviado correctamente desde persona webhook")
+                                        else:
+                                            print(f"❌ Falló el envío de email desde persona webhook")
                                     except Exception as e:
-                                        print(f"Error al enviar email: {str(e)}")
+                                        print(f"❌ Error al enviar email desde persona webhook: {str(e)}")
+                                        import traceback
+                                        traceback.print_exc()
                                     
                                     messages.success(request, f'¡Pago exitoso! Tu número de alquiler es: {alquiler.numero}. Código de retiro: {alquiler.codigo_retiro}')
                         else:
@@ -1170,30 +1159,18 @@ def pago_exitoso(request):
                             print(f"Número: {alquiler.numero}")
                             print(f"Código de retiro: {alquiler.codigo_retiro}")
                             
-                            # Enviar email al cliente
+                            # Enviar email con PDF al cliente
                             try:
-                                send_mail(
-                                    'Alquiler Confirmado - ALQUIL.AR',
-                                    f'¡Tu alquiler ha sido confirmado!\n\n'
-                                    f'Detalles del alquiler:\n'
-                                    f'• Número de alquiler: {alquiler.numero}\n'
-                                    f'• Código de retiro: {alquiler.codigo_retiro}\n'
-                                    f'• Máquina: {maquina_base.nombre}\n'
-                                    f'• Fecha de inicio: {fecha_inicio.strftime("%d/%m/%Y")}\n'
-                                    f'• Fecha de fin: {fecha_fin.strftime("%d/%m/%Y")}\n'
-                                    f'• Días: {alquiler.cantidad_dias}\n'
-                                    f'• Monto total: ${alquiler.monto_total}\n\n'
-                                    f'Para retirar la máquina, presenta este código: {alquiler.codigo_retiro}\n\n'
-                                    f'Gracias por alquilar con ALQUIL.AR\n'
-                                    f'¡Te esperamos!',
-                                    settings.DEFAULT_FROM_EMAIL,
-                                    [persona.email],
-                                    fail_silently=False,
-                                )
-                                print(f"Email enviado exitosamente a: {persona.email}")
-                                
+                                print(f"🔄 Intentando enviar email desde fallback...")
+                                resultado_email = enviar_email_alquiler_simple(alquiler)
+                                if resultado_email:
+                                    print(f"✅ Email enviado correctamente desde fallback")
+                                else:
+                                    print(f"❌ Falló el envío de email desde fallback")
                             except Exception as e:
-                                print(f"Error al enviar email: {str(e)}")
+                                print(f"❌ Error al enviar email desde fallback: {str(e)}")
+                                import traceback
+                                traceback.print_exc()
                         else:
                             print(f"Cliente ya tiene alquiler activo")
                             messages.warning(request, 'Ya tienes un alquiler activo.')

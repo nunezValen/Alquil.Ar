@@ -172,10 +172,12 @@ def restar_stock_maquina(sender, instance, **kwargs):
 
 class Alquiler(models.Model):
     ESTADOS = [
+        ('pendiente', 'Pendiente de Pago'),
         ('reservado', 'Reservado'),
         ('en_curso', 'En Curso'),
         ('finalizado', 'Finalizado'),
         ('cancelado', 'Cancelado'),
+        ('rechazado', 'Rechazado'),
     ]
     
     METODOS_PAGO = [
@@ -218,7 +220,7 @@ class Alquiler(models.Model):
                 ).exclude(id=self.id)
                 
                 if alquileres_activos.exists():
-                    raise ValidationError('Este cliente ya tiene un alquiler activo.')
+                    raise ValidationError('Este cliente ya tiene un alquiler activo. Solo puede tener un alquiler a la vez.')
     
     @staticmethod
     def verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin, excluir_alquiler_id=None):
