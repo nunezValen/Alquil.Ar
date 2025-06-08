@@ -1,47 +1,243 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Mis Alquileres{% endblock %}
+{% block title %}Mis Alquileres - ALQUIL.AR{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Mis Alquileres</h1>
-
-    {% if alquileres %}
     <div class="row">
-        {% for alquiler in alquileres %}
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Alquiler #{{ alquiler.numero }}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">{{ alquiler.maquina.nombre }}</h6>
-                    
-                    <div class="mt-3">
-                        <p class="mb-1">
-                            <strong>Estado:</strong>
-                            <span class="badge {% if alquiler.estado == 'confirmado' %}bg-success
-                                             {% elif alquiler.estado == 'pendiente' %}bg-warning
-                                             {% elif alquiler.estado == 'en_curso' %}bg-info
-                                             {% elif alquiler.estado == 'finalizado' %}bg-secondary
-                                             {% else %}bg-danger{% endif %}">
-                                {{ alquiler.get_estado_display }}
-                            </span>
-                        </p>
-                        <p class="mb-1"><strong>Fecha de Inicio:</strong> {{ alquiler.fecha_inicio }}</p>
-                        <p class="mb-1"><strong>Fecha de Fin:</strong> {{ alquiler.fecha_fin }}</p>
-                        <p class="mb-1"><strong>Método de Pago:</strong> {{ alquiler.get_metodo_pago_display }}</p>
-                        <p class="mb-1"><strong>Monto Total:</strong> ${{ alquiler.monto_total }}</p>
-                        <p class="mb-1"><strong>Fecha de Reserva:</strong> {{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</p>
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history me-2"></i>Mi Historial de Alquileres</h2>
+                <a href="{% url 'persona:inicio' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-home me-2"></i>Volver al Inicio
+                </a>
+            </div>
+
+            {% if not alquileres %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-inbox fa-3x text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">No tienes alquileres aún</h4>
+                    <p class="text-muted">¡Explora nuestro catálogo y realiza tu primer alquiler!</p>
+                    <a href="{% url 'maquinas:catalogo_publico' %}" class="btn btn-primary">
+                        <i class="fas fa-shopping-cart me-2"></i>Ver Catálogo
+                    </a>
+                </div>
+            {% else %}
+                <div class="row">
+                    {% for alquiler in alquileres %}
+                    <div class="col-lg-6 col-xl-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <!-- Header con estado -->
+                            <div class="card-header d-flex justify-content-between align-items-center
+                                {% if alquiler.estado == 'reservado' %}bg-primary text-white
+                                {% elif alquiler.estado == 'en_curso' %}bg-success text-white
+                                {% elif alquiler.estado == 'finalizado' %}bg-secondary text-white
+                                {% elif alquiler.estado == 'cancelado' %}bg-danger text-white
+                                {% else %}bg-warning text-dark{% endif %}">
+                                <h6 class="mb-0">{{ alquiler.numero }}</h6>
+                                <span class="badge bg-light text-dark">{{ alquiler.get_estado_display }}</span>
+                            </div>
+
+                            <div class="card-body">
+                                <!-- Información de la máquina -->
+                                <div class="mb-3">
+                                    <h5 class="card-title text-truncate">{{ alquiler.maquina_base.nombre }}</h5>
+                                    <p class="text-muted small mb-2">
+                                        {{ alquiler.maquina_base.get_marca_display }} {{ alquiler.maquina_base.modelo }}
+                                    </p>
+                                </div>
+
+                                <!-- Fechas -->
+                                <div class="mb-3">
+                                    <div class="row text-sm">
+                                        <div class="col-6">
+                                            <small class="text-muted">Inicio:</small><br>
+                                            <strong>{{ alquiler.fecha_inicio|date:"d/m/Y" }}</strong>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Fin:</small><br>
+                                            <strong>{{ alquiler.fecha_fin|date:"d/m/Y" }}</strong>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Duración: {{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}
+                                    </small>
+                                </div>
+
+                                <!-- Información específica según estado -->
+                                {% if alquiler.estado == 'reservado' %}
+                                    {% if alquiler.dias_hasta_inicio %}
+                                        <div class="alert alert-info py-2">
+                                            <small>
+                                                <i class="fas fa-clock me-1"></i>
+                                                Comienza en {{ alquiler.dias_hasta_inicio }} día{{ alquiler.dias_hasta_inicio|pluralize }}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if alquiler.codigo_retiro %}
+                                        <div class="mb-2">
+                                            <small class="text-muted">Código de Retiro:</small><br>
+                                            <span class="badge bg-warning text-dark fs-6">{{ alquiler.codigo_retiro }}</span>
+                                        </div>
+                                    {% endif %}
+
+                                {% elif alquiler.estado == 'en_curso' %}
+                                    {% if alquiler.dias_hasta_fin %}
+                                        <div class="alert alert-success py-2">
+                                            <small>
+                                                <i class="fas fa-hourglass-half me-1"></i>
+                                                Termina en {{ alquiler.dias_hasta_fin }} día{{ alquiler.dias_hasta_fin|pluralize }}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+
+                                {% elif alquiler.estado == 'cancelado' %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Cancelado:</small><br>
+                                        <small>{{ alquiler.fecha_cancelacion|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                    
+                                    {% if alquiler.monto_reembolso %}
+                                        <div class="alert alert-success py-2">
+                                            <small>
+                                                <i class="fas fa-money-bill-wave me-1"></i>
+                                                Reembolso: {{ alquiler.porcentaje_reembolso }}% 
+                                                <strong>({{ alquiler.monto_reembolso }})</strong>
+                                            </small>
+                                        </div>
+                                    {% endif %}
+
+                                    {% if alquiler.observaciones_cancelacion %}
+                                        <div class="mb-2">
+                                            <small class="text-muted">Motivo:</small><br>
+                                            <small>{{ alquiler.observaciones_cancelacion }}</small>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+
+                                <!-- Monto -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">Monto Total:</small>
+                                        <strong class="text-success">${{ alquiler.monto_total }}</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Información de cancelación para alquileres activos -->
+                                {% if alquiler.puede_ser_cancelado and alquiler.porcentaje_reembolso_cliente is not None %}
+                                    <div class="alert alert-warning py-2">
+                                        <small>
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Si cancelas: {{ alquiler.porcentaje_reembolso_cliente }}% de reembolso
+                                            {% if alquiler.monto_reembolso_cliente > 0 %}
+                                                (${{ alquiler.monto_reembolso_cliente }})
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Creado: {{ alquiler.fecha_creacion|date:"d/m/y" }}
+                                    </small>
+                                    
+                                    {% if alquiler.estado == 'reservado' %}
+                                        <div class="btn-group-sm d-flex gap-1">
+                                            {% if alquiler.codigo_retiro %}
+                                                <button class="btn btn-sm btn-outline-primary" onclick="copiarCodigo('{{ alquiler.codigo_retiro }}')">
+                                                    <i class="fas fa-copy me-1"></i>Copiar Código
+                                                </button>
+                                            {% endif %}
+                                            {% if alquiler.puede_ser_cancelado %}
+                                                <a href="{% url 'persona:cancelar_mi_alquiler' alquiler.id %}" 
+                                                   class="btn btn-sm btn-outline-danger"
+                                                   title="Cancelar este alquiler">
+                                                    <i class="fas fa-ban me-1"></i>Cancelar
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% elif alquiler.estado == 'en_curso' and alquiler.puede_ser_cancelado %}
+                                        <div class="btn-group-sm">
+                                            <a href="{% url 'persona:cancelar_mi_alquiler' alquiler.id %}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               title="Cancelar este alquiler">
+                                                <i class="fas fa-ban me-1"></i>Cancelar
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Resumen estadístico -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5>Resumen de Actividad</h5>
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="border-end">
+                                            <h4 class="text-primary">{{ alquileres|length }}</h4>
+                                            <small class="text-muted">Total de Alquileres</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border-end">
+                                            <h4 class="text-success">
+                                                {{ alquileres|dictsort:"estado"|dictsortreversed:"estado"|length }}
+                                            </h4>
+                                            <small class="text-muted">Activos</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border-end">
+                                            <h4 class="text-secondary">
+                                                {% with finalizados=alquileres|dictsort:"estado" %}
+                                                    {{ finalizados|length }}
+                                                {% endwith %}
+                                            </h4>
+                                            <small class="text-muted">Finalizados</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h4 class="text-danger">
+                                            {% with cancelados=alquileres|dictsort:"estado" %}0{% endwith %}
+                                        </h4>
+                                        <small class="text-muted">Cancelados</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        No tienes alquileres registrados.
-        <a href="{% url 'catalogo_maquinas' %}" class="alert-link">Ver catálogo de máquinas</a>
-    </div>
-    {% endif %}
 </div>
+
+<script>
+function copiarCodigo(codigo) {
+    navigator.clipboard.writeText(codigo).then(function() {
+        // Mostrar notificación temporal
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed top-0 end-0 m-3 alert alert-success';
+        toast.innerHTML = '<i class="fas fa-check me-2"></i>Código copiado al portapapeles';
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
+    });
+}
+</script>
 {% endblock %} 

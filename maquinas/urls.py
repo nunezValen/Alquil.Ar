@@ -23,4 +23,5 @@ urlpatterns = [
     path('editar_unidad/<int:pk>/', views.editar_unidad, name='editar_unidad'),
     path('unidad/<int:pk>/toggle_visibilidad/', views.toggle_visibilidad_unidad, name='toggle_visibilidad_unidad'),
     path('unidad/<int:pk>/toggle_mantenimiento/', views.toggle_mantenimiento_unidad, name='toggle_mantenimiento_unidad'),
+    path('cancelar-alquiler/<int:alquiler_id>/', views.cancelar_alquiler, name='cancelar_alquiler'),
 ] 

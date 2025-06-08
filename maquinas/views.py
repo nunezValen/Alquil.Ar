@@ -207,6 +207,41 @@ def toggle_mantenimiento_unidad(request, pk):
     return redirect('maquinas:lista_unidades')
 
 @login_required
+@user_passes_test(es_empleado_o_admin)
+def cancelar_alquiler(request, alquiler_id):
+    """
+    Vista para cancelar un alquiler (solo empleados/admins)
+    """
+    alquiler = get_object_or_404(Alquiler, id=alquiler_id)
+    
+    if request.method == 'POST':
+        try:
+            if not alquiler.puede_ser_cancelado():
+                messages.error(request, f'El alquiler {alquiler.numero} no puede ser cancelado (estado: {alquiler.get_estado_display()})')
+                return redirect('persona:lista_alquileres')
+            
+            observaciones = request.POST.get('observaciones', '')
+            porcentaje, monto = alquiler.cancelar(empleado=request.user, observaciones=observaciones)
+            
+            messages.success(request, 
+                f'Alquiler {alquiler.numero} cancelado exitosamente. '
+                f'Reembolso: {porcentaje}% (${monto:.2f})')
+            
+        except Exception as e:
+            messages.error(request, f'Error al cancelar el alquiler: {str(e)}')
+        
+        return redirect('persona:lista_alquileres')
+    
+    # Calcular reembolso para mostrar en el template
+    porcentaje, monto = alquiler.calcular_reembolso(es_empleado=True)
+    
+    return render(request, 'maquinas/cancelar_alquiler.html', {
+        'alquiler': alquiler,
+        'porcentaje_reembolso': porcentaje,
+        'monto_reembolso': monto
+    })
+
+@login_required
 @user_passes_test(es_admin)
 @csrf_protect
 @ensure_csrf_cookie

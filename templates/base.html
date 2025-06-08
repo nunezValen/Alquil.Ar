@@ -248,6 +248,10 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {% if es_empleado_actuando_como_cliente %}
+                                <li><a class="dropdown-item" href="{% url 'persona:mis_alquileres' %}">
+                                    <i class="fas fa-history me-2"></i>Mis Alquileres
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_logueado' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:switch_back_to_employee' %}">Volver a Cuenta Empleado</a></li>
                             {% elif user.is_staff or user.email in empleados_emails %}
@@ -255,6 +259,10 @@
                                 <li><a class="dropdown-item" href="{% url 'persona:registrar_persona' %}">Registrar Cliente</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:login_as_persona' %}">Actuar como Cliente</a></li>
                             {% else %}
+                                <li><a class="dropdown-item" href="{% url 'persona:mis_alquileres' %}">
+                                    <i class="fas fa-history me-2"></i>Mis Alquileres
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_logueado' %}">Cambiar Contraseña</a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>

@@ -22,11 +22,12 @@
                     <th>Método de Pago</th>
                     <th>Monto</th>
                     <th>Fecha de Creación</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for alquiler in alquileres %}
-                <tr>
+                <tr class="{% if alquiler.estado == 'cancelado' %}cancelado{% elif alquiler.estado == 'reservado' %}reservado{% elif alquiler.estado == 'en_curso' %}en-curso{% endif %}">
                     <td>{{ alquiler.numero }}</td>
                     <td>
                         {% if alquiler.persona %}
@@ -36,23 +37,94 @@
                             <span class="text-muted">Sin asignar</span>
                         {% endif %}
                     </td>
-                    <td>{{ alquiler.maquina.nombre }}</td>
+                    <td>{{ alquiler.maquina_base.nombre }}</td>
                     <td>
                         <strong>Inicio:</strong> {{ alquiler.fecha_inicio|date:"d/m/Y" }}<br>
                         <strong>Fin:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}
                     </td>
                     <td>
-                        <span class="badge {% if alquiler.estado == 'confirmado' %}bg-success
-                                         {% elif alquiler.estado == 'pendiente' %}bg-warning
-                                         {% elif alquiler.estado == 'en_curso' %}bg-info
+                        <span class="badge {% if alquiler.estado == 'reservado' %}bg-warning text-dark
+                                         {% elif alquiler.estado == 'confirmado' %}bg-success
+                                         {% elif alquiler.estado == 'pendiente' %}bg-warning text-dark
+                                         {% elif alquiler.estado == 'en_curso' %}bg-success
                                          {% elif alquiler.estado == 'finalizado' %}bg-secondary
-                                         {% else %}bg-danger{% endif %}">
+                                         {% elif alquiler.estado == 'cancelado' %}bg-danger
+                                         {% else %}bg-secondary{% endif %} fs-6">
                             {{ alquiler.get_estado_display }}
                         </span>
+                        
+                        {% if alquiler.estado == 'cancelado' %}
+                            <div class="mt-1">
+                                {% if alquiler.monto_reembolso %}
+                                    <small class="text-success d-block">
+                                        <i class="fas fa-money-bill-wave"></i> 
+                                        Reembolso: ${{ alquiler.monto_reembolso }} ({{ alquiler.porcentaje_reembolso }}%)
+                                    </small>
+                                {% endif %}
+                                
+                                {% if alquiler.empleado_que_cancelo %}
+                                    <small class="text-info d-block">
+                                        <i class="fas fa-user-tie"></i> 
+                                        Cancelado por: {{ alquiler.empleado_que_cancelo.first_name }} {{ alquiler.empleado_que_cancelo.last_name }}
+                                    </small>
+                                {% else %}
+                                    <small class="text-muted d-block">
+                                        <i class="fas fa-user"></i> 
+                                        Cancelado por cliente
+                                    </small>
+                                {% endif %}
+                                
+                                {% if alquiler.fecha_cancelacion %}
+                                    <small class="text-muted d-block">
+                                        <i class="fas fa-calendar"></i> 
+                                        {{ alquiler.fecha_cancelacion|date:"d/m/Y H:i" }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </td>
                     <td>{{ alquiler.get_metodo_pago_display }}</td>
-                    <td>${{ alquiler.monto_total|default:"0.00" }}</td>
+                    <td>
+                        <strong class="text-success fs-5">${{ alquiler.monto_total|default:"0.00" }}</strong>
+                        {% if alquiler.cantidad_dias %}
+                            <br><small class="text-muted">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</small>
+                        {% endif %}
+                    </td>
                     <td>{{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if alquiler.estado == 'reservado' or alquiler.estado == 'en_curso' %}
+                            <a href="{% url 'maquinas:cancelar_alquiler' alquiler.id %}" 
+                               class="btn btn-sm btn-danger"
+                               title="Cancelar Alquiler"
+                               onclick="return confirm('¿Estás seguro de que deseas cancelar este alquiler?')">
+                                <i class="fas fa-ban me-1"></i>Cancelar
+                            </a>
+                        {% elif alquiler.estado == 'cancelado' %}
+                            <div class="text-center">
+                                <span class="badge bg-danger mb-1">CANCELADO</span>
+                                
+                                {% if alquiler.observaciones_cancelacion %}
+                                    <div class="mt-1">
+                                        <small class="text-muted">
+                                            <strong>Motivo:</strong><br>
+                                            {{ alquiler.observaciones_cancelacion|truncatechars:50 }}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if alquiler.monto_reembolso and alquiler.monto_reembolso > 0 %}
+                                    <div class="alert alert-success p-2 mt-2 reembolso-pendiente">
+                                        <small>
+                                            <strong>💰 Pendiente de Reembolso</strong><br>
+                                            ${{ alquiler.monto_reembolso }}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span class="text-muted small">{{ alquiler.get_estado_display }}</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -72,6 +144,57 @@
 .badge {
     font-size: 0.9em;
     padding: 0.5em 0.7em;
+}
+
+/* Estilos especiales para diferentes estados */
+.table tbody tr.cancelado {
+    background-color: #ffeaea !important;
+    border-left: 4px solid #dc3545;
+}
+
+.table tbody tr.cancelado:hover {
+    background-color: #ffe0e0 !important;
+}
+
+/* Filas de estado reservado */
+.table tbody tr.reservado {
+    background-color: #fff8e1 !important;
+    border-left: 4px solid #ffc107;
+}
+
+.table tbody tr.reservado:hover {
+    background-color: #fff3c4 !important;
+}
+
+/* Filas de estado en curso */
+.table tbody tr.en-curso {
+    background-color: #e8f5e8 !important;
+    border-left: 4px solid #28a745;
+}
+
+.table tbody tr.en-curso:hover {
+    background-color: #d4edda !important;
+}
+
+/* Mejorar el botón de cancelar */
+.btn-danger {
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+}
+
+.reembolso-pendiente {
+    animation: pulse-reembolso 2s infinite;
+}
+
+@keyframes pulse-reembolso {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 </style>
 {% endblock %} 

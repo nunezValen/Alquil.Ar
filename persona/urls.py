@@ -9,8 +9,9 @@ from .views import (
     login_unificado2, logout_view, switch_back_to_employee,
     editar_datos_personales, gestion, estadisticas, inicio,
     lista_alquileres, checkout, recuperar_password, mapa_sucursales,
-    pago_exitoso, pago_fallido, pago_pendiente
+    pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler
 )
+from maquinas.views import cancelar_alquiler
 
 app_name = 'persona'
 
@@ -27,6 +28,8 @@ urlpatterns = [
     path('maquina/<int:maquina_id>/', detalle_maquina, name='detalle_maquina'),
     path('checkout/<int:alquiler_id>/', checkout, name='checkout'),
     path('mis-alquileres/', mis_alquileres, name='mis_alquileres'),
+    path('cancelar-mi-alquiler/<int:alquiler_id>/', cancelar_mi_alquiler, name='cancelar_mi_alquiler'),
+    path('cancelar-alquiler/<int:alquiler_id>/', cancelar_alquiler, name='cancelar_alquiler'),
     path('webhook-mercadopago/', webhook_mercadopago, name='webhook_mercadopago'),
     path('cambiar-password/', cambiar_password, name='cambiar_password'),
     path('cambiar-password-empleado/', cambiar_password_empleado, name='cambiar_password_empleado'),

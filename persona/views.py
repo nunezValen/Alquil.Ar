@@ -303,8 +303,100 @@ def detalle_maquina(request, maquina_id):
 
 @login_required
 def mis_alquileres(request):
-    alquileres = Alquiler.objects.filter(persona__email=request.user.email).order_by('-fecha_creacion')
-    return render(request, 'persona/mis_alquileres.html', {'alquileres': alquileres})
+    """
+    Vista para que los clientes vean su historial de alquileres
+    Solo accesible para clientes (no empleados/admins)
+    """
+    # Verificar que el usuario NO sea empleado ni admin
+    if es_empleado_o_admin(request.user):
+        messages.error(request, 'Esta sección es solo para clientes. Los empleados no pueden alquilar máquinas.')
+        return redirect('persona:gestion')
+    
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+        
+        # Obtener todos los alquileres del cliente, ordenados por fecha de creación
+        alquileres = Alquiler.objects.filter(persona=persona).order_by('-fecha_creacion')
+        
+        # Agregar información adicional para cada alquiler
+        for alquiler in alquileres:
+            # Calcular días restantes si está en curso o reservado
+            if alquiler.estado in ['reservado', 'en_curso'] and alquiler.fecha_inicio:
+                from datetime import date
+                dias_hasta_inicio = (alquiler.fecha_inicio - date.today()).days
+                if dias_hasta_inicio > 0:
+                    alquiler.dias_hasta_inicio = dias_hasta_inicio
+                elif alquiler.fecha_fin:
+                    dias_hasta_fin = (alquiler.fecha_fin - date.today()).days
+                    if dias_hasta_fin >= 0:
+                        alquiler.dias_hasta_fin = dias_hasta_fin
+            
+            # Calcular reembolso potencial si puede cancelar
+            if alquiler.puede_ser_cancelado():
+                porcentaje, monto = alquiler.calcular_reembolso(es_empleado=False)
+                alquiler.porcentaje_reembolso_cliente = porcentaje
+                alquiler.monto_reembolso_cliente = monto
+        
+        return render(request, 'persona/mis_alquileres.html', {
+            'alquileres': alquileres,
+            'persona': persona
+        })
+        
+    except Persona.DoesNotExist:
+        messages.error(request, 'No se encontró tu perfil de cliente.')
+        return redirect('persona:inicio')
+
+@login_required 
+def cancelar_mi_alquiler(request, alquiler_id):
+    """
+    Vista para que los clientes cancelen sus propios alquileres
+    """
+    # Verificar que el usuario NO sea empleado ni admin
+    if es_empleado_o_admin(request.user):
+        messages.error(request, 'Los empleados no pueden usar esta función. Usa la gestión de alquileres.')
+        return redirect('persona:gestion')
+    
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+        alquiler = get_object_or_404(Alquiler, id=alquiler_id, persona=persona)
+        
+        if request.method == 'POST':
+            try:
+                if not alquiler.puede_ser_cancelado():
+                    messages.error(request, f'El alquiler {alquiler.numero} no puede ser cancelado (estado: {alquiler.get_estado_display()})')
+                    return redirect('persona:mis_alquileres')
+                
+                observaciones = request.POST.get('observaciones', 'Cancelado por el cliente')
+                porcentaje, monto = alquiler.cancelar(empleado=None, observaciones=observaciones)
+                
+                if porcentaje > 0:
+                    messages.success(request, 
+                        f'Alquiler {alquiler.numero} cancelado exitosamente. '
+                        f'Tienes derecho a un reembolso del {porcentaje}% (${monto:.2f}). '
+                        f'Acércate a la tienda el próximo mes para cobrarlo.')
+                else:
+                    messages.success(request, 
+                        f'Alquiler {alquiler.numero} cancelado exitosamente. '
+                        f'No corresponde reembolso según la política de cancelación.')
+                
+            except Exception as e:
+                messages.error(request, f'Error al cancelar el alquiler: {str(e)}')
+            
+            return redirect('persona:mis_alquileres')
+        
+        # Calcular reembolso para mostrar en el template
+        porcentaje, monto = alquiler.calcular_reembolso(es_empleado=False)
+        
+        return render(request, 'persona/cancelar_mi_alquiler.html', {
+            'alquiler': alquiler,
+            'porcentaje_reembolso': porcentaje,
+            'monto_reembolso': monto,
+            'persona': persona
+        })
+        
+    except Persona.DoesNotExist:
+        messages.error(request, 'No se encontró tu perfil de cliente.')
+        return redirect('persona:inicio')
 
 def lista_maquinas(request):
     search_query = request.GET.get('q', '')

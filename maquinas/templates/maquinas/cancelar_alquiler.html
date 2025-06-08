@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cancelar Alquiler - ALQUIL.AR{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Cancelar Alquiler #{{ alquiler.numero }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Información del alquiler -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Información del Alquiler</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Cliente:</strong></td>
+                                    <td>{{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Máquina:</strong></td>
+                                    <td>{{ alquiler.maquina_base.nombre }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fechas:</strong></td>
+                                    <td>{{ alquiler.fecha_inicio|date:"d/m/Y" }} - {{ alquiler.fecha_fin|date:"d/m/Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Estado:</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">{{ alquiler.get_estado_display }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Monto Total:</strong></td>
+                                    <td><strong>${{ alquiler.monto_total }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Información de Reembolso</h5>
+                            <div class="alert alert-success">
+                                <h6><i class="fas fa-money-bill-wave me-2"></i>Reembolso por Cancelación de Empleado</h6>
+                                <p class="mb-2">
+                                    <strong>Porcentaje:</strong> 
+                                    <span class="badge bg-success fs-6">{{ porcentaje_reembolso }}%</span>
+                                </p>
+                                <p class="mb-0">
+                                    <strong>Monto a Reembolsar:</strong> 
+                                    <span class="text-success fw-bold fs-5">${{ monto_reembolso }}</span>
+                                </p>
+                            </div>
+                            <div class="alert alert-info">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>Nota:</strong> Como empleado, la cancelación otorga reembolso completo (100%) 
+                                    independientemente de la política de cancelación de la máquina.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de cancelación -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Motivo de Cancelación</label>
+                            <textarea class="form-control" id="observaciones" name="observaciones" rows="3" 
+                                      placeholder="Describe el motivo de la cancelación (opcional)"></textarea>
+                            <div class="form-text">
+                                Este comentario será visible en el historial del alquiler.
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Confirmación</h6>
+                            <p class="mb-0">
+                                ¿Estás seguro de que deseas cancelar este alquiler? 
+                                Esta acción no se puede deshacer.
+                            </p>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-ban me-2"></i>
+                                Cancelar Alquiler
+                            </button>
+                            <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Volver a Lista
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

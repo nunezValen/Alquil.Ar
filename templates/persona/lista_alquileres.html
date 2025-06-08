@@ -76,6 +76,31 @@
         border-radius: 4px;
         border: 1px solid #dee2e6;
     }
+    
+    /* Estilos para filas según estado */
+    .row-reservado {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+    
+    .row-en_curso {
+        background-color: #d1edff !important;
+        border-left: 4px solid #0dcaf0;
+    }
+    
+    .row-finalizado {
+        background-color: #d4edda !important;
+        border-left: 4px solid #28a745;
+    }
+    
+    .row-cancelado {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .table-striped tbody tr:nth-of-type(odd) td {
+        background-color: transparent;
+    }
 </style>
 {% endblock %}
 
@@ -223,7 +248,7 @@
                     </thead>
                     <tbody>
                         {% for alquiler in alquileres %}
-                        <tr>
+                        <tr class="row-{{ alquiler.estado }}">
                             <td>
                                 <strong>{{ alquiler.numero }}</strong>
                                 <br>
@@ -268,11 +293,30 @@
                                 <span class="badge badge-estado badge-{{ alquiler.estado }}">
                                     {{ alquiler.get_estado_display }}
                                 </span>
+                                {% if alquiler.estado == 'cancelado' %}
+                                    <br>
+                                    <small class="text-muted">
+                                        {% if alquiler.cancelado_por_empleado %}
+                                            <i class="fas fa-user-tie"></i> Empleado
+                                            {% if alquiler.empleado_que_cancelo %}
+                                                ({{ alquiler.empleado_que_cancelo.get_full_name }})
+                                            {% endif %}
+                                        {% else %}
+                                            <i class="fas fa-user"></i> Cliente
+                                        {% endif %}
+                                    </small>
+                                {% endif %}
                             </td>
                             <td>
                                 <strong>${{ alquiler.monto_total|floatformat:2 }}</strong>
                                 <br>
                                 <small class="text-muted">{{ alquiler.get_metodo_pago_display }}</small>
+                                {% if alquiler.estado == 'cancelado' %}
+                                    <br>
+                                    <strong class="text-info">Reembolso: ${{ alquiler.monto_reembolso|floatformat:2 }}</strong>
+                                    <br>
+                                    <small class="text-success">{{ alquiler.porcentaje_reembolso }}% del total</small>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if alquiler.codigo_retiro %}
@@ -291,24 +335,23 @@
                                     </button>
                                     {% if alquiler.estado == 'reservado' %}
                                         <button type="button" class="btn btn-sm btn-outline-success" 
-                                                onclick="cambiarEstado({{ alquiler.id }}, 'en_curso')"
-                                                title="Iniciar alquiler">
+                                                title="Iniciar alquiler (En desarrollo)">
                                             <i class="fas fa-play"></i>
                                         </button>
                                     {% endif %}
                                     {% if alquiler.estado == 'en_curso' %}
                                         <button type="button" class="btn btn-sm btn-outline-warning" 
-                                                onclick="cambiarEstado({{ alquiler.id }}, 'finalizado')"
-                                                title="Finalizar alquiler">
+                                                title="Finalizar alquiler (En desarrollo)">
                                             <i class="fas fa-stop"></i>
                                         </button>
                                     {% endif %}
-                                    {% if alquiler.estado in 'reservado,en_curso' %}
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                onclick="cambiarEstado({{ alquiler.id }}, 'cancelado')"
-                                                title="Cancelar alquiler">
+                                    {% if alquiler.estado == 'reservado' or alquiler.estado == 'en_curso' %}
+                                        <a href="{% url 'persona:cancelar_alquiler' alquiler.id %}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('¿Estás seguro de que quieres cancelar este alquiler? Se calculará el monto de reembolso según las políticas.')"
+                                           title="Cancelar alquiler">
                                             <i class="fas fa-times"></i>
-                                        </button>
+                                        </a>
                                     {% endif %}
                                 </div>
                             </td>
@@ -412,6 +455,35 @@
                         <p><strong>Precio por Día:</strong> ${{ alquiler.maquina_base.precio_por_dia|floatformat:2 }}</p>
                         <p><strong>Monto Total:</strong> <strong>${{ alquiler.monto_total|floatformat:2 }}</strong></p>
                         <p><strong>Método de Pago:</strong> {{ alquiler.get_metodo_pago_display }}</p>
+                        
+                        {% if alquiler.estado == 'cancelado' %}
+                            <hr>
+                            <h6 class="text-danger">Información de Cancelación</h6>
+                            <p><strong>Fecha de Cancelación:</strong> {{ alquiler.fecha_cancelacion|date:"d/m/Y H:i" }}</p>
+                            <p><strong>Cancelado por:</strong> 
+                                {% if alquiler.cancelado_por_empleado %}
+                                    <span class="badge bg-warning">Empleado</span>
+                                    {% if alquiler.empleado_que_cancelo %}
+                                        - {{ alquiler.empleado_que_cancelo.get_full_name }}
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-info">Cliente</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Porcentaje de Reembolso:</strong> {{ alquiler.porcentaje_reembolso }}%</p>
+                            <p><strong>Monto a Reembolsar:</strong> <span class="text-success"><strong>${{ alquiler.monto_reembolso|floatformat:2 }}</strong></span></p>
+                            {% if alquiler.observaciones_cancelacion %}
+                                <p><strong>Motivo:</strong> {{ alquiler.observaciones_cancelacion }}</p>
+                            {% endif %}
+                        {% else %}
+                            <hr>
+                            <h6 class="text-info">Información de Reembolso Potencial</h6>
+                            <p><small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Si se cancela hoy (empleado): <strong>100% - ${{ alquiler.monto_total|floatformat:2 }}</strong><br>
+                                Si cancela el cliente: Depende de la política de la máquina y días de anticipación
+                            </small></p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -424,13 +496,6 @@
 {% endfor %}
 
 <script>
-function cambiarEstado(alquilerId, nuevoEstado) {
-    if (confirm('¿Estás seguro de que quieres cambiar el estado de este alquiler?')) {
-        // Aquí puedes implementar la lógica para cambiar el estado via AJAX
-        console.log('Cambiar estado del alquiler', alquilerId, 'a', nuevoEstado);
-        // Por ahora solo mostramos un mensaje
-        alert('Funcionalidad de cambio de estado en desarrollo');
-    }
-}
+// Eliminar la función cambiarEstado ya que ahora usamos enlaces directos
 </script>
 {% endblock %} 

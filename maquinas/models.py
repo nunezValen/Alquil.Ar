@@ -200,6 +200,21 @@ class Alquiler(models.Model):
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     preference_id = models.CharField(max_length=255, null=True, blank=True)
     
+    # Campos para cancelación y reembolso
+    fecha_cancelacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de Cancelación')
+    cancelado_por_empleado = models.BooleanField(default=False, verbose_name='Cancelado por Empleado')
+    empleado_que_cancelo = models.ForeignKey(
+        'auth.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name='Empleado que Canceló',
+        related_name='alquileres_cancelados'
+    )
+    monto_reembolso = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Monto a Reembolsar')
+    porcentaje_reembolso = models.PositiveIntegerField(null=True, blank=True, verbose_name='Porcentaje de Reembolso')
+    observaciones_cancelacion = models.TextField(blank=True, verbose_name='Observaciones de Cancelación')
+    
     def clean(self):
         super().clean()
         
@@ -296,6 +311,64 @@ class Alquiler(models.Model):
             return True
         return False
 
+    def calcular_reembolso(self, es_empleado=False):
+        """
+        Calcula el porcentaje y monto de reembolso según la política de cancelación
+        """
+        if es_empleado:
+            return 100, self.monto_total
+        
+        if not self.fecha_inicio:
+            return 0, 0
+            
+        from datetime import date
+        dias_anticipacion = (self.fecha_inicio - date.today()).days
+        
+        if dias_anticipacion < 0:
+            # Ya comenzó el alquiler, no hay reembolso
+            return 0, 0
+        elif dias_anticipacion >= self.maquina_base.dias_cancelacion_total:
+            # Reembolso total
+            return 100, self.monto_total
+        elif dias_anticipacion >= self.maquina_base.dias_cancelacion_parcial:
+            # Reembolso parcial
+            porcentaje = self.maquina_base.porcentaje_reembolso_parcial
+            monto = (self.monto_total * porcentaje / 100)
+            return porcentaje, monto
+        else:
+            # Sin reembolso
+            return 0, 0
+    
+    def cancelar(self, empleado=None, observaciones=""):
+        """
+        Cancela el alquiler y calcula el reembolso correspondiente
+        """
+        from django.utils import timezone
+        
+        if self.estado in ['cancelado', 'finalizado']:
+            raise ValueError("No se puede cancelar un alquiler ya cancelado o finalizado")
+        
+        es_empleado = empleado is not None
+        porcentaje, monto = self.calcular_reembolso(es_empleado)
+        
+        self.estado = 'cancelado'
+        self.fecha_cancelacion = timezone.now()
+        self.cancelado_por_empleado = es_empleado
+        self.empleado_que_cancelo = empleado if es_empleado else None
+        self.porcentaje_reembolso = porcentaje
+        self.monto_reembolso = monto
+        self.observaciones_cancelacion = observaciones
+        
+        self.save()
+        
+        return porcentaje, monto
+    
+    def puede_ser_cancelado(self):
+        """
+        Verifica si el alquiler puede ser cancelado
+        """
+        return self.estado in ['reservado', 'en_curso']
+    
     def __str__(self):
         return f"Alquiler {self.numero} - {self.maquina_base.nombre}"
 
