@@ -198,7 +198,15 @@
                     </div>
                     <div class="col-md-2">
                         <label for="cliente" class="form-label">Cliente</label>
-                        <input type="text" name="cliente" id="cliente" class="form-control" placeholder="Nombre, email..." value="{{ filtros.cliente }}">
+                        <div class="position-relative">
+                            <input type="text" name="cliente" id="cliente" class="form-control" 
+                                   placeholder="Buscar por email o DNI..."
+                                   value="{{ filtros.cliente|default:'' }}"
+                                   autocomplete="off">
+                            <div id="cliente-dropdown" class="dropdown-menu w-100" style="display: none; max-height: 300px; overflow-y: auto;">
+                                <!-- Resultados de búsqueda aparecerán aquí -->
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label for="sucursal" class="form-label">Sucursal</label>
@@ -496,6 +504,196 @@
 {% endfor %}
 
 <script>
-// Eliminar la función cambiarEstado ya que ahora usamos enlaces directos
+// Sistema de autocompletado para clientes
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 ALQUILERES (ROOT): Inicializando autocompletado...');
+    
+    const clienteInput = document.getElementById('cliente');
+    const dropdown = document.getElementById('cliente-dropdown');
+    
+    console.log('🔍 ALQUILERES (ROOT): Buscando elementos...');
+    console.log('   Input encontrado:', clienteInput !== null);
+    console.log('   Dropdown encontrado:', dropdown !== null);
+    
+    if (!clienteInput) {
+        console.error('❌ ALQUILERES (ROOT): No se encontró el input del cliente');
+        return;
+    }
+    
+    if (!dropdown) {
+        console.error('❌ ALQUILERES (ROOT): No se encontró el dropdown del cliente');
+        return;
+    }
+    
+    console.log('✅ ALQUILERES (ROOT): Elementos encontrados correctamente');
+    
+    // Eliminar el "None" inicial del valor
+    console.log('🔍 ALQUILERES (ROOT): Valor inicial del campo:', `"${clienteInput.value}"`);
+    if (clienteInput.value === 'None' || clienteInput.value === 'none') {
+        console.log('🧹 ALQUILERES (ROOT): Limpiando valor inicial...');
+        clienteInput.value = '';
+    }
+    
+    // Agregar evento simple para verificar que funciona
+    clienteInput.addEventListener('focus', function() {
+        console.log('🎯 ALQUILERES (ROOT): Input enfocado');
+    });
+    
+    let timeoutId = null;
+    let selectedCliente = null;
+
+    // Evento principal de búsqueda
+    clienteInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        console.log('📝 ALQUILERES (ROOT): Usuario escribió:', query, '(longitud:', query.length, ')');
+        
+        // Limpiar timeout anterior
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        
+        // Si es muy corto, ocultar dropdown
+        if (query.length < 2) {
+            console.log('⚠️ ALQUILERES (ROOT): Búsqueda muy corta, ocultando dropdown');
+            dropdown.style.display = 'none';
+            selectedCliente = null;
+            return;
+        }
+        
+        // Esperar 300ms antes de buscar
+        console.log('⏰ ALQUILERES (ROOT): Esperando 300ms antes de buscar...');
+        timeoutId = setTimeout(() => {
+            buscarClientes(query);
+        }, 300);
+    });
+
+    // Buscar clientes via AJAX
+    function buscarClientes(query) {
+        const url = `{% url 'persona:buscar_clientes_json' %}?q=${encodeURIComponent(query)}`;
+        console.log('🌐 ALQUILERES (ROOT): Realizando búsqueda en:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('📡 ALQUILERES (ROOT): Respuesta recibida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 ALQUILERES (ROOT): Datos recibidos:', data);
+                mostrarResultados(data.clientes);
+            })
+            .catch(error => {
+                console.error('❌ ALQUILERES (ROOT): Error buscando clientes:', error);
+                dropdown.style.display = 'none';
+            });
+    }
+
+    // Mostrar resultados en dropdown
+    function mostrarResultados(clientes) {
+        if (clientes.length === 0) {
+            dropdown.innerHTML = '<div class="dropdown-item text-muted">No se encontraron clientes</div>';
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        const html = clientes.map(cliente => 
+            `<div class="dropdown-item cliente-option" data-cliente='${JSON.stringify(cliente)}' style="cursor: pointer;">
+                <strong>${cliente.nombre_completo}</strong><br>
+                <small class="text-muted">${cliente.email}</small>
+                ${cliente.dni ? `<br><small class="text-info">DNI: ${cliente.dni}</small>` : ''}
+            </div>`
+        ).join('');
+
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+
+        // Agregar eventos click a las opciones
+        dropdown.querySelectorAll('.cliente-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const cliente = JSON.parse(this.dataset.cliente);
+                seleccionarCliente(cliente);
+            });
+        });
+    }
+
+    // Seleccionar un cliente - Solo email o DNI para que funcione el filtro
+    function seleccionarCliente(cliente) {
+        selectedCliente = cliente;
+        // Si la búsqueda original contenía dígitos, es probable que busque por DNI
+        const inputValue = clienteInput.value.trim();
+        const esNumero = /^\d+$/.test(inputValue);
+        
+        if (esNumero && cliente.dni) {
+            clienteInput.value = cliente.dni;  // Usar DNI si la búsqueda era numérica
+        } else {
+            clienteInput.value = cliente.email;  // Usar email por defecto
+        }
+        dropdown.style.display = 'none';
+    }
+
+    // Ocultar dropdown al hacer click fuera
+    document.addEventListener('click', function(e) {
+        if (!clienteInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Navegación con teclado
+    let selectedIndex = -1;
+    
+    clienteInput.addEventListener('keydown', function(e) {
+        const options = dropdown.querySelectorAll('.cliente-option');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+            updateSelection(options);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection(options);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            const cliente = JSON.parse(options[selectedIndex].dataset.cliente);
+            seleccionarCliente(cliente);
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+            selectedIndex = -1;
+        }
+    });
+
+    function updateSelection(options) {
+        options.forEach((option, index) => {
+            option.classList.toggle('active', index === selectedIndex);
+        });
+    }
+});
 </script>
+
+<style>
+/* Estilos para el autocompletado */
+.dropdown-item.active {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+.dropdown-item:hover {
+    background-color: #e9ecef;
+}
+
+#cliente-dropdown {
+    z-index: 1050;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+#cliente-dropdown .dropdown-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+#cliente-dropdown .dropdown-item:last-child {
+    border-bottom: none;
+}
+</style>
 {% endblock %} 

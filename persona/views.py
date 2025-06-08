@@ -337,9 +337,19 @@ def mis_alquileres(request):
                 alquiler.porcentaje_reembolso_cliente = porcentaje
                 alquiler.monto_reembolso_cliente = monto
         
+        # Calcular estadísticas del resumen
+        from django.db.models import Count, Q
+        stats = {
+            'total': alquileres.count(),
+            'activos': alquileres.filter(estado__in=['reservado', 'en_curso']).count(),
+            'finalizados': alquileres.filter(estado='finalizado').count(),
+            'cancelados': alquileres.filter(estado='cancelado').count()
+        }
+        
         return render(request, 'persona/mis_alquileres.html', {
             'alquileres': alquileres,
-            'persona': persona
+            'persona': persona,
+            'stats': stats
         })
         
     except Persona.DoesNotExist:

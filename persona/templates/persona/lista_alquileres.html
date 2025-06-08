@@ -519,16 +519,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🎯 ALQUILERES: Input enfocado');
     });
     
-    clienteInput.addEventListener('input', function() {
-        console.log('📝 ALQUILERES: Input cambiado:', `"${this.value}"`);
-    });
-    
     let timeoutId = null;
     let selectedCliente = null;
 
+    // Evento principal de búsqueda
     clienteInput.addEventListener('input', function() {
         const query = this.value.trim();
-        console.log('📝 Usuario escribió:', query, '(longitud:', query.length, ')');
+        console.log('📝 ALQUILERES: Usuario escribió:', query, '(longitud:', query.length, ')');
         
         // Limpiar timeout anterior
         if (timeoutId) {
@@ -537,14 +534,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Si es muy corto, ocultar dropdown
         if (query.length < 2) {
-            console.log('⚠️ Búsqueda muy corta, ocultando dropdown');
+            console.log('⚠️ ALQUILERES: Búsqueda muy corta, ocultando dropdown');
             dropdown.style.display = 'none';
             selectedCliente = null;
             return;
         }
         
         // Esperar 300ms antes de buscar
-        console.log('⏰ Esperando 300ms antes de buscar...');
+        console.log('⏰ ALQUILERES: Esperando 300ms antes de buscar...');
         timeoutId = setTimeout(() => {
             buscarClientes(query);
         }, 300);
@@ -553,19 +550,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Buscar clientes via AJAX
     function buscarClientes(query) {
         const url = `{% url 'persona:buscar_clientes_json' %}?q=${encodeURIComponent(query)}`;
-        console.log('🌐 Realizando búsqueda en:', url);
+        console.log('🌐 ALQUILERES: Realizando búsqueda en:', url);
         
         fetch(url)
             .then(response => {
-                console.log('📡 Respuesta recibida:', response.status);
+                console.log('📡 ALQUILERES: Respuesta recibida:', response.status);
                 return response.json();
             })
             .then(data => {
-                console.log('📊 Datos recibidos:', data);
+                console.log('📊 ALQUILERES: Datos recibidos:', data);
                 mostrarResultados(data.clientes);
             })
             .catch(error => {
-                console.error('❌ Error buscando clientes:', error);
+                console.error('❌ ALQUILERES: Error buscando clientes:', error);
                 dropdown.style.display = 'none';
             });
     }

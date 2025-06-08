@@ -197,32 +197,24 @@
                                 <div class="row text-center">
                                     <div class="col-md-3">
                                         <div class="border-end">
-                                            <h4 class="text-primary">{{ alquileres|length }}</h4>
+                                            <h4 class="text-primary">{{ stats.total }}</h4>
                                             <small class="text-muted">Total de Alquileres</small>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="border-end">
-                                            <h4 class="text-success">
-                                                {{ alquileres|dictsort:"estado"|dictsortreversed:"estado"|length }}
-                                            </h4>
+                                            <h4 class="text-success">{{ stats.activos }}</h4>
                                             <small class="text-muted">Activos</small>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="border-end">
-                                            <h4 class="text-secondary">
-                                                {% with finalizados=alquileres|dictsort:"estado" %}
-                                                    {{ finalizados|length }}
-                                                {% endwith %}
-                                            </h4>
+                                            <h4 class="text-secondary">{{ stats.finalizados }}</h4>
                                             <small class="text-muted">Finalizados</small>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
-                                        <h4 class="text-danger">
-                                            {% with cancelados=alquileres|dictsort:"estado" %}0{% endwith %}
-                                        </h4>
+                                        <h4 class="text-danger">{{ stats.cancelados }}</h4>
                                         <small class="text-muted">Cancelados</small>
                                     </div>
                                 </div>
