@@ -132,7 +132,7 @@
             <p class="description mb-4">{{ maquina.descripcion_corta }}</p>
             <div class="d-flex gap-3">
                 {% if maquina.tiene_unidades_disponibles %}
-                    <button type="button" class="btn boton-principal" data-bs-toggle="modal" data-bs-target="#alquilerModal">
+                    <button type="button" class="btn boton-principal" id="btn-alquilar">
                         Alquilar
                     </button>
                 {% endif %}
@@ -197,6 +197,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Sección de alertas -->
+                <div id="modal-alerts" class="mb-3" style="display: none;"></div>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="card mb-4">
@@ -295,6 +298,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalCostoSpan = document.getElementById('total-costo');
     const precioPorDia = Number('{{ maquina.precio_por_dia }}');
     const alquilerForm = document.getElementById('alquiler-form');
+    const modalAlerts = document.getElementById('modal-alerts');
+
+    function mostrarAlerta(mensaje, tipo = 'danger') {
+        modalAlerts.innerHTML = `
+            <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        modalAlerts.style.display = 'block';
+        modalAlerts.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function ocultarAlertas() {
+        modalAlerts.style.display = 'none';
+        modalAlerts.innerHTML = '';
+    }
 
     function actualizarCosto() {
         const dias = parseInt(diasInput.value);
@@ -306,10 +326,18 @@ document.addEventListener('DOMContentLoaded', function() {
     diasInput.addEventListener('change', actualizarCosto);
     actualizarCosto();
 
+    // Instancia del modal para manejo consistente
+    const alquilerModal = new bootstrap.Modal(document.getElementById('alquilerModal'));
+    
     // Verificar al abrir el modal si el usuario puede alquilar
-    const btnAlquilar = document.querySelector('button[data-bs-target="#alquilerModal"]');
+    const btnAlquilar = document.getElementById('btn-alquilar');
     if (btnAlquilar) {
         btnAlquilar.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Limpiar alertas previas
+            ocultarAlertas();
+            
             // Verificar estado del usuario antes de abrir el modal
             fetch(`{% url 'maquinas:alquilar_maquina' maquina.id %}`, {
                 method: 'GET',
@@ -320,20 +348,41 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.tiene_alquiler_activo) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    alert('Ya tienes un alquiler activo. Solo puedes tener un alquiler a la vez.');
-                    return false;
+                    // Mostrar modal con alerta
+                    alquilerModal.show();
+                    
+                    setTimeout(() => {
+                        mostrarAlerta(
+                            '<i class="fas fa-exclamation-triangle me-2"></i>' +
+                            '<strong>No puedes alquilar en este momento</strong><br>' +
+                            'Ya tienes un alquiler activo. Solo puedes tener un alquiler a la vez. ' +
+                            'Debes finalizar o cancelar tu alquiler actual antes de realizar uno nuevo.',
+                            'warning'
+                        );
+                    }, 300);
+                } else {
+                    // Usuario puede alquilar, mostrar modal normalmente
+                    alquilerModal.show();
                 }
             })
             .catch(error => {
                 console.error('Error al verificar estado:', error);
+                // En caso de error, mostrar el modal normalmente
+                alquilerModal.show();
             });
         });
     }
+    
+    // Asegurar que las alertas se limpien cuando el modal se cierre
+    document.getElementById('alquilerModal').addEventListener('hidden.bs.modal', function () {
+        ocultarAlertas();
+    });
 
     alquilerForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Limpiar alertas previas
+        ocultarAlertas();
         
         // Mostrar spinner de carga
         const submitBtn = this.querySelector('button[type="submit"]');
@@ -354,7 +403,20 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                alert(data.error);
+                let icono = '<i class="fas fa-exclamation-circle me-2"></i>';
+                let tipo = 'danger';
+                
+                // Personalizar según el tipo de error
+                if (data.error.includes('ya tienes un alquiler activo')) {
+                    icono = '<i class="fas fa-exclamation-triangle me-2"></i>';
+                    tipo = 'warning';
+                } else if (data.error.includes('no hay unidades disponibles')) {
+                    icono = '<i class="fas fa-calendar-times me-2"></i>';
+                    tipo = 'info';
+                }
+                
+                mostrarAlerta(icono + '<strong>Error:</strong> ' + data.error, tipo);
+                
                 // Restaurar botón
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
@@ -364,7 +426,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al procesar el pago. Por favor, intente nuevamente.');
+            mostrarAlerta(
+                '<i class="fas fa-times-circle me-2"></i>' +
+                '<strong>Error de conexión:</strong> No se pudo procesar el pago. Por favor, intente nuevamente.',
+                'danger'
+            );
             // Restaurar botón
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
