@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from persona.views import es_empleado_o_admin
 from .forms import MaquinaBaseForm, AlquilerForm
@@ -15,6 +15,7 @@ from datetime import datetime, date, timedelta
 from django.urls import reverse
 from persona.models import Persona
 from django.db.models import Q
+from django.core.mail import send_mail
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -73,60 +74,12 @@ def detalle_maquina(request, maquina_id):
                         fecha_inicio=fecha_inicio,
                         fecha_fin=fecha_fin,
                         metodo_pago=metodo_pago,
-                        estado='pendiente'
+                        estado='Reservado'
                     )
                     
-                    # Procesar el pago según el método seleccionado
-                    if metodo_pago == 'mercadopago':
-                        # Inicializar SDK de Mercado Pago
-                        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
-                        
-                        # Configurar preferencia de pago
-                        base_url = request.build_absolute_uri('/').rstrip('/')
-                        preference_data = {
-                            "items": [{
-                                "title": f"Alquiler de {maquina.nombre}",
-                                "quantity": 1,
-                                "currency_id": "ARS",
-                                "unit_price": float(maquina.precio_por_dia * dias)
-                            }],
-                            "back_urls": {
-                                "success": f"{base_url}/maquinas/checkout/{alquiler.id}/",
-                                "failure": f"{base_url}/maquinas/maquina/{maquina.id}/",
-                                "pending": f"{base_url}/maquinas/checkout/{alquiler.id}/"
-                            },
-                            "external_reference": str(alquiler.id),
-                            "notification_url": f"{base_url}/maquinas/webhook/mercadopago/",
-                            "payer": {
-                                "email": request.user.email
-                            },
-                            "payment_methods": {
-                                "excluded_payment_types": [
-                                    {"id": "ticket"}
-                                ],
-                                "installments": 1
-                            }
-                        }
-                        
-                        # Crear preferencia
-                        preference_response = sdk.preference().create(preference_data)
-                        
-                        if preference_response["status"] == 201:
-                            preference = preference_response["response"]
-                            
-                            # Guardar el ID de preferencia
-                            alquiler.preference_id = preference["id"]
-                            alquiler.save()
-                            
-                            # Redirigir al checkout de Mercado Pago
-                            return redirect(preference["init_point"])
-                        else:
-                            error_msg = f"Error al crear preferencia: {preference_response.get('message', 'Error desconocido')}"
-                            raise Exception(error_msg)
-                        
-                    elif metodo_pago == 'binance':
-                        # Implementar lógica de Binance Pay
-                        pass
+                    # Esta función detalle_maquina no se usa para procesar pagos
+                    # El procesamiento de pagos se hace en alquilar_maquina
+                    pass
                         
                 except Exception as e:
                     if alquiler:
@@ -312,65 +265,150 @@ def catalogo_publico(request):
         'query': query
     })
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["GET", "POST"])
+@csrf_exempt
+@require_http_methods(["POST"])
 def webhook_mercadopago(request):
     if request.method == 'POST':
         try:
+            print("=== WEBHOOK MERCADO PAGO RECIBIDO ===")
             # Obtener los datos del webhook
             data = json.loads(request.body)
+            print(f"Datos del webhook: {data}")
             
             # Verificar el tipo de notificación
             if data.get('type') == 'payment':
                 payment_id = data.get('data', {}).get('id')
+                print(f"Payment ID: {payment_id}")
                 
                 # Inicializar el SDK de MercadoPago
                 sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
                 
                 # Obtener información del pago
                 payment_info = sdk.payment().get(payment_id)
+                print(f"Payment info: {payment_info}")
                 
                 if payment_info['status'] == 200:
                     payment_data = payment_info['response']
                     external_reference = payment_data.get('external_reference')
                     status = payment_data.get('status')
+                    print(f"External reference: {external_reference}, Status: {status}")
                     
-                    # Buscar el alquiler correspondiente
-                    try:
-                        alquiler = Alquiler.objects.get(id=external_reference)
-                        
-                        # Actualizar el estado del alquiler según el estado del pago
+                    # El external_reference ahora tiene formato: "maquina_id|persona_id|fecha_inicio|fecha_fin|metodo_pago|total"
+                    if '|' in str(external_reference):
+                        # Nuevo formato - crear alquiler cuando el pago es aprobado
                         if status == 'approved':
-                            alquiler.estado = 'confirmado'
-                            messages.success(request, 'Pago aprobado exitosamente')
-                        elif status == 'rejected':
-                            alquiler.estado = 'rechazado'
-                            messages.error(request, 'El pago fue rechazado')
-                        elif status == 'pending':
-                            alquiler.estado = 'pendiente'
-                            messages.warning(request, 'El pago está pendiente')
-                        
-                        alquiler.save()
-                        
-                    except Alquiler.DoesNotExist:
-                        return HttpResponse(status=404)
+                            try:
+                                parts = str(external_reference).split('|')
+                                maquina_id, persona_id, fecha_inicio_str, fecha_fin_str, metodo_pago, total = parts
+                                
+                                # Convertir fechas
+                                fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                                fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+                                
+                                # Obtener objetos
+                                maquina = MaquinaBase.objects.get(id=maquina_id)
+                                persona = Persona.objects.get(id=persona_id)
+                                
+                                # Buscar una unidad disponible
+                                unidad = Unidad.objects.filter(
+                                    maquina_base=maquina,
+                                    estado='disponible',
+                                    visible=True
+                                ).first()
+                                
+                                if unidad:
+                                    # Crear el alquiler
+                                    alquiler = Alquiler.objects.create(
+                                        maquina_base=maquina,
+                                        unidad=unidad,
+                                        persona=persona,
+                                        fecha_inicio=fecha_inicio,
+                                        fecha_fin=fecha_fin,
+                                        metodo_pago=metodo_pago,
+                                        estado='confirmado',
+                                        monto_total=total
+                                    )
+                                    
+                                    # Marcar la unidad como alquilada
+                                    unidad.estado = 'alquilada'
+                                    unidad.save()
+                                    
+                                    print(f"Alquiler creado: {alquiler.numero}")
+                                    
+                                    # Enviar mail al cliente
+                                    try:
+                                        send_mail(
+                                            'Alquiler confirmado - ALQUIL.AR',
+                                            f'Alquiler confirmado, gracias por alquilar con ALQUIL.AR.\n'
+                                            f'Aquí te dejamos tu número de retiro: {alquiler.numero}',
+                                            settings.DEFAULT_FROM_EMAIL,
+                                            [persona.email],
+                                            fail_silently=False,
+                                        )
+                                        print(f"Email enviado exitosamente a: {persona.email}")
+                                    except Exception as e:
+                                        print(f"Error al enviar email: {str(e)}")
+                                else:
+                                    print("No hay unidades disponibles")
+                                    
+                            except Exception as e:
+                                print(f"Error procesando pago aprobado: {str(e)}")
+                    else:
+                        # Formato antiguo - buscar alquiler existente
+                        try:
+                            alquiler = Alquiler.objects.get(id=external_reference)
+                            
+                            # Actualizar el estado del alquiler según el estado del pago
+                            if status == 'approved':
+                                alquiler.estado = 'confirmado'
+                                
+                                # Enviar mail al cliente
+                                try:
+                                    send_mail(
+                                        'Alquiler confirmado - ALQUIL.AR',
+                                        f'Alquiler confirmado, gracias por alquilar con ALQUIL.AR.\n'
+                                        f'Aquí te dejamos tu número de retiro: {alquiler.numero}',
+                                        settings.DEFAULT_FROM_EMAIL,
+                                        [alquiler.persona.email],
+                                        fail_silently=False,
+                                    )
+                                    print(f"Email enviado exitosamente a: {alquiler.persona.email}")
+                                except Exception as e:
+                                    print(f"Error al enviar email: {str(e)}")
+                                    
+                            elif status == 'rejected':
+                                alquiler.estado = 'rechazado'
+                                print("Pago rechazado")
+                            elif status == 'pending':
+                                alquiler.estado = 'pendiente'
+                                print("Pago pendiente")
+                            
+                            alquiler.save()
+                            
+                        except Alquiler.DoesNotExist:
+                            print(f"Alquiler no encontrado con ID: {external_reference}")
+                            return HttpResponse(status=404)
                     
                     return HttpResponse(status=200)
                 else:
+                    print(f"Error en payment info: {payment_info}")
                     return HttpResponse(status=400)
             else:
+                print(f"Tipo de notificación no manejado: {data.get('type')}")
                 return HttpResponse(status=200)
                 
         except Exception as e:
+            print(f"Error en webhook: {str(e)}")
             return HttpResponse(status=500)
     
     return HttpResponse(status=405)  # Method Not Allowed
 
 @login_required
 def alquilar_maquina(request, maquina_id):
+    print(f"=== FUNCIÓN ALQUILAR_MAQUINA EJECUTADA ===")
+    print(f"Maquina ID: {maquina_id}")
+    print(f"Método: {request.method}")
+    print(f"Usuario: {request.user.email}")
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
     
     if request.method == 'POST':
@@ -403,39 +441,60 @@ def alquilar_maquina(request, maquina_id):
                     'error': 'No se encontró tu perfil de persona. Por favor, regístrate primero.'
                 }, status=400)
             
+            # Verificar que el cliente no tenga otro alquiler activo
+            alquileres_activos = Alquiler.objects.filter(
+                persona=persona,
+                estado__in=['reservado', 'en_curso']
+            )
+            
+            if alquileres_activos.exists():
+                return JsonResponse({
+                    'error': 'Ya tienes un alquiler activo. Solo puedes tener un alquiler a la vez.'
+                }, status=400)
+            
+            # Verificar disponibilidad
+            if not Alquiler.verificar_disponibilidad(maquina, fecha_inicio, fecha_fin):
+                return JsonResponse({
+                    'error': 'No hay unidades disponibles para las fechas seleccionadas.'
+                }, status=400)
+            
             # Calcular total
             total = dias * maquina.precio_por_dia
             
-            # Crear el alquiler
-            alquiler = Alquiler.objects.create(
-                maquina_base=maquina,
-                persona=persona,
-                fecha_inicio=fecha_inicio,
-                fecha_fin=fecha_fin,
-                metodo_pago=metodo_pago,
-                estado='pendiente',
-                monto_total=total
-            )
-            
-            # Procesar el pago con Mercado Pago
+            # Procesar el pago con Mercado Pago SIN crear el alquiler aún
             sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
             
             # Configurar preferencia de pago
             base_url = request.build_absolute_uri('/').rstrip('/')
+            
+            # Forzar HTTPS para ngrok
+            if 'ngrok-free.app' in base_url:
+                base_url = base_url.replace('http://', 'https://')
+            
+            # Preparar external_reference con los datos del alquiler
+            # Formato: "maquina_id|persona_id|fecha_inicio|fecha_fin|metodo_pago|total"
+            external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
+            
+            webhook_url = f"{base_url}/maquinas/webhook-mercadopago/"
+            print(f"=== CONFIGURANDO PREFERENCIA ===")
+            print(f"Base URL: {base_url}")
+            print(f"Webhook URL: {webhook_url}")
+            print(f"External reference: {external_reference}")
+            
             preference_data = {
                 "items": [{
                     "title": f"Alquiler de {maquina.nombre}",
                     "quantity": 1,
                     "currency_id": "ARS",
-                    "unit_price": float(total + 1)  # +1 para evitar problemas con precio 0
+                    "unit_price": float(total)
                 }],
                 "back_urls": {
-                    "success": f"{base_url}/maquinas/confirmar-alquiler/",
-                    "failure": f"{base_url}/maquinas/error-pago/",
-                    "pending": f"{base_url}/maquinas/pago-pendiente/"
+                    "success": f"{base_url}/persona/pago-exitoso/",
+                    "failure": f"{base_url}/persona/pago-fallido/",
+                    "pending": f"{base_url}/persona/pago-pendiente/"
                 },
-                "external_reference": str(alquiler.id),
-                "notification_url": f"{base_url}/maquinas/webhook-mercadopago/",
+                "external_reference": external_reference,
+                "notification_url": webhook_url,
                 "payer": {
                     "email": request.user.email
                 },
@@ -453,23 +512,20 @@ def alquilar_maquina(request, maquina_id):
             if preference_response["status"] == 201:
                 preference = preference_response["response"]
                 
-                # Guardar el ID de preferencia
-                alquiler.preference_id = preference["id"]
-                alquiler.save()
+                print(f"=== PREFERENCIA CREADA ===")
+                print(f"External reference: {external_reference}")
+                print(f"Preference ID: {preference['id']}")
                 
                 return JsonResponse({
                     'init_point': preference["init_point"]
                 })
             else:
                 error_msg = f"Error al crear preferencia: {preference_response.get('message', 'Error desconocido')}"
-                alquiler.delete()  # Eliminar el alquiler si falla la creación de la preferencia
                 return JsonResponse({
                     'error': error_msg
                 }, status=500)
                 
         except Exception as e:
-            if 'alquiler' in locals():
-                alquiler.delete()
             return JsonResponse({
                 'error': f'Error al procesar el pago: {str(e)}'
             }, status=500)

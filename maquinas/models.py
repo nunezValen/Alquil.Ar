@@ -3,6 +3,9 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
+from datetime import date
+import string
+import random
 
 class MaquinaBase(models.Model):
     TIPOS_MAQUINA = [
@@ -169,8 +172,7 @@ def restar_stock_maquina(sender, instance, **kwargs):
 
 class Alquiler(models.Model):
     ESTADOS = [
-        ('pendiente', 'Pendiente de Pago'),
-        ('confirmado', 'Confirmado'),
+        ('reservado', 'Reservado'),
         ('en_curso', 'En Curso'),
         ('finalizado', 'Finalizado'),
         ('cancelado', 'Cancelado'),
@@ -181,18 +183,116 @@ class Alquiler(models.Model):
         ('binance', 'Binance Pay'),
     ]
 
-    numero = models.CharField(max_length=10, unique=True)
+    numero = models.CharField(max_length=10, unique=True, blank=True)
     maquina_base = models.ForeignKey(MaquinaBase, on_delete=models.PROTECT)
     unidad = models.ForeignKey(Unidad, on_delete=models.PROTECT, null=True, blank=True)
     persona = models.ForeignKey('persona.Persona', on_delete=models.PROTECT, related_name='alquileres_maquinas')
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+    cantidad_dias = models.PositiveIntegerField(default=1)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='reservado')
     metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO)
     monto_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    codigo_retiro = models.CharField(max_length=8, unique=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     preference_id = models.CharField(max_length=255, null=True, blank=True)
+    
+    def clean(self):
+        super().clean()
+        
+        # Validar fechas
+        if self.fecha_inicio and self.fecha_fin:
+            if self.fecha_inicio >= self.fecha_fin:
+                raise ValidationError('La fecha de fin debe ser posterior a la fecha de inicio.')
+                
+            # No permitir fechas en el pasado
+            if self.fecha_inicio < date.today():
+                raise ValidationError('La fecha de inicio no puede ser en el pasado.')
+                
+            # Verificar que el cliente no tenga otro alquiler activo
+            if self.persona_id:
+                alquileres_activos = Alquiler.objects.filter(
+                    persona=self.persona,
+                    estado__in=['reservado', 'en_curso']
+                ).exclude(id=self.id)
+                
+                if alquileres_activos.exists():
+                    raise ValidationError('Este cliente ya tiene un alquiler activo.')
+    
+    @staticmethod
+    def verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin, excluir_alquiler_id=None):
+        """
+        Verifica si hay disponibilidad para una máquina en las fechas especificadas
+        """
+        # Obtener alquileres que se superponen con el período solicitado
+        alquileres_superpuestos = Alquiler.objects.filter(
+            maquina_base=maquina_base,
+            estado__in=['reservado', 'en_curso'],
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        )
+        
+        if excluir_alquiler_id:
+            alquileres_superpuestos = alquileres_superpuestos.exclude(id=excluir_alquiler_id)
+        
+        # Contar cuántas unidades están ocupadas en esas fechas
+        unidades_ocupadas = alquileres_superpuestos.count()
+        
+        # Contar unidades disponibles
+        unidades_disponibles = maquina_base.unidades.filter(
+            estado='disponible',
+            visible=True
+        ).count()
+        
+        return unidades_ocupadas < unidades_disponibles
+    
+    @staticmethod
+    def obtener_unidades_disponibles(maquina_base, fecha_inicio, fecha_fin):
+        """
+        Obtiene el número de unidades disponibles para una máquina en las fechas especificadas
+        """
+        # Obtener alquileres que se superponen
+        alquileres_superpuestos = Alquiler.objects.filter(
+            maquina_base=maquina_base,
+            estado__in=['reservado', 'en_curso'],
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        )
+        
+        unidades_ocupadas = alquileres_superpuestos.count()
+        unidades_totales = maquina_base.unidades.filter(
+            estado='disponible',
+            visible=True
+        ).count()
+        
+        return max(0, unidades_totales - unidades_ocupadas)
+    
+    def asignar_unidad_disponible(self):
+        """
+        Asigna automáticamente una unidad disponible que no esté ocupada en las fechas del alquiler
+        """
+        # Obtener todas las unidades de la máquina base
+        unidades_maquina = self.maquina_base.unidades.filter(
+            estado='disponible',
+            visible=True
+        )
+        
+        # Obtener unidades ya ocupadas en las fechas del alquiler
+        unidades_ocupadas = Alquiler.objects.filter(
+            maquina_base=self.maquina_base,
+            estado__in=['reservado', 'en_curso'],
+            fecha_inicio__lte=self.fecha_fin,
+            fecha_fin__gte=self.fecha_inicio
+        ).exclude(id=self.id).values_list('unidad_id', flat=True)
+        
+        # Buscar la primera unidad disponible
+        unidad_disponible = unidades_maquina.exclude(id__in=unidades_ocupadas).first()
+        
+        if unidad_disponible:
+            self.unidad = unidad_disponible
+            return True
+        return False
 
     def __str__(self):
         return f"Alquiler {self.numero} - {self.maquina_base.nombre}"
@@ -203,19 +303,38 @@ class Alquiler(models.Model):
         ordering = ['-fecha_creacion']
 
     def save(self, *args, **kwargs):
+        # Generar número de alquiler único con formato A-0001
         if not self.numero:
-            # Generar número de alquiler único
             ultimo_alquiler = Alquiler.objects.order_by('-id').first()
             if ultimo_alquiler:
-                ultimo_numero = int(ultimo_alquiler.numero.split('-')[1])
-                self.numero = f"A-{ultimo_numero + 1}"
+                try:
+                    ultimo_numero = int(ultimo_alquiler.numero.split('-')[1])
+                    nuevo_numero = ultimo_numero + 1
+                except (ValueError, IndexError):
+                    nuevo_numero = 1
             else:
-                self.numero = "A-1"
+                nuevo_numero = 1
+            self.numero = f"A-{nuevo_numero:04d}"
         
+        # Generar código de retiro único
+        if not self.codigo_retiro:
+            while True:
+                codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                if not Alquiler.objects.filter(codigo_retiro=codigo).exists():
+                    self.codigo_retiro = codigo
+                    break
+        
+        # Calcular cantidad de días
+        if self.fecha_inicio and self.fecha_fin:
+            self.cantidad_dias = (self.fecha_fin - self.fecha_inicio).days + 1
+            
         # Calcular monto total si no está establecido
-        if not self.monto_total and self.maquina_base and self.fecha_inicio and self.fecha_fin:
-            dias = (self.fecha_fin - self.fecha_inicio).days + 1
-            self.monto_total = self.maquina_base.precio_por_dia * dias
+        if not self.monto_total and self.maquina_base and self.cantidad_dias:
+            self.monto_total = self.maquina_base.precio_por_dia * self.cantidad_dias
+        
+        # Asignar unidad disponible si no tiene una asignada
+        if not self.unidad and self.maquina_base:
+            self.asignar_unidad_disponible()
             
         super().save(*args, **kwargs)
 

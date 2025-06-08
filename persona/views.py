@@ -11,7 +11,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from .models import Persona, Maquina, Alquiler
@@ -25,6 +25,9 @@ import binance
 from pyngrok import ngrok
 import json
 from .utils import generar_password_random
+from django.db.models import Q, Count
+from django.core.paginator import Paginator
+from maquinas.models import Alquiler, MaquinaBase
 
 def es_admin(user):
     """
@@ -43,14 +46,134 @@ def es_empleado_o_admin(user):
         return user.is_superuser
 
 def inicio(request):
+    """Vista de inicio con manejo de retorno de MercadoPago"""
+    
+    # Obtener datos para mostrar en la página
+    empleados_emails = None
+    es_empleado_actuando_como_cliente = False
+    
+    if request.user.is_authenticated:
+        try:
+            persona = Persona.objects.get(email=request.user.email)
+            es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+            
+            if es_empleado_actuando_como_cliente or persona.es_empleado:
+                empleados_emails = Persona.objects.filter(es_empleado=True).values_list('email', flat=True)
+        except Persona.DoesNotExist:
+            pass
+    
+    # Manejar retorno de MercadoPago (fallback si el webhook no funciona)
+    status = request.GET.get('status')
+    external_reference = request.GET.get('external_reference')
+    
+    if status and external_reference and request.user.is_authenticated:
+        print(f"=== PROCESANDO RETORNO DE MERCADOPAGO ===")
+        print(f"Status: {status}")
+        print(f"External reference: {external_reference}")
+        
+        if status == 'approved':
+            try:
+                # Parsear los datos del external_reference
+                # Formato: "maquina_id|persona_id|fecha_inicio|fecha_fin|metodo_pago|total"
+                datos = external_reference.split('|')
+                if len(datos) == 6:
+                    from datetime import datetime
+                    
+                    maquina_id, persona_id, fecha_inicio_str, fecha_fin_str, metodo_pago, total = datos
+                    
+                    # Convertir fechas
+                    fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                    fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+                    
+                    # Obtener objetos
+                    maquina_base = MaquinaBase.objects.get(id=maquina_id)
+                    persona = Persona.objects.get(id=persona_id)
+                    
+                    # Verificar que el usuario actual es el mismo que hizo el pago
+                    persona_actual = Persona.objects.get(email=request.user.email)
+                    if persona.id == persona_actual.id:
+                        
+                        # Verificar que no existe ya un alquiler para estos datos
+                        alquiler_existente = Alquiler.objects.filter(
+                            persona=persona,
+                            maquina_base=maquina_base,
+                            fecha_inicio=fecha_inicio,
+                            fecha_fin=fecha_fin
+                        ).first()
+                        
+                        if not alquiler_existente:
+                            # Verificar disponibilidad nuevamente
+                            if Alquiler.verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin):
+                                # Verificar que el cliente no tenga otro alquiler activo
+                                alquileres_activos = Alquiler.objects.filter(
+                                    persona=persona,
+                                    estado__in=['reservado', 'en_curso']
+                                )
+                                
+                                if not alquileres_activos.exists():
+                                    # Crear el alquiler
+                                    alquiler = Alquiler.objects.create(
+                                        maquina_base=maquina_base,
+                                        persona=persona,
+                                        fecha_inicio=fecha_inicio,
+                                        fecha_fin=fecha_fin,
+                                        metodo_pago=metodo_pago,
+                                        estado='reservado',
+                                        monto_total=float(total),
+                                        preference_id=request.GET.get('preference_id')
+                                    )
+                                    
+                                    print(f"=== ALQUILER CREADO VIA RETORNO ===")
+                                    print(f"ID: {alquiler.id}")
+                                    print(f"Número: {alquiler.numero}")
+                                    print(f"Código de retiro: {alquiler.codigo_retiro}")
+                                    
+                                    # Enviar email al cliente
+                                    try:
+                                        send_mail(
+                                            'Alquiler Confirmado - ALQUIL.AR',
+                                            f'¡Tu alquiler ha sido confirmado!\n\n'
+                                            f'Detalles del alquiler:\n'
+                                            f'• Número de alquiler: {alquiler.numero}\n'
+                                            f'• Código de retiro: {alquiler.codigo_retiro}\n'
+                                            f'• Máquina: {maquina_base.nombre}\n'
+                                            f'• Fecha de inicio: {fecha_inicio.strftime("%d/%m/%Y")}\n'
+                                            f'• Fecha de fin: {fecha_fin.strftime("%d/%m/%Y")}\n'
+                                            f'• Días: {alquiler.cantidad_dias}\n'
+                                            f'• Monto total: ${alquiler.monto_total}\n\n'
+                                            f'Para retirar la máquina, presenta este código: {alquiler.codigo_retiro}\n\n'
+                                            f'Gracias por alquilar con ALQUIL.AR\n'
+                                            f'¡Te esperamos!',
+                                            settings.DEFAULT_FROM_EMAIL,
+                                            [persona.email],
+                                            fail_silently=False,
+                                        )
+                                        print(f"Email enviado exitosamente a: {persona.email}")
+                                        
+                                    except Exception as e:
+                                        print(f"Error al enviar email: {str(e)}")
+                                    
+                                    messages.success(request, f'¡Pago exitoso! Tu número de alquiler es: {alquiler.numero}. Código de retiro: {alquiler.codigo_retiro}')
+                        else:
+                            print(f"Alquiler ya existe: {alquiler_existente.numero}")
+                            messages.success(request, f'Alquiler ya confirmado: {alquiler_existente.numero}')
+            except Exception as e:
+                print(f"Error al procesar retorno de pago: {str(e)}")
+                messages.error(request, 'Hubo un error al procesar el pago.')
+
+    # Obtener máquinas para mostrar en la página de inicio
     maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
     for maquina in maquinas:
-        # Creamos un atributo temporal solo para la vista
-        if len(maquina.descripcion_corta) > 300:
-            maquina.descripcion_vista = maquina.descripcion_corta[:297] + "..."
+        if len(maquina.descripcion_corta) > 100:
+            maquina.descripcion_vista = maquina.descripcion_corta[:100] + "..."
         else:
             maquina.descripcion_vista = maquina.descripcion_corta
-    return render(request, 'persona/inicio.html', {'maquinas': maquinas})
+     
+    return render(request, 'persona/inicio.html', {
+        'maquinas': maquinas,
+        'empleados_emails': empleados_emails,
+        'es_empleado_actuando_como_cliente': es_empleado_actuando_como_cliente
+    })
 
 @login_required
 def catalogo_maquinas(request):
@@ -618,74 +741,123 @@ def logout_view(request):
 def editar_datos_personales(request):
     return redirect('persona:inicio')
 
-@login_required
+@csrf_exempt
 def webhook_mercadopago(request):
     if request.method == 'POST':
         try:
-            # Obtener los datos del webhook
             data = json.loads(request.body)
-            print(f"Webhook recibido: {data}")
+            print(f"=== WEBHOOK MERCADOPAGO RECIBIDO ===")
+            print(f"Data: {data}")
             
-            # Verificar el tipo de notificación
-            if data.get('type') == 'payment':
-                payment_id = data.get('data', {}).get('id')
-                print(f"Payment ID: {payment_id}")
+            # Obtener el ID del pago
+            if data.get('type') == 'payment' and data.get('data', {}).get('id'):
+                payment_id = data['data']['id']
                 
-                # Inicializar el SDK de MercadoPago
+                # Configurar SDK
                 sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
                 
                 # Obtener información del pago
                 payment_info = sdk.payment().get(payment_id)
-                print(f"Payment info: {payment_info}")
                 
                 if payment_info['status'] == 200:
-                    payment_data = payment_info['response']
-                    external_reference = payment_data.get('external_reference')
-                    status = payment_data.get('status')
+                    payment = payment_info['response']
+                    status = payment.get('status')
+                    external_reference = payment.get('external_reference')
                     
-                    print(f"External reference: {external_reference}")
+                    print(f"Payment ID: {payment_id}")
                     print(f"Status: {status}")
+                    print(f"External Reference: {external_reference}")
                     
-                    # Buscar el alquiler correspondiente
-                    try:
-                        alquiler = Alquiler.objects.get(id=external_reference)
-                        
-                        # Actualizar el estado del alquiler según el estado del pago
-                        if status == 'approved':
-                            alquiler.estado = 'confirmado'
-                            # Actualizar el estado de la máquina a 'alquilada'
-                            maquina = alquiler.maquina
-                            maquina.estado = 'alquilada'
-                            maquina.save()
-                            print(f"Máquina actualizada: {maquina.id} - Estado: {maquina.estado}")
-                            messages.success(request, 'Pago aprobado exitosamente')
-                        elif status == 'rejected':
-                            alquiler.estado = 'cancelado'
-                            messages.error(request, 'El pago fue rechazado')
-                        elif status == 'pending':
-                            alquiler.estado = 'pendiente'
-                            messages.warning(request, 'El pago está pendiente')
-                        
-                        alquiler.save()
-                        print(f"Alquiler actualizado: {alquiler.id} - Estado: {alquiler.estado}")
-                        
-                    except Alquiler.DoesNotExist:
-                        print(f"Alquiler no encontrado: {external_reference}")
-                        return HttpResponse(status=404)
-                    
-                    return HttpResponse(status=200)
-                else:
-                    print(f"Error al obtener información del pago: {payment_info}")
-                    return HttpResponse(status=400)
-            else:
-                print(f"Tipo de notificación no manejado: {data.get('type')}")
-                return HttpResponse(status=200)
-                
+                    if status == 'approved' and external_reference:
+                        # Parsear external_reference
+                        # Formato: "maquina_id|persona_id|fecha_inicio|fecha_fin|metodo_pago|total"
+                        try:
+                            datos = external_reference.split('|')
+                            if len(datos) == 6:
+                                from datetime import datetime
+                                
+                                maquina_id, persona_id, fecha_inicio_str, fecha_fin_str, metodo_pago, total = datos
+                                
+                                # Convertir fechas
+                                fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                                fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+                                
+                                # Obtener objetos
+                                maquina_base = MaquinaBase.objects.get(id=maquina_id)
+                                persona = Persona.objects.get(id=persona_id)
+                                
+                                # Verificar que no existe ya un alquiler para estos datos
+                                alquiler_existente = Alquiler.objects.filter(
+                                    persona=persona,
+                                    maquina_base=maquina_base,
+                                    fecha_inicio=fecha_inicio,
+                                    fecha_fin=fecha_fin
+                                ).first()
+                                
+                                if not alquiler_existente:
+                                    # Verificar disponibilidad nuevamente
+                                    if Alquiler.verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin):
+                                        # Verificar que el cliente no tenga otro alquiler activo
+                                        alquileres_activos = Alquiler.objects.filter(
+                                            persona=persona,
+                                            estado__in=['reservado', 'en_curso']
+                                        )
+                                        
+                                        if not alquileres_activos.exists():
+                                            # Crear el alquiler
+                                            alquiler = Alquiler.objects.create(
+                                                maquina_base=maquina_base,
+                                                persona=persona,
+                                                fecha_inicio=fecha_inicio,
+                                                fecha_fin=fecha_fin,
+                                                metodo_pago=metodo_pago,
+                                                estado='reservado',
+                                                monto_total=float(total),
+                                                preference_id=payment.get('order', {}).get('id')
+                                            )
+                                            
+                                            print(f"Alquiler creado: {alquiler.numero}")
+                                            
+                                            # Enviar mail al cliente
+                                            try:
+                                                send_mail(
+                                                    'Alquiler confirmado - ALQUIL.AR',
+                                                    f'Alquiler confirmado, gracias por alquilar con ALQUIL.AR.\n'
+                                                    f'Aquí te dejamos tu número de retiro: {alquiler.numero}',
+                                                    settings.DEFAULT_FROM_EMAIL,
+                                                    [persona.email],
+                                                    fail_silently=False,
+                                                )
+                                                print(f"Email enviado exitosamente a: {persona.email}")
+                                            except Exception as e:
+                                                print(f"Error al enviar email: {str(e)}")
+                                            
+                                            print(f"=== ALQUILER CREADO VIA WEBHOOK ===")
+                                            print(f"ID: {alquiler.id}")
+                                            print(f"Número: {alquiler.numero}")
+                                            
+                                            # Actualizar estado de la máquina si es necesaria
+                                            if alquiler.unidad:
+                                                maquina = Maquina.objects.filter(
+                                                    patente=alquiler.unidad.patente
+                                                ).first()
+                                                if maquina:
+                                                    maquina.estado = 'alquilada'
+                                                    maquina.save()
+                                                    print(f"Máquina actualizada: {maquina.id} - Estado: {maquina.estado}")
+                                else:
+                                    print(f"Alquiler ya existe: {alquiler_existente.numero}")
+                                    
+                        except Exception as e:
+                            print(f"Error al procesar webhook: {str(e)}")
+                            
+            return HttpResponse(status=200)
+            
         except Exception as e:
             print(f"Error en webhook: {str(e)}")
             return HttpResponse(status=500)
-    
-    return HttpResponse(status=405)  # Method Not Allowed
+            
+    return HttpResponse(status=405)
 
 @login_required
 def checkout(request, alquiler_id):
@@ -719,11 +891,148 @@ def checkout(request, alquiler_id):
     
     return redirect('persona:mis_alquileres')
 
-@login_required
 @user_passes_test(es_empleado_o_admin)
 def lista_alquileres(request):
-    alquileres = Alquiler.objects.all().order_by('-fecha_creacion')
-    return render(request, 'persona/lista_alquileres.html', {'alquileres': alquileres})
+    """Vista completa de gestión de alquileres para empleados y admins"""
+    # Obtener todos los alquileres inicialmente
+    alquileres = Alquiler.objects.select_related(
+        'maquina_base', 'unidad', 'persona', 'unidad__sucursal'
+    ).all()
+    
+    # Aplicar filtros
+    estado_filtro = request.GET.get('estado')
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    cliente_filtro = request.GET.get('cliente')
+    sucursal_filtro = request.GET.get('sucursal')
+    
+    if estado_filtro:
+        alquileres = alquileres.filter(estado=estado_filtro)
+    
+    if fecha_desde:
+        try:
+            from datetime import datetime
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            alquileres = alquileres.filter(fecha_inicio__gte=fecha_desde_obj)
+        except ValueError:
+            pass
+    
+    if fecha_hasta:
+        try:
+            from datetime import datetime
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            alquileres = alquileres.filter(fecha_fin__lte=fecha_hasta_obj)
+        except ValueError:
+            pass
+    
+    if cliente_filtro:
+        alquileres = alquileres.filter(
+            Q(persona__nombre__icontains=cliente_filtro) |
+            Q(persona__apellido__icontains=cliente_filtro) |
+            Q(persona__email__icontains=cliente_filtro)
+        )
+    
+    if sucursal_filtro:
+        alquileres = alquileres.filter(unidad__sucursal_id=sucursal_filtro)
+    
+    # Ordenar por fecha de creación más reciente
+    alquileres = alquileres.order_by('-fecha_creacion')
+    
+    # Calcular estadísticas
+    stats = Alquiler.objects.aggregate(
+        reservados=Count('id', filter=Q(estado='reservado')),
+        en_curso=Count('id', filter=Q(estado='en_curso')),
+        finalizados=Count('id', filter=Q(estado='finalizado')),
+        cancelados=Count('id', filter=Q(estado='cancelado'))
+    )
+    
+    # Obtener sucursales para el filtro
+    sucursales = Sucursal.objects.all().order_by('direccion')
+    
+    # Paginación
+    paginator = Paginator(alquileres, 25)  # 25 alquileres por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Verificar si se solicita exportación
+    if request.GET.get('export') == 'xlsx':
+        return exportar_alquileres_xlsx(alquileres)
+    
+    # Mostrar mensaje si no hay resultados
+    mensaje_sin_resultados = None
+    if not alquileres.exists() and any([estado_filtro, fecha_desde, fecha_hasta, cliente_filtro, sucursal_filtro]):
+        mensaje_sin_resultados = "No se encontraron alquileres con los filtros aplicados."
+    
+    context = {
+        'alquileres': page_obj,
+        'stats': stats,
+        'sucursales': sucursales,
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+        'filtros': {
+            'estado': estado_filtro,
+            'fecha_desde': fecha_desde,
+            'fecha_hasta': fecha_hasta,
+            'cliente': cliente_filtro,
+            'sucursal': sucursal_filtro,
+        }
+    }
+    
+    return render(request, 'persona/lista_alquileres.html', context)
+
+def exportar_alquileres_xlsx(alquileres):
+    """Exportar alquileres a Excel"""
+    try:
+        import openpyxl
+        from django.http import HttpResponse
+        from datetime import datetime
+        
+        # Crear workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Alquileres"
+        
+        # Encabezados
+        headers = [
+            'Número', 'Cliente', 'Email', 'Teléfono', 'Máquina', 'Marca', 'Modelo',
+            'Unidad', 'Sucursal', 'Fecha Inicio', 'Fecha Fin', 'Días', 'Estado',
+            'Método Pago', 'Monto', 'Código Retiro', 'Fecha Creación'
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        
+        # Datos
+        for row, alquiler in enumerate(alquileres, 2):
+            ws.cell(row=row, column=1, value=alquiler.numero)
+            ws.cell(row=row, column=2, value=f"{alquiler.persona.nombre} {alquiler.persona.apellido}" if alquiler.persona else "N/A")
+            ws.cell(row=row, column=3, value=alquiler.persona.email if alquiler.persona else "N/A")
+            ws.cell(row=row, column=4, value=alquiler.persona.telefono if alquiler.persona else "N/A")
+            ws.cell(row=row, column=5, value=alquiler.maquina_base.nombre)
+            ws.cell(row=row, column=6, value=alquiler.maquina_base.get_marca_display())
+            ws.cell(row=row, column=7, value=alquiler.maquina_base.modelo)
+            ws.cell(row=row, column=8, value=alquiler.unidad.patente if alquiler.unidad else "Sin asignar")
+            ws.cell(row=row, column=9, value=alquiler.unidad.sucursal.direccion if alquiler.unidad else "N/A")
+            ws.cell(row=row, column=10, value=alquiler.fecha_inicio.strftime('%d/%m/%Y'))
+            ws.cell(row=row, column=11, value=alquiler.fecha_fin.strftime('%d/%m/%Y'))
+            ws.cell(row=row, column=12, value=alquiler.cantidad_dias)
+            ws.cell(row=row, column=13, value=alquiler.get_estado_display())
+            ws.cell(row=row, column=14, value=alquiler.get_metodo_pago_display())
+            ws.cell(row=row, column=15, value=float(alquiler.monto_total) if alquiler.monto_total else 0)
+            ws.cell(row=row, column=16, value=alquiler.codigo_retiro)
+            ws.cell(row=row, column=17, value=alquiler.fecha_creacion.strftime('%d/%m/%Y %H:%M'))
+        
+        # Crear respuesta HTTP
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="alquileres_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx"'
+        
+        wb.save(response)
+        return response
+        
+    except ImportError:
+        messages.error(request, 'No se pudo exportar a Excel. Instala openpyxl.')
+        return redirect('persona:lista_alquileres')
 
 def recuperar_password(request):
     if request.method == 'POST':
@@ -786,5 +1095,141 @@ def mapa_sucursales(request):
     except Exception as e:
         messages.error(request, 'Ocurrió un error al cargar el mapa de sucursales')
         return redirect('persona:inicio')
+
+@login_required
+def pago_exitoso(request):
+    """Página de pago exitoso con confetis"""
+    # Obtener datos del pago si están disponibles
+    external_reference = request.GET.get('external_reference')
+    payment_id = request.GET.get('payment_id')
+    
+    alquiler = None
+    
+    print(f"=== PAGO EXITOSO - PROCESANDO RETORNO ===")
+    print(f"External reference: {external_reference}")
+    print(f"Payment ID: {payment_id}")
+    
+    # Procesar el pago si tenemos external_reference (usuario viene de MercadoPago)
+    if external_reference:
+        try:
+            datos = external_reference.split('|')
+            if len(datos) == 6:
+                from datetime import datetime
+                
+                maquina_id, persona_id, fecha_inicio_str, fecha_fin_str, metodo_pago, total = datos
+                
+                # Convertir fechas
+                fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+                
+                # Obtener objetos
+                maquina_base = MaquinaBase.objects.get(id=maquina_id)
+                persona = Persona.objects.get(id=persona_id)
+                
+                # Verificar que el usuario actual es el mismo que hizo el pago
+                try:
+                    persona_actual = Persona.objects.get(email=request.user.email)
+                    if persona.id != persona_actual.id:
+                        messages.error(request, "Error de validación de usuario.")
+                        return redirect('persona:inicio')
+                except Persona.DoesNotExist:
+                    messages.error(request, "Usuario no encontrado.")
+                    return redirect('persona:inicio')
+                
+                # Verificar que no existe ya un alquiler para estos datos
+                alquiler_existente = Alquiler.objects.filter(
+                    persona=persona,
+                    maquina_base=maquina_base,
+                    fecha_inicio=fecha_inicio,
+                    fecha_fin=fecha_fin
+                ).first()
+                
+                if not alquiler_existente:
+                    # Verificar disponibilidad nuevamente
+                    if Alquiler.verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin):
+                        # Verificar que el cliente no tenga otro alquiler activo
+                        alquileres_activos = Alquiler.objects.filter(
+                            persona=persona,
+                            estado__in=['reservado', 'en_curso']
+                        )
+                        
+                        if not alquileres_activos.exists():
+                            # Crear el alquiler
+                            alquiler = Alquiler.objects.create(
+                                maquina_base=maquina_base,
+                                persona=persona,
+                                fecha_inicio=fecha_inicio,
+                                fecha_fin=fecha_fin,
+                                metodo_pago=metodo_pago,
+                                estado='reservado',
+                                monto_total=float(total)
+                            )
+                            
+                            print(f"=== ALQUILER CREADO VIA FALLBACK ===")
+                            print(f"ID: {alquiler.id}")
+                            print(f"Número: {alquiler.numero}")
+                            print(f"Código de retiro: {alquiler.codigo_retiro}")
+                            
+                            # Enviar email al cliente
+                            try:
+                                send_mail(
+                                    'Alquiler Confirmado - ALQUIL.AR',
+                                    f'¡Tu alquiler ha sido confirmado!\n\n'
+                                    f'Detalles del alquiler:\n'
+                                    f'• Número de alquiler: {alquiler.numero}\n'
+                                    f'• Código de retiro: {alquiler.codigo_retiro}\n'
+                                    f'• Máquina: {maquina_base.nombre}\n'
+                                    f'• Fecha de inicio: {fecha_inicio.strftime("%d/%m/%Y")}\n'
+                                    f'• Fecha de fin: {fecha_fin.strftime("%d/%m/%Y")}\n'
+                                    f'• Días: {alquiler.cantidad_dias}\n'
+                                    f'• Monto total: ${alquiler.monto_total}\n\n'
+                                    f'Para retirar la máquina, presenta este código: {alquiler.codigo_retiro}\n\n'
+                                    f'Gracias por alquilar con ALQUIL.AR\n'
+                                    f'¡Te esperamos!',
+                                    settings.DEFAULT_FROM_EMAIL,
+                                    [persona.email],
+                                    fail_silently=False,
+                                )
+                                print(f"Email enviado exitosamente a: {persona.email}")
+                                
+                            except Exception as e:
+                                print(f"Error al enviar email: {str(e)}")
+                        else:
+                            print(f"Cliente ya tiene alquiler activo")
+                            messages.warning(request, 'Ya tienes un alquiler activo.')
+                    else:
+                        print(f"No hay disponibilidad")
+                        messages.error(request, 'No hay unidades disponibles para las fechas seleccionadas.')
+                else:
+                    print(f"Alquiler ya existe: {alquiler_existente.numero}")
+                    alquiler = alquiler_existente
+                    
+        except Exception as e:
+            print(f"Error al procesar retorno de pago: {str(e)}")
+            messages.error(request, 'Hubo un error al procesar tu pago. Contacta al soporte.')
+    
+    # Si no encontramos el alquiler específico, buscar el más reciente del usuario
+    if not alquiler:
+        try:
+            persona = Persona.objects.get(email=request.user.email)
+            alquiler = Alquiler.objects.filter(
+                persona=persona
+            ).order_by('-fecha_creacion').first()
+        except:
+            pass
+    
+    return render(request, 'persona/pago_exitoso.html', {
+        'alquiler': alquiler
+    })
+
+@login_required 
+def pago_fallido(request):
+    """Página de pago fallido"""
+    return render(request, 'persona/pago_fallido.html')
+
+@login_required
+def pago_pendiente(request):
+    """Página de pago pendiente"""
+    return render(request, 'persona/pago_pendiente.html')
 
 # Create your views here.

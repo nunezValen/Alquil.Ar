@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-Django>=5.2.1
-Pillow>=10.0.0
-django-widget-tweaks>=1.4.8
-=======
-Django>=5.0.0
-Pillow>=10.0.0
-mercadopago>=2.2.0
-python-binance>=1.0.19
-django-widget-tweaks>=1.5.0 
->>>>>>> Alquileres-y-pagos
+Django==5.1.3
+Pillow==10.4.0
+django-widget-tweaks==1.5.0
+mercadopago==2.2.3
+pyngrok==7.2.1
+python-decouple==3.8
+requests==2.32.3
+openpyxl==3.1.5

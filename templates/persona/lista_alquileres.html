@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Alquileres - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stats-card.reservado {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .stats-card.en-curso {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+    
+    .stats-card.finalizado {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    
+    .stats-card.cancelado {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .badge-estado {
+        font-size: 0.8em;
+        padding: 5px 10px;
+    }
+    
+    .badge-reservado {
+        background-color: #17a2b8;
+    }
+    
+    .badge-en-curso {
+        background-color: #28a745;
+    }
+    
+    .badge-finalizado {
+        background-color: #6c757d;
+    }
+    
+    .badge-cancelado {
+        background-color: #dc3545;
+    }
+    
+    .action-buttons {
+        white-space: nowrap;
+    }
+    
+    .codigo-retiro {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        background-color: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-list-alt"></i> Gestión de Alquileres</h2>
+                <div>
+                    <a href="?export=xlsx{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}{% if filtros.sucursal %}&sucursal={{ filtros.sucursal }}{% endif %}" 
+                       class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Estadísticas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card reservado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.reservados }}</h4>
+                                <p class="mb-0">Reservados</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card en-curso">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.en_curso }}</h4>
+                                <p class="mb-0">En Curso</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-play fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card finalizado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.finalizados }}</h4>
+                                <p class="mb-0">Finalizados</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card cancelado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.cancelados }}</h4>
+                                <p class="mb-0">Cancelados</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-times fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtros -->
+            <div class="filter-section">
+                <h5><i class="fas fa-filter"></i> Filtros</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-2">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select name="estado" id="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="reservado" {% if filtros.estado == 'reservado' %}selected{% endif %}>Reservado</option>
+                            <option value="en_curso" {% if filtros.estado == 'en_curso' %}selected{% endif %}>En Curso</option>
+                            <option value="finalizado" {% if filtros.estado == 'finalizado' %}selected{% endif %}>Finalizado</option>
+                            <option value="cancelado" {% if filtros.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_desde" class="form-label">Desde</label>
+                        <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_hasta" class="form-label">Hasta</label>
+                        <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="cliente" class="form-label">Cliente</label>
+                        <input type="text" name="cliente" id="cliente" class="form-control" placeholder="Nombre, email..." value="{{ filtros.cliente }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="sucursal" class="form-label">Sucursal</label>
+                        <select name="sucursal" id="sucursal" class="form-select">
+                            <option value="">Todas</option>
+                            {% for sucursal in sucursales %}
+                                <option value="{{ sucursal.id }}" {% if filtros.sucursal == sucursal.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ sucursal.direccion }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Filtrar
+                        </button>
+                        <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Limpiar
+                        </a>
+                    </div>
+                </form>
+            </div>
+            
+            {% if mensaje_sin_resultados %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> {{ mensaje_sin_resultados }}
+                </div>
+            {% endif %}
+            
+            <!-- Tabla de Alquileres -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Número</th>
+                            <th>Cliente</th>
+                            <th>Máquina</th>
+                            <th>Unidad</th>
+                            <th>Sucursal</th>
+                            <th>Fechas</th>
+                            <th>Días</th>
+                            <th>Estado</th>
+                            <th>Monto</th>
+                            <th>Código Retiro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alquiler in alquileres %}
+                        <tr>
+                            <td>
+                                <strong>{{ alquiler.numero }}</strong>
+                                <br>
+                                <small class="text-muted">{{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}</strong>
+                                <br>
+                                <small class="text-muted">{{ alquiler.persona.email }}</small>
+                                {% if alquiler.persona.telefono %}
+                                    <br><small class="text-muted">{{ alquiler.persona.telefono }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ alquiler.maquina_base.nombre }}</strong>
+                                <br>
+                                <small class="text-muted">{{ alquiler.maquina_base.get_marca_display }} {{ alquiler.maquina_base.modelo }}</small>
+                            </td>
+                            <td>
+                                {% if alquiler.unidad %}
+                                    <span class="badge bg-info">{{ alquiler.unidad.patente }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Sin asignar</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if alquiler.unidad.sucursal %}
+                                    {{ alquiler.unidad.sucursal.direccion }}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ alquiler.fecha_inicio|date:"d/m/Y" }}</strong>
+                                <br>
+                                <small class="text-muted">hasta {{ alquiler.fecha_fin|date:"d/m/Y" }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-estado badge-{{ alquiler.estado }}">
+                                    {{ alquiler.get_estado_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>${{ alquiler.monto_total|floatformat:2 }}</strong>
+                                <br>
+                                <small class="text-muted">{{ alquiler.get_metodo_pago_display }}</small>
+                            </td>
+                            <td>
+                                {% if alquiler.codigo_retiro %}
+                                    <span class="codigo-retiro">{{ alquiler.codigo_retiro }}</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-buttons">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-info" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#detalleModal{{ alquiler.id }}"
+                                            title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if alquiler.estado == 'reservado' %}
+                                        <button type="button" class="btn btn-sm btn-outline-success" 
+                                                onclick="cambiarEstado({{ alquiler.id }}, 'en_curso')"
+                                                title="Iniciar alquiler">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if alquiler.estado == 'en_curso' %}
+                                        <button type="button" class="btn btn-sm btn-outline-warning" 
+                                                onclick="cambiarEstado({{ alquiler.id }}, 'finalizado')"
+                                                title="Finalizar alquiler">
+                                            <i class="fas fa-stop"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if alquiler.estado in 'reservado,en_curso' %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="cambiarEstado({{ alquiler.id }}, 'cancelado')"
+                                                title="Cancelar alquiler">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center py-4">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No hay alquileres registrados</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if alquileres.has_other_pages %}
+            <nav aria-label="Paginación de alquileres">
+                <ul class="pagination justify-content-center">
+                    {% if alquileres.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ alquileres.previous_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}{% if filtros.sucursal %}&sucursal={{ filtros.sucursal }}{% endif %}">
+                                Anterior
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in alquileres.paginator.page_range %}
+                        {% if alquileres.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > alquileres.number|add:'-3' and num < alquileres.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}{% if filtros.sucursal %}&sucursal={{ filtros.sucursal }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if alquileres.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ alquileres.next_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}{% if filtros.sucursal %}&sucursal={{ filtros.sucursal }}{% endif %}">
+                                Siguiente
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modales de detalle -->
+{% for alquiler in alquileres %}
+<div class="modal fade" id="detalleModal{{ alquiler.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle del Alquiler {{ alquiler.numero }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información del Cliente</h6>
+                        <p><strong>Nombre:</strong> {{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}</p>
+                        <p><strong>Email:</strong> {{ alquiler.persona.email }}</p>
+                        <p><strong>Teléfono:</strong> {{ alquiler.persona.telefono|default:"No especificado" }}</p>
+                        <p><strong>Dirección:</strong> {{ alquiler.persona.direccion|default:"No especificada" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Información del Alquiler</h6>
+                        <p><strong>Número:</strong> {{ alquiler.numero }}</p>
+                        <p><strong>Estado:</strong> <span class="badge badge-{{ alquiler.estado }}">{{ alquiler.get_estado_display }}</span></p>
+                        <p><strong>Código de Retiro:</strong> <span class="codigo-retiro">{{ alquiler.codigo_retiro }}</span></p>
+                        <p><strong>Fecha de Creación:</strong> {{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información de la Máquina</h6>
+                        <p><strong>Máquina:</strong> {{ alquiler.maquina_base.nombre }}</p>
+                        <p><strong>Marca:</strong> {{ alquiler.maquina_base.get_marca_display }}</p>
+                        <p><strong>Modelo:</strong> {{ alquiler.maquina_base.modelo }}</p>
+                        <p><strong>Tipo:</strong> {{ alquiler.maquina_base.get_tipo_display }}</p>
+                        {% if alquiler.unidad %}
+                            <p><strong>Unidad:</strong> {{ alquiler.unidad.patente }}</p>
+                            <p><strong>Sucursal:</strong> {{ alquiler.unidad.sucursal.direccion }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Información del Período</h6>
+                        <p><strong>Fecha de Inicio:</strong> {{ alquiler.fecha_inicio|date:"d/m/Y" }}</p>
+                        <p><strong>Fecha de Fin:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}</p>
+                        <p><strong>Cantidad de Días:</strong> {{ alquiler.cantidad_dias }}</p>
+                        <p><strong>Precio por Día:</strong> ${{ alquiler.maquina_base.precio_por_dia|floatformat:2 }}</p>
+                        <p><strong>Monto Total:</strong> <strong>${{ alquiler.monto_total|floatformat:2 }}</strong></p>
+                        <p><strong>Método de Pago:</strong> {{ alquiler.get_metodo_pago_display }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+function cambiarEstado(alquilerId, nuevoEstado) {
+    if (confirm('¿Estás seguro de que quieres cambiar el estado de este alquiler?')) {
+        // Aquí puedes implementar la lógica para cambiar el estado via AJAX
+        console.log('Cambiar estado del alquiler', alquilerId, 'a', nuevoEstado);
+        // Por ahora solo mostramos un mensaje
+        alert('Funcionalidad de cambio de estado en desarrollo');
+    }
+}
+</script>
+{% endblock %} 

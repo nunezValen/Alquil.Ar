@@ -172,10 +172,10 @@ LOGIN_REDIRECT_URL = '/persona/catalogo/'
 LOGOUT_REDIRECT_URL = '/persona/login/'
 
 # Configuración de APIs de pago
-MERCADOPAGO_PUBLIC_KEY = 'APP_USR-4b4258c9-acf2-4e22-8586-b90a515a544e'
-MERCADOPAGO_ACCESS_TOKEN = 'APP_USR-7053661504074875-052821-12dcd00682fb1fc064c283d1929e2ce2-343205143'
-MERCADOPAGO_CLIENT_ID = '7053661504074875'
-MERCADOPAGO_CLIENT_SECRET = 'dgkDfbZ7xBJE0DP8kXV2YnJHzQCRcQ7T'
+MERCADOPAGO_PUBLIC_KEY = 'APP_USR-0d51d16a-0802-4957-8758-114b32d47833'
+MERCADOPAGO_ACCESS_TOKEN = 'APP_USR-7174436737227422-060512-552e39d627a22667a39fc18846c5db92-2462897485'
+MERCADOPAGO_CLIENT_ID = '7174436737227422'
+MERCADOPAGO_CLIENT_SECRET = 'Po0AeZi9s1eI8DE7ud64kyybJMGAnCIH'
 BINANCE_API_KEY = 'TU_API_KEY'
 BINANCE_API_SECRET = 'TU_API_SECRET'
 
@@ -192,32 +192,13 @@ DEFAULT_FROM_EMAIL = 'Alquil.ar <no-reply@alquilar.com.ar>'
 NGROK_URL = 'https://nearby-cat-mildly.ngrok-free.app'
 NGROK_PORT = 8000
 
-try:
-    from pyngrok import ngrok, conf
-    
-    # Configurar el token de autenticación
-    ngrok.set_auth_token('2uyTAlh8cddAMkkwfvQz9dVQTMU_658cQYhnPUBoK9gXuSjEX')
-    
-    # Configurar el puerto
-    ngrok_port = 8000  # Mismo puerto donde corre Django
-    
-    # Cerrar cualquier túnel existente
-    ngrok.kill()
-    
-    # Configurar opciones de ngrok
-    conf.get_default().monitor_thread = False
-    conf.get_default().console_ui = False
-    
-    # Crear nuevo túnel especificando el puerto correcto
-    public_url = ngrok.connect(addr=f"http://localhost:{ngrok_port}").public_url
-    print(f' * ngrok tunnel "{public_url}" -> http://localhost:{ngrok_port}/')
-    
-    # Agregar la URL de ngrok a ALLOWED_HOSTS y CSRF_TRUSTED_ORIGINS
-    if public_url:
-        ngrok_host = public_url.replace('https://', '').replace('http://', '')
-        ALLOWED_HOSTS.append(ngrok_host)
-        CSRF_TRUSTED_ORIGINS.append(f'https://{ngrok_host}')
-except Exception as e:
-    print(f' * Error al iniciar ngrok: {str(e)}')
-    print(' * Continuando sin ngrok...')
-    public_url = None
+# Configuración automática de ngrok COMPLETAMENTE DESHABILITADA
+# Usamos ngrok manual con: ngrok http 8000 --domain=nearby-cat-mildly.ngrok-free.app
+
+# Agregamos manualmente la URL de ngrok
+ALLOWED_HOSTS.append('nearby-cat-mildly.ngrok-free.app')
+
+# Configuración para que Django sepa que está detrás de un proxy HTTPS
+USE_TZ = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False  # ngrok ya maneja el HTTPS

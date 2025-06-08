@@ -8,7 +8,8 @@ from .views import (
     cambiar_password_empleado_logueado, login_as_persona,
     login_unificado2, logout_view, switch_back_to_employee,
     editar_datos_personales, gestion, estadisticas, inicio,
-    lista_alquileres, checkout, recuperar_password, mapa_sucursales
+    lista_alquileres, checkout, recuperar_password, mapa_sucursales,
+    pago_exitoso, pago_fallido, pago_pendiente
 )
 
 app_name = 'persona'
@@ -26,7 +27,7 @@ urlpatterns = [
     path('maquina/<int:maquina_id>/', detalle_maquina, name='detalle_maquina'),
     path('checkout/<int:alquiler_id>/', checkout, name='checkout'),
     path('mis-alquileres/', mis_alquileres, name='mis_alquileres'),
-    path('webhook/mercadopago/', webhook_mercadopago, name='webhook_mercadopago'),
+    path('webhook-mercadopago/', webhook_mercadopago, name='webhook_mercadopago'),
     path('cambiar-password/', cambiar_password, name='cambiar_password'),
     path('cambiar-password-empleado/', cambiar_password_empleado, name='cambiar_password_empleado'),
     path('cambiar-password-logueado/', cambiar_password_logueado, name='cambiar_password_logueado'),
@@ -40,6 +41,9 @@ urlpatterns = [
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('recuperar-password/', recuperar_password, name='recuperar_password'),
     path('sucursales/', mapa_sucursales, name='mapa_sucursales'),
+    path('pago-exitoso/', pago_exitoso, name='pago_exitoso'),
+    path('pago-fallido/', pago_fallido, name='pago_fallido'),
+    path('pago-pendiente/', pago_pendiente, name='pago_pendiente'),
 ]
 
 

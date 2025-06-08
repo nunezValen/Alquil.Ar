@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
+{% load static %}
 
 {% block title %}Detalle de {{ maquina.nombre }}{% endblock %}
 
@@ -59,7 +60,15 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Método de pago:</label>
-                            {% render_field form.metodo_pago class="form-check-input" %}
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metodo_pago" id="mercadopago" value="mercadopago" checked>
+                                    <label class="form-check-label d-flex align-items-center" for="mercadopago">
+                                        <img src="{% static 'img/logo_MP.png' %}" alt="Mercado Pago" style="height: 30px; margin-right: 10px;">
+                                        Mercado Pago
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="text-center">
