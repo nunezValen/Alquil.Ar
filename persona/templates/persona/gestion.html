@@ -10,9 +10,10 @@
             <div class="card h-100">
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">Gestión de Alquileres</h5>
-                    <p class="card-text">Administrar alquileres y cancelaciones.</p>
+                    <p class="card-text">Administrar alquileres, cancelaciones y reembolsos.</p>
                     <div class="mt-auto">
-                        <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-primary w-100">Ver Alquileres</a>
+                        <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-primary w-100 mb-2">Ver Alquileres</a>
+                        <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-success w-100">Ver Reembolsos</a>
                     </div>
                 </div>
             </div>

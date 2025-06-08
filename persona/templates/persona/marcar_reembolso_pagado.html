@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Marcar Reembolso como Pagado - Alquil.ar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-money-bill-wave me-2"></i>
+                        Marcar Reembolso como Pagado
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Información del Reembolso -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Información del Alquiler</h5>
+                            <p><strong>Número de Alquiler:</strong> {{ reembolso.alquiler.numero }}</p>
+                            <p><strong>Cliente:</strong> {{ reembolso.alquiler.persona.nombre }} {{ reembolso.alquiler.persona.apellido }}</p>
+                            <p><strong>Email:</strong> {{ reembolso.alquiler.persona.email }}</p>
+                            <p><strong>Teléfono:</strong> {{ reembolso.alquiler.persona.telefono }}</p>
+                            <p><strong>Máquina:</strong> {{ reembolso.alquiler.maquina_base.nombre }}</p>
+                            <p><strong>Período:</strong> {{ reembolso.alquiler.fecha_inicio|date:"d/m/Y" }} - {{ reembolso.alquiler.fecha_fin|date:"d/m/Y" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Información del Reembolso</h5>
+                            <div class="alert alert-success">
+                                <h6><i class="fas fa-money-bill-wave me-2"></i>Detalles del Reembolso</h6>
+                                <p class="mb-2">
+                                    <strong>Monto Total del Alquiler:</strong> 
+                                    <span class="fs-5">${{ reembolso.alquiler.monto_total|floatformat:2 }}</span>
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Porcentaje de Reembolso:</strong> 
+                                    <span class="badge bg-info fs-6">{{ reembolso.porcentaje }}%</span>
+                                </p>
+                                <p class="mb-0">
+                                    <strong>Monto a Reembolsar:</strong> 
+                                    <span class="text-success fw-bold fs-4">${{ reembolso.monto|floatformat:2 }}</span>
+                                </p>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>Fecha de Creación:</strong> {{ reembolso.fecha_creacion|date:"d/m/Y H:i" }}<br>
+                                    <strong>Estado Actual:</strong> {{ reembolso.get_estado_display }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Motivo de la Cancelación -->
+                    {% if reembolso.alquiler.observaciones_cancelacion %}
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-comment me-2"></i>Motivo de Cancelación</h6>
+                        <p class="mb-0">{{ reembolso.alquiler.observaciones_cancelacion }}</p>
+                        <small class="text-muted">
+                            {% if reembolso.alquiler.cancelado_por_empleado %}
+                                Cancelado por empleado: {{ reembolso.alquiler.empleado_que_cancelo.first_name }} {{ reembolso.alquiler.empleado_que_cancelo.last_name }}
+                            {% else %}
+                                Cancelado por el cliente
+                            {% endif %}
+                            el {{ reembolso.alquiler.fecha_cancelacion|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Formulario de Confirmación -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Observaciones del Pago (Opcional)</label>
+                            <textarea class="form-control" id="observaciones" name="observaciones" rows="3" 
+                                      placeholder="Información adicional sobre el pago realizado (método, fecha, etc.)"></textarea>
+                            <div class="form-text">
+                                Esta información será registrada para el historial del reembolso.
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>¡Confirmación Importante!</h6>
+                            <p class="mb-0">
+                                Al confirmar esta acción, el reembolso de <strong>${{ reembolso.monto|floatformat:2 }}</strong> 
+                                será marcado como <strong>PAGADO</strong> y no se podrá deshacer esta operación.
+                                <br><br>
+                                <strong>Por favor, confirma que el pago ha sido realizado al cliente antes de continuar.</strong>
+                            </p>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check me-2"></i>Confirmar Pago de ${{ reembolso.monto|floatformat:2 }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+}
+.card-header {
+    border-bottom: none;
+}
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+    transition: all 0.2s ease;
+}
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Reembolsos - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stats-card.pendiente {
+        background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    }
+    
+    .stats-card.pagado {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .badge-estado {
+        font-size: 0.8em;
+        padding: 5px 10px;
+    }
+    
+    .badge-pendiente {
+        background-color: #ffc107;
+        color: #000;
+    }
+    
+    .badge-pagado {
+        background-color: #28a745;
+    }
+    
+    .badge-rechazado {
+        background-color: #dc3545;
+    }
+    
+    .action-buttons {
+        white-space: nowrap;
+    }
+    
+    /* Estilos para filas según estado */
+    .row-pendiente {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+    
+    .row-pagado {
+        background-color: #d4edda !important;
+        border-left: 4px solid #28a745;
+    }
+    
+    .row-rechazado {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-money-bill-wave"></i> Gestión de Reembolsos</h2>
+                <div>
+                    <a href="{% url 'persona:gestion' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Gestión
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Estadísticas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card pendiente">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.pendientes }}</h4>
+                                <p class="mb-0">Pendientes</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card pagado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.pagados }}</h4>
+                                <p class="mb-0">Pagados</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card pendiente">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>${{ stats.total_pendiente|floatformat:2|default:"0.00" }}</h4>
+                                <p class="mb-0">Total Pendiente</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-dollar-sign fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card pagado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>${{ stats.total_pagado|floatformat:2|default:"0.00" }}</h4>
+                                <p class="mb-0">Total Pagado</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-money-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtros -->
+            <div class="filter-section">
+                <h5><i class="fas fa-filter"></i> Filtros</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-2">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select name="estado" id="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="pendiente" {% if filtros.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                            <option value="pagado" {% if filtros.estado == 'pagado' %}selected{% endif %}>Pagado</option>
+                            <option value="rechazado" {% if filtros.estado == 'rechazado' %}selected{% endif %}>Rechazado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_desde" class="form-label">Desde</label>
+                        <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_hasta" class="form-label">Hasta</label>
+                        <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="cliente" class="form-label">Cliente</label>
+                        <input type="text" name="cliente" id="cliente" class="form-control" placeholder="Nombre, apellido o email" value="{{ filtros.cliente }}">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Filtrar
+                        </button>
+                        <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Limpiar
+                        </a>
+                    </div>
+                </form>
+            </div>
+            
+            {% if mensaje_sin_resultados %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> {{ mensaje_sin_resultados }}
+                </div>
+            {% endif %}
+            
+            {% if reembolsos %}
+            <!-- Tabla de reembolsos -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Alquiler</th>
+                            <th>Cliente</th>
+                            <th>Máquina</th>
+                            <th>Monto</th>
+                            <th>Porcentaje</th>
+                            <th>Estado</th>
+                            <th>Fecha Creación</th>
+                            <th>Fecha Pago</th>
+                            <th>Empleado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reembolso in reembolsos %}
+                        <tr class="row-{{ reembolso.estado }}">
+                            <td>
+                                <strong>{{ reembolso.alquiler.numero }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    {{ reembolso.alquiler.fecha_inicio|date:"d/m/Y" }} - 
+                                    {{ reembolso.alquiler.fecha_fin|date:"d/m/Y" }}
+                                </small>
+                            </td>
+                            <td>
+                                <strong>{{ reembolso.alquiler.persona.nombre }} {{ reembolso.alquiler.persona.apellido }}</strong>
+                                <br>
+                                <small class="text-muted">{{ reembolso.alquiler.persona.email }}</small>
+                                <br>
+                                <small class="text-muted">{{ reembolso.alquiler.persona.telefono }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ reembolso.alquiler.maquina_base.nombre }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    {{ reembolso.alquiler.maquina_base.get_marca_display }} 
+                                    {{ reembolso.alquiler.maquina_base.modelo }}
+                                </small>
+                            </td>
+                            <td>
+                                <strong class="text-success">${{ reembolso.monto|floatformat:2 }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    de ${{ reembolso.alquiler.monto_total|floatformat:2 }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ reembolso.porcentaje }}%</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-estado badge-{{ reembolso.estado }}">
+                                    {{ reembolso.get_estado_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ reembolso.fecha_creacion|date:"d/m/Y H:i" }}
+                            </td>
+                            <td>
+                                {% if reembolso.fecha_pago %}
+                                    {{ reembolso.fecha_pago|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if reembolso.empleado_que_marco_pagado %}
+                                    <small>
+                                        {{ reembolso.empleado_que_marco_pagado.first_name }} 
+                                        {{ reembolso.empleado_que_marco_pagado.last_name }}
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-buttons">
+                                {% if reembolso.estado == 'pendiente' %}
+                                    <a href="{% url 'persona:marcar_reembolso_pagado' reembolso.id %}" 
+                                       class="btn btn-sm btn-success" 
+                                       title="Marcar como Pagado">
+                                        <i class="fas fa-check"></i> Pagado
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted small">{{ reembolso.get_estado_display }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if reembolsos.has_other_pages %}
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination justify-content-center">
+                    {% if reembolsos.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ reembolsos.previous_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}">&laquo; Anterior</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in reembolsos.paginator.page_range %}
+                        {% if reembolsos.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > reembolsos.number|add:'-3' and num < reembolsos.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if reembolsos.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ reembolsos.next_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}{% if filtros.cliente %}&cliente={{ filtros.cliente }}{% endif %}">Siguiente &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No hay reembolsos registrados en el sistema.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

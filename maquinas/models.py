@@ -424,3 +424,92 @@ class Alquiler(models.Model):
         self.monto_total = alquiler_persona.monto_total
         self.preference_id = alquiler_persona.preference_id
         self.save()
+
+class Reembolso(models.Model):
+    """
+    Modelo para gestionar los reembolsos de alquileres cancelados
+    """
+    ESTADOS = [
+        ('pendiente', 'Pendiente de Pago'),
+        ('pagado', 'Pagado'),
+        ('rechazado', 'Rechazado'),
+    ]
+    
+    alquiler = models.OneToOneField(
+        Alquiler,
+        on_delete=models.PROTECT,
+        verbose_name='Alquiler',
+        related_name='reembolso'
+    )
+    monto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Monto a Reembolsar'
+    )
+    porcentaje = models.PositiveIntegerField(
+        verbose_name='Porcentaje de Reembolso'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADOS,
+        default='pendiente',
+        verbose_name='Estado'
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creación'
+    )
+    fecha_pago = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de Pago'
+    )
+    empleado_que_marco_pagado = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Empleado que Marcó como Pagado',
+        related_name='reembolsos_marcados_pagados'
+    )
+    observaciones = models.TextField(
+        blank=True,
+        verbose_name='Observaciones'
+    )
+    
+    def marcar_como_pagado(self, empleado=None, observaciones=""):
+        """
+        Marca el reembolso como pagado
+        """
+        from django.utils import timezone
+        
+        self.estado = 'pagado'
+        self.fecha_pago = timezone.now()
+        self.empleado_que_marco_pagado = empleado
+        if observaciones:
+            self.observaciones = observaciones
+        self.save()
+    
+    def __str__(self):
+        return f"Reembolso {self.alquiler.numero} - ${self.monto} ({self.get_estado_display()})"
+    
+    class Meta:
+        verbose_name = "Reembolso"
+        verbose_name_plural = "Reembolsos"
+        ordering = ['-fecha_creacion']
+
+@receiver(post_save, sender=Alquiler)
+def crear_reembolso_automatico(sender, instance, created, **kwargs):
+    """
+    Crea automáticamente un reembolso cuando se cancela un alquiler con monto > 0
+    """
+    if (instance.estado == 'cancelado' and 
+        instance.monto_reembolso and 
+        instance.monto_reembolso > 0 and
+        not hasattr(instance, 'reembolso')):
+        
+        Reembolso.objects.create(
+            alquiler=instance,
+            monto=instance.monto_reembolso,
+            porcentaje=instance.porcentaje_reembolso or 0
+        )

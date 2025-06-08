@@ -1298,7 +1298,119 @@ def pago_fallido(request):
 
 @login_required
 def pago_pendiente(request):
-    """Página de pago pendiente"""
+    """Página para notificar que el pago está pendiente"""
     return render(request, 'persona/pago_pendiente.html')
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+def lista_reembolsos(request):
+    """Vista para gestionar reembolsos pendientes y pagados"""
+    from maquinas.models import Reembolso
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+    
+    # Obtener todos los reembolsos
+    reembolsos = Reembolso.objects.select_related(
+        'alquiler', 'alquiler__persona', 'alquiler__maquina_base', 
+        'empleado_que_marco_pagado'
+    ).all()
+    
+    # Aplicar filtros
+    estado_filtro = request.GET.get('estado')
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    cliente_filtro = request.GET.get('cliente')
+    
+    if estado_filtro:
+        reembolsos = reembolsos.filter(estado=estado_filtro)
+    
+    if fecha_desde:
+        try:
+            from datetime import datetime
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            reembolsos = reembolsos.filter(fecha_creacion__date__gte=fecha_desde_obj)
+        except ValueError:
+            pass
+    
+    if fecha_hasta:
+        try:
+            from datetime import datetime
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            reembolsos = reembolsos.filter(fecha_creacion__date__lte=fecha_hasta_obj)
+        except ValueError:
+            pass
+    
+    if cliente_filtro:
+        reembolsos = reembolsos.filter(
+            Q(alquiler__persona__nombre__icontains=cliente_filtro) |
+            Q(alquiler__persona__apellido__icontains=cliente_filtro) |
+            Q(alquiler__persona__email__icontains=cliente_filtro)
+        )
+    
+    # Ordenar por fecha de creación más reciente
+    reembolsos = reembolsos.order_by('-fecha_creacion')
+    
+    # Calcular estadísticas
+    from django.db.models import Count, Sum
+    stats = Reembolso.objects.aggregate(
+        pendientes=Count('id', filter=Q(estado='pendiente')),
+        pagados=Count('id', filter=Q(estado='pagado')),
+        total_pendiente=Sum('monto', filter=Q(estado='pendiente')),
+        total_pagado=Sum('monto', filter=Q(estado='pagado'))
+    )
+    
+    # Paginación
+    paginator = Paginator(reembolsos, 25)  # 25 reembolsos por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Mostrar mensaje si no hay resultados
+    mensaje_sin_resultados = None
+    if not reembolsos.exists() and any([estado_filtro, fecha_desde, fecha_hasta, cliente_filtro]):
+        mensaje_sin_resultados = "No se encontraron reembolsos con los filtros aplicados."
+    
+    context = {
+        'reembolsos': page_obj,
+        'stats': stats,
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+        'filtros': {
+            'estado': estado_filtro,
+            'fecha_desde': fecha_desde,
+            'fecha_hasta': fecha_hasta,
+            'cliente': cliente_filtro,
+        }
+    }
+    
+    return render(request, 'persona/lista_reembolsos.html', context)
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+def marcar_reembolso_pagado(request, reembolso_id):
+    """Vista para marcar un reembolso como pagado"""
+    from maquinas.models import Reembolso
+    
+    reembolso = get_object_or_404(Reembolso, id=reembolso_id)
+    
+    if request.method == 'POST':
+        try:
+            if reembolso.estado != 'pendiente':
+                messages.error(request, f'El reembolso ya está {reembolso.get_estado_display().lower()}')
+                return redirect('persona:lista_reembolsos')
+            
+            observaciones = request.POST.get('observaciones', '')
+            reembolso.marcar_como_pagado(empleado=request.user, observaciones=observaciones)
+            
+            messages.success(request, 
+                f'Reembolso del alquiler {reembolso.alquiler.numero} marcado como pagado exitosamente. '
+                f'Monto: ${reembolso.monto}')
+            
+        except Exception as e:
+            messages.error(request, f'Error al marcar el reembolso como pagado: {str(e)}')
+        
+        return redirect('persona:lista_reembolsos')
+    
+    return render(request, 'persona/marcar_reembolso_pagado.html', {
+        'reembolso': reembolso
+    })
 
 # Create your views here.
