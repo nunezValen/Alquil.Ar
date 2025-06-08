@@ -1010,7 +1010,8 @@ def lista_alquileres(request):
         alquileres = alquileres.filter(
             Q(persona__nombre__icontains=cliente_filtro) |
             Q(persona__apellido__icontains=cliente_filtro) |
-            Q(persona__email__icontains=cliente_filtro)
+            Q(persona__email__icontains=cliente_filtro) |
+            Q(persona__dni__icontains=cliente_filtro)
         )
     
     if sucursal_filtro:
@@ -1321,9 +1322,11 @@ def lista_reembolsos(request):
     fecha_hasta = request.GET.get('fecha_hasta')
     cliente_filtro = request.GET.get('cliente')
     
-    if estado_filtro:
+    # Filtrar por estado (solo pendiente y pagado)
+    if estado_filtro and estado_filtro in ['pendiente', 'pagado']:
         reembolsos = reembolsos.filter(estado=estado_filtro)
     
+    # Filtrar por fechas
     if fecha_desde:
         try:
             from datetime import datetime
@@ -1340,11 +1343,13 @@ def lista_reembolsos(request):
         except ValueError:
             pass
     
+    # Filtrar por cliente
     if cliente_filtro:
         reembolsos = reembolsos.filter(
             Q(alquiler__persona__nombre__icontains=cliente_filtro) |
             Q(alquiler__persona__apellido__icontains=cliente_filtro) |
-            Q(alquiler__persona__email__icontains=cliente_filtro)
+            Q(alquiler__persona__email__icontains=cliente_filtro) |
+            Q(alquiler__persona__dni__icontains=cliente_filtro)
         )
     
     # Ordenar por fecha de creación más reciente
@@ -1364,15 +1369,9 @@ def lista_reembolsos(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Mostrar mensaje si no hay resultados
-    mensaje_sin_resultados = None
-    if not reembolsos.exists() and any([estado_filtro, fecha_desde, fecha_hasta, cliente_filtro]):
-        mensaje_sin_resultados = "No se encontraron reembolsos con los filtros aplicados."
-    
     context = {
         'reembolsos': page_obj,
         'stats': stats,
-        'mensaje_sin_resultados': mensaje_sin_resultados,
         'filtros': {
             'estado': estado_filtro,
             'fecha_desde': fecha_desde,
@@ -1412,5 +1411,47 @@ def marcar_reembolso_pagado(request, reembolso_id):
     return render(request, 'persona/marcar_reembolso_pagado.html', {
         'reembolso': reembolso
     })
+
+def buscar_clientes_json(request):
+    """API endpoint para buscar clientes dinámicamente - SOLO POR EMAIL Y DNI - SIN AUTENTICACIÓN"""
+    from django.http import JsonResponse
+    from django.db.models import Q
+    
+    query = request.GET.get('q', '').strip()
+    
+    print(f"🔍 API BÚSQUEDA: '{query}' (longitud: {len(query)})")
+    print(f"📊 Usuario: {request.user} - Autenticado: {request.user.is_authenticated}")
+    
+    if len(query) < 2:  # Mínimo 2 caracteres para buscar
+        print("❌ Búsqueda muy corta, devolviendo lista vacía")
+        return JsonResponse({'clientes': []})
+    
+    # Buscar SOLO por email y DNI en todas las personas (excluir empleados)
+    print(f"📊 Total personas en BD: {Persona.objects.count()}")
+    
+    clientes = Persona.objects.filter(
+        Q(email__icontains=query) | Q(dni__icontains=query),
+        es_empleado=False  # Excluir empleados
+    ).order_by('apellido', 'nombre')[:10]  # Limitar a 10 resultados
+    
+    print(f"🔍 Total encontrados: {clientes.count()}")
+    
+    resultados = []
+    for cliente in clientes:
+        display_text = f"{cliente.apellido}, {cliente.nombre} - {cliente.email}"
+        if cliente.dni:
+            display_text += f" (DNI: {cliente.dni})"
+            
+        resultados.append({
+            'id': cliente.id,
+            'nombre_completo': f"{cliente.nombre} {cliente.apellido}",
+            'email': cliente.email,
+            'dni': cliente.dni if cliente.dni else '',
+            'display_text': display_text
+        })
+        print(f"   📄 Cliente: {cliente.email} - DNI: {cliente.dni}")
+    
+    print(f"📤 Devolviendo {len(resultados)} resultados")
+    return JsonResponse({'clientes': resultados})
 
 # Create your views here.

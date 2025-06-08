@@ -1,210 +1,682 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Lista de Alquileres - Alquil.ar{% endblock %}
+{% block title %}Gestión de Alquileres - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+        border: none;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .stats-card.reservados {
+        background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    }
+    
+    .stats-card.en-curso {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .stats-card.finalizados {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    }
+    
+    .stats-card.cancelados {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .table {
+        margin-bottom: 0;
+        font-size: 0.85rem;
+        width: 100%;
+        table-layout: fixed;
+    }
+    
+    .table thead th {
+        background: #343a40;
+        color: white;
+        border: none;
+        font-weight: 600;
+        padding: 12px 6px;
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
+    
+    .table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .table th, .table td {
+        vertical-align: middle;
+        padding: 10px 6px;
+        word-wrap: break-word;
+        overflow: hidden;
+    }
+    
+    /* ARREGLO: Estados con colores correctos según el estado */
+    .badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .badge.estado-reservado {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+    
+    .badge.estado-confirmado,
+    .badge.estado-en-curso {
+        background-color: #28a745 !important;
+        color: white !important;
+    }
+    
+    .badge.estado-finalizado {
+        background-color: #6c757d !important;
+        color: white !important;
+    }
+    
+    .badge.estado-cancelado {
+        background-color: #dc3545 !important;
+        color: white !important;
+    }
+    
+    .badge.estado-pendiente {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+    
+    /* Filas coloreadas según estado */
+    .table tbody tr.cancelado {
+        background-color: #ffeaea !important;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .table tbody tr.reservado {
+        background-color: #fff8e1 !important;
+        border-left: 4px solid #ffc107;
+    }
+    
+    .table tbody tr.en-curso {
+        background-color: #e8f5e8 !important;
+        border-left: 4px solid #28a745;
+    }
+    
+    .table tbody tr.finalizado {
+        background-color: #f8f9fa !important;
+        border-left: 4px solid #6c757d;
+    }
+    
+    /* Botones simplificados */
+    .btn {
+        border-radius: 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn-danger {
+        background: #dc3545;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: #007bff;
+        border: none;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        border: none;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 900;
+        margin-bottom: 0;
+    }
+    
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+    
+    /* Header simplificado */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Tabla más ancha - sin scroll horizontal */
+    .container-fluid {
+        max-width: none;
+        padding: 0 15px;
+    }
+    
+    /* Anchos de columna optimizados para pantalla completa */
+    .table th:nth-child(1), .table td:nth-child(1) { width: 10%; } /* Número */
+    .table th:nth-child(2), .table td:nth-child(2) { width: 15%; } /* Cliente */
+    .table th:nth-child(3), .table td:nth-child(3) { width: 12%; } /* Máquina */
+    .table th:nth-child(4), .table td:nth-child(4) { width: 10%; } /* Unidad */
+    .table th:nth-child(5), .table td:nth-child(5) { width: 12%; } /* Fechas */
+    .table th:nth-child(6), .table td:nth-child(6) { width: 6%; }  /* Días */
+    .table th:nth-child(7), .table td:nth-child(7) { width: 10%; } /* Estado */
+    .table th:nth-child(8), .table td:nth-child(8) { width: 8%; }  /* Monto */
+    .table th:nth-child(9), .table td:nth-child(9) { width: 8%; }  /* Código */
+    .table th:nth-child(10), .table td:nth-child(10) { width: 9%; } /* Acciones */
+    
+    /* Texto más pequeño para que quepa mejor */
+    .table small {
+        font-size: 0.75rem;
+    }
+    
+    .table strong {
+        font-size: 0.85rem;
+    }
+    
+    /* Estilos para botones pequeños */
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Lista de Alquileres</h1>
-        <a href="{% url 'persona:gestion' %}" class="btn btn-secondary">Volver a Gestión</a>
-    </div>
-
-    <!-- Mensajes -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:"info" }} alert-dismissible fade show text-center mb-4" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header simplificado -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2">Gestión de Alquileres</h1>
+                        <p class="mb-0 opacity-75">Administra y supervisa todos los alquileres del sistema</p>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-success">
+                            Exportar Excel
+                        </button>
+                        <a href="{% url 'persona:gestion' %}" class="btn btn-outline-light">
+                            Volver a Gestión
+                        </a>
+                    </div>
+                </div>
             </div>
-        {% endfor %}
-    {% endif %}
 
-    {% if alquileres %}
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Número</th>
-                    <th>Cliente</th>
-                    <th>Máquina</th>
-                    <th>Fechas</th>
-                    <th>Estado</th>
-                    <th>Método de Pago</th>
-                    <th>Monto</th>
-                    <th>Fecha de Creación</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for alquiler in alquileres %}
-                <tr class="{% if alquiler.estado == 'cancelado' %}cancelado{% elif alquiler.estado == 'reservado' %}reservado{% elif alquiler.estado == 'en_curso' %}en-curso{% endif %}">
-                    <td>{{ alquiler.numero }}</td>
-                    <td>
-                        {% if alquiler.persona %}
-                            {{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}<br>
-                            <small class="text-muted">{{ alquiler.persona.email }}</small>
-                        {% else %}
-                            <span class="text-muted">Sin asignar</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ alquiler.maquina_base.nombre }}</td>
-                    <td>
-                        <strong>Inicio:</strong> {{ alquiler.fecha_inicio|date:"d/m/Y" }}<br>
-                        <strong>Fin:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}
-                    </td>
-                    <td>
-                        <span class="badge {% if alquiler.estado == 'reservado' %}bg-warning text-dark
-                                         {% elif alquiler.estado == 'confirmado' %}bg-success
-                                         {% elif alquiler.estado == 'pendiente' %}bg-warning text-dark
-                                         {% elif alquiler.estado == 'en_curso' %}bg-success
-                                         {% elif alquiler.estado == 'finalizado' %}bg-secondary
-                                         {% elif alquiler.estado == 'cancelado' %}bg-danger
-                                         {% else %}bg-secondary{% endif %} fs-6">
-                            {{ alquiler.get_estado_display }}
-                        </span>
-                        
-                        {% if alquiler.estado == 'cancelado' %}
-                            <div class="mt-1">
-                                {% if alquiler.monto_reembolso %}
-                                    <small class="text-success d-block">
-                                        <i class="fas fa-money-bill-wave"></i> 
-                                        Reembolso: ${{ alquiler.monto_reembolso }} ({{ alquiler.porcentaje_reembolso }}%)
-                                    </small>
-                                {% endif %}
-                                
-                                {% if alquiler.empleado_que_cancelo %}
-                                    <small class="text-info d-block">
-                                        <i class="fas fa-user-tie"></i> 
-                                        Cancelado por: {{ alquiler.empleado_que_cancelo.first_name }} {{ alquiler.empleado_que_cancelo.last_name }}
-                                    </small>
-                                {% else %}
-                                    <small class="text-muted d-block">
-                                        <i class="fas fa-user"></i> 
-                                        Cancelado por cliente
-                                    </small>
-                                {% endif %}
-                                
-                                {% if alquiler.fecha_cancelacion %}
-                                    <small class="text-muted d-block">
-                                        <i class="fas fa-calendar"></i> 
-                                        {{ alquiler.fecha_cancelacion|date:"d/m/Y H:i" }}
-                                    </small>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </td>
-                    <td>{{ alquiler.get_metodo_pago_display }}</td>
-                    <td>
-                        <strong class="text-success fs-5">${{ alquiler.monto_total|default:"0.00" }}</strong>
-                        {% if alquiler.cantidad_dias %}
-                            <br><small class="text-muted">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</small>
-                        {% endif %}
-                    </td>
-                    <td>{{ alquiler.fecha_creacion|date:"d/m/Y H:i" }}</td>
-                    <td>
-                        {% if alquiler.estado == 'reservado' or alquiler.estado == 'en_curso' %}
-                            <a href="{% url 'maquinas:cancelar_alquiler' alquiler.id %}" 
-                               class="btn btn-sm btn-danger"
-                               title="Cancelar Alquiler"
-                               onclick="return confirm('¿Estás seguro de que deseas cancelar este alquiler?')">
-                                <i class="fas fa-ban me-1"></i>Cancelar
-                            </a>
-                        {% elif alquiler.estado == 'cancelado' %}
-                            <div class="text-center">
-                                <span class="badge bg-danger mb-1">CANCELADO</span>
-                                
-                                {% if alquiler.observaciones_cancelacion %}
-                                    <div class="mt-1">
-                                        <small class="text-muted">
-                                            <strong>Motivo:</strong><br>
-                                            {{ alquiler.observaciones_cancelacion|truncatechars:50 }}
-                                        </small>
-                                    </div>
-                                {% endif %}
-                                
-                                {% if alquiler.monto_reembolso and alquiler.monto_reembolso > 0 %}
-                                    <div class="alert alert-success p-2 mt-2 reembolso-pendiente">
-                                        <small>
-                                            <strong>💰 Pendiente de Reembolso</strong><br>
-                                            ${{ alquiler.monto_reembolso }}
-                                        </small>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <span class="text-muted small">{{ alquiler.get_estado_display }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
+            <!-- Mensajes -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:"info" }} alert-dismissible fade show mb-4" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            {% endif %}
+
+            <!-- Estadísticas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card reservados">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="stats-number">0</h2>
+                                <p class="stats-label">Reservados</p>
+                            </div>
+                            <div>
+                                <i class="fas fa-clock fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card en-curso">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="stats-number">0</h2>
+                                <p class="stats-label">En Curso</p>
+                            </div>
+                            <div>
+                                <i class="fas fa-play fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card finalizados">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="stats-number">0</h2>
+                                <p class="stats-label">Finalizados</p>
+                            </div>
+                            <div>
+                                <i class="fas fa-check fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card cancelados">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="stats-number">7</h2>
+                                <p class="stats-label">Cancelados</p>
+                            </div>
+                            <div>
+                                <i class="fas fa-times fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros simplificados -->
+            <div class="filter-section">
+                <h5>Filtros de Búsqueda</h5>
+                <form method="get" class="row g-3 mt-2">
+                    <div class="col-md-2">
+                        <label for="estado" class="form-label fw-bold">Estado</label>
+                        <select name="estado" id="estado" class="form-select">
+                            <option value="">Todos los estados</option>
+                            <option value="reservado" {% if filtros.estado == 'reservado' %}selected{% endif %}>Reservado</option>
+                            <option value="en_curso" {% if filtros.estado == 'en_curso' %}selected{% endif %}>En Curso</option>
+                            <option value="finalizado" {% if filtros.estado == 'finalizado' %}selected{% endif %}>Finalizado</option>
+                            <option value="cancelado" {% if filtros.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_desde" class="form-label fw-bold">Desde</label>
+                        <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fecha_hasta" class="form-label fw-bold">Hasta</label>
+                        <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="cliente" class="form-label fw-bold">Cliente</label>
+                        <div class="position-relative">
+                            <input type="text" name="cliente" id="cliente" class="form-control" 
+                                   placeholder="Buscar por email o DNI..."
+                                   value="{{ filtros.cliente|default:'' }}"
+                                   autocomplete="off">
+                            <div id="cliente-dropdown" class="dropdown-menu w-100" style="display: none; max-height: 300px; overflow-y: auto;">
+                                <!-- Resultados de búsqueda aparecerán aquí -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="sucursal" class="form-label fw-bold">Sucursal</label>
+                        <select name="sucursal" id="sucursal" class="form-select">
+                            <option value="">Todas las sucursales</option>
+                            {% for sucursal in sucursales %}
+                                <option value="{{ sucursal.id_sucursal }}" {% if filtros.sucursal == sucursal.id_sucursal|stringformat:"s" %}selected{% endif %}>
+                                    {{ sucursal.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            Filtrar
+                        </button>
+                        <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-secondary">
+                            Limpiar
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            {% if alquileres %}
+                <div class="table-container">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Máquina</th>
+                                <th>Unidad</th>
+                                <th>Fechas</th>
+                                <th>Días</th>
+                                <th>Estado</th>
+                                <th>Monto</th>
+                                <th>Código</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alquiler in alquileres %}
+                            <tr class="{% if alquiler.estado == 'cancelado' %}cancelado{% elif alquiler.estado == 'reservado' %}reservado{% elif alquiler.estado == 'en_curso' %}en-curso{% elif alquiler.estado == 'finalizado' %}finalizado{% endif %}">
+                                <td>
+                                    <strong class="text-primary">{{ alquiler.numero }}</strong>
+                                    <br><small class="text-muted">{{ alquiler.fecha_creacion|date:"d/m/Y" }}</small>
+                                </td>
+                                <td>
+                                    {% if alquiler.persona %}
+                                        <strong>{{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}</strong>
+                                        <br><small class="text-muted">{{ alquiler.persona.email|truncatechars:20 }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Sin asignar</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ alquiler.maquina_base.nombre|truncatechars:15 }}</strong>
+                                    <br><small class="text-muted">{{ alquiler.maquina_base.get_marca_display }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ alquiler.unidad_maquina.patente }}</span>
+                                    <br><small class="text-muted">{{ alquiler.unidad_maquina.sucursal.nombre|truncatechars:10 }}</small>
+                                </td>
+                                <td>
+                                    <small class="text-success">{{ alquiler.fecha_inicio|date:"d/m/y" }}</small>
+                                    <br><small class="text-danger">{{ alquiler.fecha_fin|date:"d/m/y" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ alquiler.cantidad_dias }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge estado-{{ alquiler.estado }}">
+                                        {{ alquiler.get_estado_display }}
+                                    </span>
+                                    
+                                    {% if alquiler.estado == 'cancelado' %}
+                                        <div class="mt-1">
+                                            {% if alquiler.monto_reembolso %}
+                                                <small class="text-success d-block">
+                                                    ${{ alquiler.monto_reembolso }}
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-success">${{ alquiler.monto_total|default:"0.00" }}</strong>
+                                    <br><small class="text-muted">{{ alquiler.get_metodo_pago_display|truncatechars:8 }}</small>
+                                </td>
+                                <td>
+                                    {% if alquiler.codigo_retiro %}
+                                        <strong class="text-primary">{{ alquiler.codigo_retiro }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if alquiler.estado == 'reservado' or alquiler.estado == 'en_curso' %}
+                                        <button class="btn btn-sm btn-danger" 
+                                               onclick="cancelarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}')"
+                                               title="Cancelar Alquiler">
+                                            Cancelar
+                                        </button>
+                                    {% elif alquiler.estado == 'cancelado' %}
+                                        {% if alquiler.monto_reembolso and alquiler.monto_reembolso > 0 %}
+                                            <small class="text-success">
+                                                Reembolso: ${{ alquiler.monto_reembolso }}
+                                            </small>
+                                        {% else %}
+                                            <span class="badge bg-danger">CANCELADO</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ alquiler.get_estado_display|truncatechars:8 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center py-4">
+                    <h4>No hay alquileres registrados</h4>
+                    <p class="mb-0">No se encontraron alquileres que coincidan con los criterios de búsqueda.</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        No hay alquileres registrados en el sistema.
-    </div>
-    {% endif %}
 </div>
 
+<script>
+function cancelarAlquiler(alquilerId, numeroAlquiler) {
+    if (confirm('¿Estás seguro de que deseas cancelar el alquiler ' + numeroAlquiler + '?')) {
+        window.location.href = '{% url "maquinas:cancelar_alquiler" 0 %}'.replace('0', alquilerId);
+    }
+}
+
+// Sistema de autocompletado para clientes
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 ALQUILERES: Inicializando autocompletado...');
+    
+    const clienteInput = document.getElementById('cliente');
+    const dropdown = document.getElementById('cliente-dropdown');
+    
+    console.log('🔍 ALQUILERES: Buscando elementos...');
+    console.log('   Input encontrado:', clienteInput !== null);
+    console.log('   Dropdown encontrado:', dropdown !== null);
+    
+    if (!clienteInput) {
+        console.error('❌ ALQUILERES: No se encontró el input del cliente');
+        return;
+    }
+    
+    if (!dropdown) {
+        console.error('❌ ALQUILERES: No se encontró el dropdown del cliente');
+        return;
+    }
+    
+    console.log('✅ ALQUILERES: Elementos encontrados correctamente');
+    
+    // Eliminar el "None" inicial del valor
+    console.log('🔍 ALQUILERES: Valor inicial del campo:', `"${clienteInput.value}"`);
+    if (clienteInput.value === 'None' || clienteInput.value === 'none') {
+        console.log('🧹 ALQUILERES: Limpiando valor inicial...');
+        clienteInput.value = '';
+    }
+    
+    // Agregar evento simple para verificar que funciona
+    clienteInput.addEventListener('focus', function() {
+        console.log('🎯 ALQUILERES: Input enfocado');
+    });
+    
+    clienteInput.addEventListener('input', function() {
+        console.log('📝 ALQUILERES: Input cambiado:', `"${this.value}"`);
+    });
+    
+    let timeoutId = null;
+    let selectedCliente = null;
+
+    clienteInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        console.log('📝 Usuario escribió:', query, '(longitud:', query.length, ')');
+        
+        // Limpiar timeout anterior
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        
+        // Si es muy corto, ocultar dropdown
+        if (query.length < 2) {
+            console.log('⚠️ Búsqueda muy corta, ocultando dropdown');
+            dropdown.style.display = 'none';
+            selectedCliente = null;
+            return;
+        }
+        
+        // Esperar 300ms antes de buscar
+        console.log('⏰ Esperando 300ms antes de buscar...');
+        timeoutId = setTimeout(() => {
+            buscarClientes(query);
+        }, 300);
+    });
+
+    // Buscar clientes via AJAX
+    function buscarClientes(query) {
+        const url = `{% url 'persona:buscar_clientes_json' %}?q=${encodeURIComponent(query)}`;
+        console.log('🌐 Realizando búsqueda en:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('📡 Respuesta recibida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 Datos recibidos:', data);
+                mostrarResultados(data.clientes);
+            })
+            .catch(error => {
+                console.error('❌ Error buscando clientes:', error);
+                dropdown.style.display = 'none';
+            });
+    }
+
+    // Mostrar resultados en dropdown
+    function mostrarResultados(clientes) {
+        if (clientes.length === 0) {
+            dropdown.innerHTML = '<div class="dropdown-item text-muted">No se encontraron clientes</div>';
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        const html = clientes.map(cliente => 
+            `<div class="dropdown-item cliente-option" data-cliente='${JSON.stringify(cliente)}' style="cursor: pointer;">
+                <strong>${cliente.nombre_completo}</strong><br>
+                <small class="text-muted">${cliente.email}</small>
+                ${cliente.dni ? `<br><small class="text-info">DNI: ${cliente.dni}</small>` : ''}
+            </div>`
+        ).join('');
+
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+
+        // Agregar eventos click a las opciones
+        dropdown.querySelectorAll('.cliente-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const cliente = JSON.parse(this.dataset.cliente);
+                seleccionarCliente(cliente);
+            });
+        });
+    }
+
+    // Seleccionar un cliente - Solo email o DNI para que funcione el filtro
+    function seleccionarCliente(cliente) {
+        selectedCliente = cliente;
+        // Si la búsqueda original contenía dígitos, es probable que busque por DNI
+        const inputValue = clienteInput.value.trim();
+        const esNumero = /^\d+$/.test(inputValue);
+        
+        if (esNumero && cliente.dni) {
+            clienteInput.value = cliente.dni;  // Usar DNI si la búsqueda era numérica
+        } else {
+            clienteInput.value = cliente.email;  // Usar email por defecto
+        }
+        dropdown.style.display = 'none';
+    }
+
+    // Ocultar dropdown al hacer click fuera
+    document.addEventListener('click', function(e) {
+        if (!clienteInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Navegación con teclado
+    let selectedIndex = -1;
+    
+    clienteInput.addEventListener('keydown', function(e) {
+        const options = dropdown.querySelectorAll('.cliente-option');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+            updateSelection(options);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection(options);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            const cliente = JSON.parse(options[selectedIndex].dataset.cliente);
+            seleccionarCliente(cliente);
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+            selectedIndex = -1;
+        }
+    });
+
+    function updateSelection(options) {
+        options.forEach((option, index) => {
+            option.classList.toggle('active', index === selectedIndex);
+        });
+    }
+});
+</script>
+
 <style>
-.table th, .table td {
-    vertical-align: middle;
-}
-.badge {
-    font-size: 0.9em;
-    padding: 0.5em 0.7em;
+/* Estilos para el autocompletado */
+.dropdown-item.active {
+    background-color: #f8f9fa;
+    color: #495057;
 }
 
-/* Estilos especiales para diferentes estados */
-.table tbody tr.cancelado {
-    background-color: #ffeaea !important;
-    border-left: 4px solid #dc3545;
+.dropdown-item:hover {
+    background-color: #e9ecef;
 }
 
-.table tbody tr.cancelado:hover {
-    background-color: #ffe0e0 !important;
+#cliente-dropdown {
+    z-index: 1050;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
-/* Filas de estado reservado */
-.table tbody tr.reservado {
-    background-color: #fff8e1 !important;
-    border-left: 4px solid #ffc107;
+#cliente-dropdown .dropdown-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
 }
 
-.table tbody tr.reservado:hover {
-    background-color: #fff3c4 !important;
-}
-
-/* Filas de estado en curso */
-.table tbody tr.en-curso {
-    background-color: #e8f5e8 !important;
-    border-left: 4px solid #28a745;
-}
-
-.table tbody tr.en-curso:hover {
-    background-color: #d4edda !important;
-}
-
-/* Mejorar el botón de cancelar */
-.btn-danger {
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-    transition: all 0.2s ease;
-}
-
-.btn-danger:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
-}
-
-.reembolso-pendiente {
-    animation: pulse-reembolso 2s infinite;
-}
-
-@keyframes pulse-reembolso {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+#cliente-dropdown .dropdown-item:last-child {
+    border-bottom: none;
 }
 </style>
 {% endblock %} 
