@@ -9,6 +9,16 @@
         <a href="{% url 'persona:gestion' %}" class="btn btn-secondary">Volver a Gestión</a>
     </div>
 
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:"info" }} alert-dismissible fade show text-center mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
     {% if alquileres %}
     <div class="table-responsive">
         <table class="table table-striped table-hover">

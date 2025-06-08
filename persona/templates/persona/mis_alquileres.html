@@ -14,6 +14,16 @@
                 </a>
             </div>
 
+            <!-- Mensajes -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:"info" }} alert-dismissible fade show text-center mb-4" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
             {% if not alquileres %}
                 <div class="text-center py-5">
                     <div class="mb-4">
