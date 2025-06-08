@@ -20,6 +20,9 @@ class MaquinaBaseForm(forms.ModelForm):
             'imagen',
             'dias_alquiler_min',
             'dias_alquiler_max',
+            'dias_cancelacion_total',
+            'dias_cancelacion_parcial',
+            'porcentaje_reembolso_parcial',
         ]
         widgets = {
             'nombre': forms.TextInput(attrs={
@@ -53,6 +56,15 @@ class MaquinaBaseForm(forms.ModelForm):
             }),
             'dias_alquiler_max': forms.NumberInput(attrs={
                 'class': 'form-control'
+            }),
+            'dias_cancelacion_total': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'dias_cancelacion_parcial': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'porcentaje_reembolso_parcial': forms.NumberInput(attrs={
+                'class': 'form-control'
             })
         }
         error_messages = {
@@ -60,7 +72,7 @@ class MaquinaBaseForm(forms.ModelForm):
                 'required': 'El nombre de la máquina es obligatorio.',
             },
             'tipo': {
-                'required': 'Debe seleccionar un tipo de máquina.',
+                'required': 'Debe seleccionar un tipo.',
             },
             'marca': {
                 'required': 'Debe seleccionar una marca.',
@@ -91,6 +103,19 @@ class MaquinaBaseForm(forms.ModelForm):
             'dias_alquiler_max': {
                 'required': 'La cantidad máxima de días de alquiler es obligatoria.',
                 'min_value': 'La cantidad máxima de días de alquiler debe ser mayor a 0.',
+            },
+            'dias_cancelacion_total': {
+                'required': 'Los días para reembolso total son obligatorios.',
+                'min_value': 'Los días para reembolso total deben ser mayores a 0.',
+            },
+            'dias_cancelacion_parcial': {
+                'required': 'Los días para reembolso parcial son obligatorios.',
+                'min_value': 'Los días para reembolso parcial deben ser mayores a 0.',
+            },
+            'porcentaje_reembolso_parcial': {
+                'required': 'El porcentaje de reembolso parcial es obligatorio.',
+                'min_value': 'El porcentaje debe ser mayor a 0.',
+                'max_value': 'El porcentaje debe ser menor a 100.',
             }
         }
 
@@ -102,6 +127,19 @@ class MaquinaBaseForm(forms.ModelForm):
         if dias_min and dias_max and dias_max < dias_min:
             self.add_error('dias_alquiler_max',
                 'La cantidad máxima de días de alquiler debe ser mayor o igual a la cantidad mínima.')
+        
+        # Validar que los días de cancelación parcial sean menores a los de cancelación total
+        dias_cancelacion_parcial = cleaned_data.get('dias_cancelacion_parcial')
+        dias_cancelacion_total = cleaned_data.get('dias_cancelacion_total')
+        
+        if dias_cancelacion_parcial and dias_cancelacion_total:
+            if dias_cancelacion_parcial >= dias_cancelacion_total:
+                self.add_error('dias_cancelacion_parcial',
+                    'Los días para reembolso parcial deben ser menores a los días para reembolso total.')
+
+        # Validar que se suba una imagen para nuevas máquinas
+        if not self.instance.pk and not cleaned_data.get('imagen'):
+            self.add_error('imagen', 'Por favor, suba una imagen de la máquina.')
         
         return cleaned_data
 

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
 
-{% block title %}Cargar Máquina Base - Alquil.ar{% endblock %}
+{% block title %}Editar {{ maquina.nombre }} - Alquil.ar{% endblock %}
 
 {% block content %}
 <style>
@@ -38,10 +38,8 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Cargar Máquina Base</h2>
-        {% if user.is_staff or user.is_superuser %}
-        <a href="{% url 'persona:gestion' %}" class="btn boton-gris">Regresar a Gestión</a>
-        {% endif %}
+        <h2>Editar Máquina Base</h2>
+        <a href="{% url 'maquinas:lista_maquinas' %}" class="btn boton-gris">Regresar a la lista</a>
     </div>
     
     {% if messages %}
@@ -112,8 +110,8 @@
             {% endfor %}
         </div>
 
-        <div class="mt-1">
-            <button type="submit" class="btn boton-principal">Cargar Máquina Base</button>
+        <div class="mt-3">
+            <button type="submit" class="btn boton-principal">Guardar cambios</button>
         </div>
     </form>
 </div>

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Editar {{ unidad.patente }} - Alquil.ar{% endblock %}
+
+{% block content %}
+<style>
+    .error-text {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        background-color: #fff;
+    }
+    .form-control.is-invalid:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Editar Unidad de Máquina</h2>
+        <a href="{% url 'maquinas:lista_unidades' %}" class="btn boton-gris">Regresar a la lista</a>
+    </div>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <p class="mb-0">Por favor, corrija los errores e intente nuevamente.</p>
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        
+        {% for field in form %}
+        <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% if field.field.widget.input_type == 'file' %}
+                {{ field|add_class:"form-control"|add_error_class:"is-invalid" }}
+            {% else %}
+                {{ field|add_class:"form-control"|add_error_class:"is-invalid" }}
+            {% endif %}
+            {% if field.errors %}
+                <div class="error-text">
+                    {% for error in field.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="mt-3">
+            <button type="submit" class="btn boton-principal">Guardar cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %} 

@@ -18,4 +18,9 @@ urlpatterns = [
     path('unidades/', views.lista_unidades, name='lista_unidades'),
     path('unidad/cargar/', views.cargar_unidad, name='cargar_unidad'),
     path('unidad/<int:unidad_id>/eliminar/', views.eliminar_unidad, name='eliminar_unidad'),
+    path('eliminar_unidad/<int:pk>/', views.eliminar_unidad, name='eliminar_unidad'),
+    path('editar_maquina_base/<int:pk>/', views.editar_maquina_base, name='editar_maquina_base'),
+    path('editar_unidad/<int:pk>/', views.editar_unidad, name='editar_unidad'),
+    path('unidad/<int:pk>/toggle_visibilidad/', views.toggle_visibilidad_unidad, name='toggle_visibilidad_unidad'),
+    path('unidad/<int:pk>/toggle_mantenimiento/', views.toggle_mantenimiento_unidad, name='toggle_mantenimiento_unidad'),
 ] 

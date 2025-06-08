@@ -89,6 +89,44 @@
         line-height: 1.6;
     }
 
+    .no-disponible {
+        filter: grayscale(100%);
+    }
+
+    .estado {
+        margin-bottom: 1rem;
+    }
+
+    .estado-label {
+        font-weight: bold;
+        color: var(--color-text);
+    }
+
+    .estado-valor {
+        color: var(--color-gray);
+    }
+
+    .saber-mas {
+        color: #ffc107;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: opacity 0.2s;
+    }
+
+    .saber-mas:hover {
+        color: #ffc107;
+        opacity: 0.8;
+    }
+
+    .saber-mas-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
+
     @media (max-width: 768px) {
         .hero {
             padding: 4rem 0;
@@ -127,21 +165,28 @@
             {% for maquina in maquinas %}
                 <div class="machine-card">
                     {% if maquina.imagen %}
-                        <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}">
+                        <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                     {% else %}
-                        <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen">
+                        <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                     {% endif %}
                     <div class="card-body">
                         <h3>{{ maquina.nombre }}</h3>
-                        <p class="price">${{ maquina.precio_por_dia }}</p>
+                        <p class="price">${{ maquina.precio_por_dia }} por día</p>
+                        <div class="estado">
+                            <span class="estado-label">Estado:</span> <span class="estado-valor">{% if maquina.tiene_unidades_disponibles %}Disponible{% else %}No Disponible{% endif %}</span>
+                        </div>
                         <p class="description">{{ maquina.descripcion_vista|truncatechars:200 }}</p>
-                        <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="btn btn-primary">Saber más</a>
+                        <div class="saber-mas-container">
+                            <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="saber-mas">
+                                Saber más <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
             {% endfor %}
         </div>
         <div class="text-center mt-5">
-            <a href="{% url 'persona:lista_maquinas' %}" class="btn btn-lg btn-primary">Ver Catálogo Completo</a>
+            <a href="{% url 'maquinas:catalogo_publico' %}" class="btn btn-lg btn-primary">Ver Catálogo Completo</a>
         </div>
     {% else %}
         <div class="text-center py-5">

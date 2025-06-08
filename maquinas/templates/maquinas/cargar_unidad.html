@@ -21,7 +21,12 @@
 </style>
 
 <div class="container mt-4">
-    <h2>Cargar Unidad de Máquina</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Cargar Unidad de Máquina</h2>
+        {% if user.is_staff or user.is_superuser %}
+        <a href="{% url 'persona:gestion' %}" class="btn boton-gris">Regresar a Gestión</a>
+        {% endif %}
+    </div>
     
     {% if messages %}
     <div class="messages">
@@ -107,9 +112,7 @@
             {% endif %}
         </div>
 
-        <div class="mt-3">
-            <button type="submit" class="btn btn-primary">Cargar Unidad de Máquina</button>
-        </div>
+        <button type="submit" class="btn boton-principal">Cargar Unidad</button>
     </form>
 </div>
 {% endblock %}

@@ -4,22 +4,165 @@
 {% block title %}Catálogo - Alquil.ar{% endblock %}
 
 {% block content %}
+<style>
+    .search-container {
+        margin-bottom: 2rem;
+    }
+    .search-form {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .search-input {
+        border-radius: 50px;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+        height: 3rem;
+    }
+    .search-button {
+        border-radius: 50px;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        height: 3rem;
+    }
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        padding: 2rem 0;
+    }
+    .machine-card {
+        background: var(--color-white);
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+    }
+    .machine-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+    .machine-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+    .machine-card .card-body {
+        padding: 1.5rem;
+    }
+    .machine-card h3 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--color-text);
+    }
+    .machine-card .price {
+        font-size: 1.1rem;
+        color: var(--color-gray);
+        font-weight: bold;
+        margin-bottom: 1rem;
+        font-family: var(--font-primary);
+    }
+    .machine-card .description {
+        color: var(--color-gray);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+    .search-results {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: #666;
+    }
+    .no-disponible {
+        filter: grayscale(100%);
+    }
+    .estado {
+        margin-bottom: 1rem;
+    }
+    .estado-label {
+        font-weight: bold;
+        color: var(--color-text);
+    }
+    .estado-valor {
+        color: var(--color-gray);
+    }
+    .saber-mas {
+        color: #ffc107;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: opacity 0.2s;
+    }
+    .saber-mas:hover {
+        color: #ffc107;
+        opacity: 0.8;
+    }
+    .saber-mas-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
+    @media (max-width: 768px) {
+        .catalog-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .machine-card img {
+            height: 200px;
+        }
+    }
+</style>
+
 <section class="py-5">
-    <div class="section-container"> 
+    <div class="section-container">
+        <div class="search-container">
+            <form method="GET" class="search-form">
+                <div class="input-group">
+                    <input type="text" 
+                           name="q" 
+                           class="form-control search-input" 
+                           placeholder="Buscar..." 
+                           value="{{ query }}"
+                           aria-label="Buscar">
+                    <button class="btn btn-primary search-button" type="submit">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if query %}
+        <div class="search-results">
+            {% if maquinas %}
+                <p>Se encontraron {{ maquinas|length }} resultado(s) para "{{ query }}"</p>
+            {% else %}
+                <p>No se encontraron resultados para "{{ query }}"</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if maquinas %}
             <div class="catalog-grid">
                 {% for maquina in maquinas %}
                     <div class="machine-card">
                         {% if maquina.imagen %}
-                            <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}">
+                            <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                         {% else %}
-                            <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen">
+                            <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                         {% endif %}
                         <div class="card-body">
                             <h3>{{ maquina.nombre }}</h3>
-                            <p class="price">${{ maquina.precio_por_dia }}</p>
+                            <p class="price">${{ maquina.precio_por_dia }} por día</p>
+                            <div class="estado">
+                                <span class="estado-label">Estado:</span> <span class="estado-valor">{% if maquina.tiene_unidades_disponibles %}Disponible{% else %}No Disponible{% endif %}</span>
+                            </div>
                             <p class="description">{{ maquina.descripcion_vista }}</p>
-                            <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="btn btn-primary">Saber más</a>
+                            <div class="saber-mas-container">
+                                <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="saber-mas">
+                                    Saber más <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 {% endfor %}
@@ -32,68 +175,4 @@
         {% endif %}
     </div>
 </section>
-
-<style>
-    .catalog-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 2rem;
-        padding: 2rem 0;
-    }
-
-    .machine-card {
-        background: var(--color-white);
-        overflow: hidden;
-        box-shadow: var(--shadow-md);
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: none;
-    }
-
-    .machine-card:hover {
-        transform: translateY(-5px);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .machine-card img {
-        width: 100%;
-        height: 250px;
-        object-fit: cover;
-    }
-
-    .machine-card .card-body {
-        padding: 1.5rem;
-    }
-
-    .machine-card h3 {
-        font-size: 1.25rem !important;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-        color: var(--color-text);
-    }
-
-    .machine-card .price {
-        font-size: 1.1rem;
-        color: var(--color-gray);
-        font-weight: bold;
-        margin-bottom: 1rem;
-        font-family: var(--font-primary);
-    }
-
-    .machine-card .description {
-        color: var(--color-gray);
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
-    }
-
-    @media (max-width: 768px) {
-        .catalog-grid {
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .machine-card img {
-            height: 200px;
-        }
-    }
-</style>
 {% endblock %} 

@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
@@ -39,16 +39,15 @@ class MaquinaBase(models.Model):
         max_digits=12,
         decimal_places=2,
         validators=[MinValueValidator(0)],
-        error_messages={
-            'max_digits': 'El precio no puede tener más de 10 dígitos enteros.',
-            'decimal_places': 'El precio no puede tener más de 2 decimales.',
-            'invalid': 'Por favor, ingrese un precio válido.',
-            'max_whole_digits': 'La parte entera del precio no puede tener más de 10 dígitos.'
-        }
+        help_text='El precio debe ingresarse sin puntos. Puede utilizar comas para separar decimales.'
     )
     descripcion_corta = models.TextField()
     descripcion_larga = models.TextField()
-    imagen = models.ImageField(upload_to='maquinas/')
+    imagen = models.ImageField(
+        upload_to='maquinas/',
+        null=True,
+        blank=True,
+    )
     dias_alquiler_min = models.PositiveIntegerField(
         verbose_name='Cantidad mínima de días de alquiler',
         validators=[MinValueValidator(1)]
@@ -59,6 +58,26 @@ class MaquinaBase(models.Model):
     )
     stock = models.IntegerField(default=0, editable=False)
 
+    # Campos para política de cancelación
+    dias_cancelacion_total = models.PositiveIntegerField(
+        verbose_name='Días mínimos para reembolso total',
+        help_text='Número de días antes del inicio del alquiler para obtener reembolso total',
+        validators=[MinValueValidator(1)],
+        default=10
+    )
+    dias_cancelacion_parcial = models.PositiveIntegerField(
+        verbose_name='Días mínimos para reembolso parcial',
+        help_text='Número de días antes del inicio del alquiler para obtener reembolso parcial',
+        validators=[MinValueValidator(1)],
+        default=5
+    )
+    porcentaje_reembolso_parcial = models.PositiveIntegerField(
+        verbose_name='Porcentaje de reembolso parcial',
+        help_text='Porcentaje del monto total que se reembolsará en caso de cancelación parcial',
+        validators=[MinValueValidator(1), MaxValueValidator(99)],
+        default=50
+    )
+
     def clean(self):
         super().clean()
         if self.dias_alquiler_min is not None and self.dias_alquiler_max is not None:
@@ -66,6 +85,16 @@ class MaquinaBase(models.Model):
                 raise ValidationError({
                     'dias_alquiler_max': 'La cantidad máxima de días debe ser mayor o igual a la cantidad mínima.'
                 })
+        
+        # Validar que los días de cancelación parcial sean menores a los de cancelación total
+        if self.dias_cancelacion_parcial is not None and self.dias_cancelacion_total is not None:
+            if self.dias_cancelacion_parcial >= self.dias_cancelacion_total:
+                raise ValidationError({
+                    'dias_cancelacion_parcial': 'Los días para reembolso parcial deben ser menores a los días para reembolso total.'
+                })
+
+    def tiene_unidades_disponibles(self):
+        return self.unidades.filter(estado='disponible', visible=True).exists()
 
     def __str__(self):
         return f"{self.nombre} ({self.get_marca_display()} {self.modelo})"

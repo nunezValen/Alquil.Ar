@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse
 from datetime import datetime, date, timedelta
 from django.urls import reverse
 from persona.models import Persona
+from django.db.models import Q
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -48,20 +49,21 @@ def detalle_maquina(request, maquina_id):
                             'mercadopago_public_key': settings.MERCADOPAGO_PUBLIC_KEY
                         })
 
-                    # Buscar una unidad disponible
-                    unidad = Unidad.objects.filter(
-                        maquina_base=maquina,
-                        estado='disponible',
-                        visible=True
-                    ).first()
-
-                    if not unidad:
+                    # Verificar si hay unidades disponibles
+                    if not maquina.tiene_unidades_disponibles():
                         form.add_error(None, "Lo sentimos, no hay unidades disponibles en este momento.")
                         return render(request, 'maquinas/detalle_maquina.html', {
                             'maquina': maquina,
                             'form': form,
                             'mercadopago_public_key': settings.MERCADOPAGO_PUBLIC_KEY
                         })
+
+                    # Buscar una unidad disponible
+                    unidad = Unidad.objects.filter(
+                        maquina_base=maquina,
+                        estado='disponible',
+                        visible=True
+                    ).first()
 
                     # Crear el alquiler
                     alquiler = Alquiler.objects.create(
@@ -190,7 +192,7 @@ def eliminar_maquina_base(request, maquina_id):
             return redirect('maquinas:lista_maquinas')
         except Exception as e:
             messages.error(request, 'No se puede eliminar la máquina porque tiene unidades asociadas.')
-            return redirect('maquinas:detalle_maquina', maquina_id=maquina_id)
+            return redirect('maquinas:lista_maquinas')
 
     return render(request, 'maquinas/eliminar_maquina_base.html', {'maquina': maquina})
 
@@ -203,10 +205,52 @@ def lista_maquinas(request):
 @login_required
 @user_passes_test(es_empleado_o_admin)
 def lista_unidades(request):
+    # Mostrar todas las unidades, incluyendo las ocultas
     unidades = Unidad.objects.select_related('maquina_base', 'sucursal').all().order_by('maquina_base__nombre', 'patente')
     return render(request, 'maquinas/lista_unidades.html', {
         'unidades': unidades
     })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def toggle_visibilidad_unidad(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    maquina_base = unidad.maquina_base
+    
+    # Cambiar visibilidad y actualizar stock
+    if unidad.visible:
+        unidad.visible = False
+        maquina_base.stock = max(0, maquina_base.stock - 1)  # Evitar stock negativo
+        messages.success(request, f'La unidad {unidad.patente} ahora está oculta.')
+    else:
+        unidad.visible = True
+        maquina_base.stock += 1
+        messages.success(request, f'La unidad {unidad.patente} ahora es visible.')
+    
+    unidad.save()
+    maquina_base.save()
+    
+    return redirect('maquinas:lista_unidades')
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def toggle_mantenimiento_unidad(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    
+    # Solo permitir cambiar entre disponible y mantenimiento
+    if unidad.estado == 'disponible':
+        unidad.estado = 'mantenimiento'
+        mensaje = f'La unidad {unidad.patente} ha sido puesta en mantenimiento.'
+    elif unidad.estado == 'mantenimiento':
+        unidad.estado = 'disponible'
+        mensaje = f'La unidad {unidad.patente} ha sido marcada como disponible.'
+    else:
+        messages.error(request, 'Solo se puede cambiar el estado de unidades disponibles o en mantenimiento.')
+        return redirect('maquinas:lista_unidades')
+    
+    unidad.save()
+    messages.success(request, mensaje)
+    return redirect('maquinas:lista_unidades')
 
 @login_required
 @user_passes_test(es_admin)
@@ -244,13 +288,29 @@ def eliminar_unidad(request, unidad_id):
     })
 
 def catalogo_publico(request):
+    query = request.GET.get('q', '')
     maquinas = MaquinaBase.objects.filter(stock__gt=0).order_by('nombre')
+    
+    if query:
+        maquinas = maquinas.filter(
+            Q(nombre__icontains=query) |
+            Q(tipo__icontains=query) |
+            Q(marca__icontains=query) |
+            Q(modelo__icontains=query) |
+            Q(descripcion_corta__icontains=query) |
+            Q(descripcion_larga__icontains=query)
+        ).distinct()
+
     for maquina in maquinas:
         if len(maquina.descripcion_corta) > 200:
             maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
         else:
             maquina.descripcion_vista = maquina.descripcion_corta
-    return render(request, 'maquinas/catalogo_publico.html', {'maquinas': maquinas})
+    
+    return render(request, 'maquinas/catalogo_publico.html', {
+        'maquinas': maquinas,
+        'query': query
+    })
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
@@ -464,3 +524,76 @@ def error_pago(request):
 def pago_pendiente(request):
     messages.warning(request, 'El pago está pendiente de aprobación')
     return redirect('maquinas:catalogo_publico')
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def editar_maquina_base(request, pk):
+    maquina = get_object_or_404(MaquinaBase, pk=pk)
+    if request.method == 'POST':
+        form = MaquinaBaseForm(request.POST, instance=maquina)
+        if form.is_valid():
+            maquina = form.save(commit=False)
+            # Mantener la imagen original
+            maquina.imagen = MaquinaBase.objects.get(pk=pk).imagen
+            maquina.save()
+            messages.success(request, 'Máquina base actualizada exitosamente.')
+            return redirect('maquinas:lista_maquinas')
+    else:
+        form = MaquinaBaseForm(instance=maquina)
+        # Eliminar el campo de imagen del formulario
+        if 'imagen' in form.fields:
+            del form.fields['imagen']
+    
+    return render(request, 'maquinas/editar_maquina_base.html', {
+        'form': form,
+        'maquina': maquina
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def editar_unidad(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    if request.method == 'POST':
+        form = UnidadForm(request.POST, request.FILES, instance=unidad)
+        if form.is_valid():
+            patente_nueva = form.cleaned_data['patente']
+            # Buscar si existe otra unidad (diferente a la actual) con la misma patente
+            existe_patente = Unidad.objects.filter(patente=patente_nueva).exclude(id=pk).exists()
+            
+            if existe_patente:
+                form.add_error('patente', 'Ya existe otra unidad con esta patente.')
+                return render(request, 'maquinas/editar_unidad.html', {
+                    'form': form,
+                    'unidad': unidad
+                })
+            
+            form.save()
+            messages.success(request, 'Unidad actualizada exitosamente.')
+            return redirect('maquinas:lista_unidades')
+    else:
+        form = UnidadForm(instance=unidad)
+    
+    return render(request, 'maquinas/editar_unidad.html', {
+        'form': form,
+        'unidad': unidad
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def toggle_mantenimiento_unidad(request, pk):
+    unidad = get_object_or_404(Unidad, pk=pk)
+    
+    # Solo permitir cambiar entre disponible y mantenimiento
+    if unidad.estado == 'disponible':
+        unidad.estado = 'mantenimiento'
+        mensaje = f'La unidad {unidad.patente} ha sido puesta en mantenimiento.'
+    elif unidad.estado == 'mantenimiento':
+        unidad.estado = 'disponible'
+        mensaje = f'La unidad {unidad.patente} ha sido marcada como disponible.'
+    else:
+        messages.error(request, 'Solo se puede cambiar el estado de mantenimiento en unidades disponibles.')
+        return redirect('maquinas:lista_unidades')
+    
+    unidad.save()
+    messages.success(request, mensaje)
+    return redirect('maquinas:lista_unidades')

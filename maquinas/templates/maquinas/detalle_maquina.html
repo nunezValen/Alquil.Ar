@@ -78,6 +78,25 @@
         right: 1rem;
         top: 1rem;
     }
+    .no-disponible {
+        filter: grayscale(100%);
+    }
+    .estado {
+        margin-bottom: 1rem;
+    }
+    .estado-label {
+        font-weight: bold;
+        color: var(--color-text);
+    }
+    .estado-valor {
+        color: var(--color-gray);
+    }
+    .estado-disponible {
+        color: #28a745;
+    }
+    .estado-no-disponible {
+        color: #dc3545;
+    }
 </style>
 
 <div class="section-container py-5">
@@ -97,9 +116,9 @@
         <div class="col-md-6">
             <div class="image-container">
                 {% if maquina.imagen %}
-                    <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="machine-image">
+                    <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="machine-image {% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                 {% else %}
-                    <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="machine-image">
+                    <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="machine-image {% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
                 {% endif %}
             </div>
         </div>
@@ -107,9 +126,12 @@
         <div class="col-md-6">
             <h2 class="product-title">{{ maquina.nombre }}</h2>
             <span class="price">${{ maquina.precio_por_dia }} por día</span>
+            <div class="estado">
+                <span class="estado-label">Estado:</span> <span class="estado-valor">{% if maquina.tiene_unidades_disponibles %}Disponible{% else %}No Disponible{% endif %}</span>
+            </div>
             <p class="description mb-4">{{ maquina.descripcion_corta }}</p>
             <div class="d-flex gap-3">
-                {% if maquina.stock > 0 %}
+                {% if maquina.tiene_unidades_disponibles %}
                     <button type="button" class="btn boton-principal" data-bs-toggle="modal" data-bs-target="#alquilerModal">
                         Alquilar
                     </button>
@@ -119,9 +141,10 @@
         </div>
     </div>
 
-    <!-- Segunda sección: Especificaciones -->
+    <!-- Segunda sección: Especificaciones y Política de Cancelación -->
     <div class="row">
-        <div class="col-12">
+        <!-- Columna de Especificaciones -->
+        <div class="col-md-6">
             <h2>Especificaciones</h2>
             <p class="description mb-4">{{ maquina.descripcion_larga }}</p>
             <div class="specs-list">
@@ -139,6 +162,26 @@
                 </div>
                 <div class="specs-item">
                     <strong>Días máximos de alquiler:</strong>{{ maquina.dias_alquiler_max }} días
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna de Política de Cancelación -->
+        <div class="col-md-6">
+            <h2>Política de Cancelación</h2>
+            <div class="specs-list">
+                <div class="specs-item">
+                    <strong>Cancelación con reembolso total:</strong>
+                    <p>Hasta {{ maquina.dias_cancelacion_total }} días antes de la fecha de inicio.</p>
+                </div>
+                <div class="specs-item">
+                    <strong>Cancelación con reembolso parcial:</strong>
+                    <p>Entre {{ maquina.dias_cancelacion_total }} y {{ maquina.dias_cancelacion_parcial }} días antes de la fecha de inicio.</p>
+                    <p>Reembolso del {{ maquina.porcentaje_reembolso_parcial }}% del monto total.</p>
+                </div>
+                <div class="specs-item">
+                    <strong>Cancelación sin reembolso:</strong>
+                    <p>Menos de {{ maquina.dias_cancelacion_parcial }} días antes de la fecha de inicio.</p>
                 </div>
             </div>
         </div>
@@ -234,7 +277,7 @@
 
                             <div class="d-flex gap-3">
                                 <button type="submit" class="btn boton-principal">Continuar con el pago</button>
-                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn boton-gris" data-bs-dismiss="modal">Cancelar</button>
                             </div>
                         </form>
                     </div>
