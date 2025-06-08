@@ -28,7 +28,7 @@ from .utils import generar_password_random
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from maquinas.models import Alquiler, MaquinaBase
-from maquinas.utils import enviar_email_alquiler_simple
+from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
 
 def es_admin(user):
     """
@@ -379,15 +379,24 @@ def cancelar_mi_alquiler(request, alquiler_id):
                 observaciones = request.POST.get('observaciones', 'Cancelado por el cliente')
                 porcentaje, monto = alquiler.cancelar(empleado=None, observaciones=observaciones)
                 
+                # Enviar email de cancelación
+                try:
+                    enviar_email_alquiler_cancelado(alquiler)
+                    print(f"📧 Email de cancelación enviado para alquiler {alquiler.numero}")
+                except Exception as e:
+                    print(f"❌ Error al enviar email de cancelación: {str(e)}")
+                
                 if porcentaje > 0:
                     messages.success(request, 
                         f'Alquiler {alquiler.numero} cancelado exitosamente. '
                         f'Tienes derecho a un reembolso del {porcentaje}% (${monto:.2f}). '
-                        f'Acércate a la tienda el próximo mes para cobrarlo.')
+                        f'Acércate a la tienda el próximo mes para cobrarlo. '
+                        f'Recibirás un email de confirmación.')
                 else:
                     messages.success(request, 
                         f'Alquiler {alquiler.numero} cancelado exitosamente. '
-                        f'No corresponde reembolso según la política de cancelación.')
+                        f'No corresponde reembolso según la política de cancelación. '
+                        f'Recibirás un email de confirmación.')
                 
             except Exception as e:
                 messages.error(request, f'Error al cancelar el alquiler: {str(e)}')

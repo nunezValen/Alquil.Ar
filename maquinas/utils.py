@@ -418,4 +418,161 @@ def enviar_email_alquiler_simple(alquiler):
         import traceback
         print(f"🔍 Traceback completo:")
         traceback.print_exc()
+        return False
+
+
+def enviar_email_alquiler_cancelado(alquiler):
+    """
+    Envía un email de notificación de cancelación de alquiler
+    """
+    try:
+        print(f"🔄 Iniciando envío de email de cancelación para alquiler {alquiler.numero}")
+        print(f"📧 Email destino: {alquiler.persona.email}")
+        
+        # Determinar quién canceló
+        if alquiler.cancelado_por_empleado:
+            cancelado_por = "nuestro equipo"
+            motivo_section = f"""
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #856404; margin-top: 0; text-align: center;">ℹ️ Motivo de la Cancelación</h3>
+                    <p style="color: #856404; margin: 0; text-align: center;">
+                        {alquiler.observaciones_cancelacion if alquiler.observaciones_cancelacion else 'La cancelación fue procesada por nuestro equipo administrativo.'}
+                    </p>
+                </div>
+            """
+        else:
+            cancelado_por = "usted"
+            motivo_section = ""
+        
+        # Información de reembolso
+        if alquiler.monto_reembolso and alquiler.monto_reembolso > 0:
+            reembolso_section = f"""
+                <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #155724; margin-top: 0; text-align: center;">💰 Información de Reembolso</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #155724;">Porcentaje de Reembolso:</td>
+                            <td style="padding: 8px 0; color: #155724; font-weight: bold;">{alquiler.porcentaje_reembolso}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #155724;">Monto a Reembolsar:</td>
+                            <td style="padding: 8px 0; color: #155724; font-weight: bold; font-size: 16px;">${float(alquiler.monto_reembolso):.2f}</td>
+                        </tr>
+                    </table>
+                    <p style="color: #155724; margin: 10px 0 0; font-size: 14px; text-align: center;">
+                        <strong>El reembolso será procesado en los próximos días hábiles.</strong><br>
+                        Acércate a nuestras oficinas con tu documento para cobrarlo.
+                    </p>
+                </div>
+            """
+        else:
+            reembolso_section = f"""
+                <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #721c24; margin-top: 0; text-align: center;">⚠️ Sin Reembolso</h3>
+                    <p style="color: #721c24; margin: 0; text-align: center;">
+                        Según nuestra política de cancelación, no corresponde reembolso para este alquiler.
+                    </p>
+                </div>
+            """
+        
+        # Crear el mensaje de email
+        asunto = f'Cancelación de Alquiler #{alquiler.numero} - ALQUIL.AR'
+        
+        mensaje_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; background: linear-gradient(135deg, #dc3545, #c82333); padding: 30px; border-radius: 10px; color: white; margin-bottom: 30px;">
+                    <h1 style="margin: 0; font-size: 28px;">Alquiler Cancelado</h1>
+                    <p style="margin: 10px 0 0; font-size: 16px;">Su alquiler ha sido cancelado</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                    <h2 style="color: #dc3545; margin-top: 0;">Detalles del Alquiler</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Número de Alquiler:</td>
+                            <td style="padding: 8px 0; color: #dc3545; font-weight: bold;">{alquiler.numero}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Máquina:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.nombre}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Marca y Modelo:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.get_marca_display()} {alquiler.maquina_base.modelo}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Período Original:</td>
+                            <td style="padding: 8px 0;">{alquiler.fecha_inicio.strftime('%d/%m/%Y')} - {alquiler.fecha_fin.strftime('%d/%m/%Y')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Duración:</td>
+                            <td style="padding: 8px 0;">{alquiler.cantidad_dias} día{'s' if alquiler.cantidad_dias != 1 else ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Monto Original:</td>
+                            <td style="padding: 8px 0; color: #555; font-weight: bold; font-size: 16px;">${float(alquiler.monto_total) if alquiler.monto_total else 0:.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Cancelado por:</td>
+                            <td style="padding: 8px 0; color: #dc3545; font-weight: bold;">{cancelado_por.title()}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Fecha de Cancelación:</td>
+                            <td style="padding: 8px 0;">{alquiler.fecha_cancelacion.strftime('%d/%m/%Y a las %H:%M') if alquiler.fecha_cancelacion else 'No disponible'}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {motivo_section}
+                {reembolso_section}
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="color: #666; margin: 0;">¿Tienes alguna consulta sobre la cancelación?</p>
+                    <p style="margin: 5px 0;">
+                        📧 <a href="mailto:soporte@alquil.ar" style="color: #dc3545;">soporte@alquil.ar</a> | 
+                        📞 <a href="tel:+541112345678" style="color: #dc3545;">+54 11 1234-5678</a>
+                    </p>
+                </div>
+                
+                <div style="text-align: center; padding: 20px; background: #f1f3f4; border-radius: 10px; margin-top: 30px;">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        <strong>ALQUIL.AR</strong> - Tu socio confiable en alquiler de maquinaria<br>
+                        Lamentamos los inconvenientes. Esperamos volver a servirte pronto.<br>
+                        Este es un email automático, por favor no respondas a esta dirección.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Crear el email
+        from django.core.mail import send_mail
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
+        
+        # Enviar el email
+        print("📤 Enviando email de cancelación...")
+        print(f"📍 From: {from_email}")
+        print(f"📍 To: {alquiler.persona.email}")
+        print(f"📍 Subject: {asunto}")
+        
+        send_mail(
+            subject=asunto,
+            message='',  # Mensaje en texto plano vacío
+            from_email=from_email,
+            recipient_list=[alquiler.persona.email],
+            html_message=mensaje_html,  # Mensaje HTML
+            fail_silently=False
+        )
+        
+        print(f"✅ Email de cancelación enviado exitosamente a: {alquiler.persona.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error al enviar email de cancelación: {str(e)}")
+        import traceback
+        print(f"🔍 Traceback completo:")
+        traceback.print_exc()
         return False 

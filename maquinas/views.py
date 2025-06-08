@@ -16,7 +16,7 @@ from django.urls import reverse
 from persona.models import Persona
 from django.db.models import Q
 from django.core.mail import send_mail
-from .utils import enviar_email_alquiler_simple
+from .utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -223,9 +223,17 @@ def cancelar_alquiler(request, alquiler_id):
             observaciones = request.POST.get('observaciones', '')
             porcentaje, monto = alquiler.cancelar(empleado=request.user, observaciones=observaciones)
             
+            # Enviar email de cancelación
+            try:
+                enviar_email_alquiler_cancelado(alquiler)
+                print(f"📧 Email de cancelación enviado para alquiler {alquiler.numero}")
+            except Exception as e:
+                print(f"❌ Error al enviar email de cancelación: {str(e)}")
+            
             messages.success(request, 
                 f'Alquiler {alquiler.numero} cancelado exitosamente. '
-                f'Reembolso: {porcentaje}% (${monto:.2f})')
+                f'Reembolso: {porcentaje}% (${monto:.2f}). '
+                f'Email de notificación enviado al cliente.')
             
         except Exception as e:
             messages.error(request, f'Error al cancelar el alquiler: {str(e)}')
