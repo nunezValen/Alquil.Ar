@@ -12,6 +12,11 @@
                     <h4 class="mb-0">Iniciar Sesión</h4>
                 </div>
                 <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
                     {% if error %}
                         <div class="alert alert-danger">{{ error }}</div>
                     {% endif %}

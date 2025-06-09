@@ -305,10 +305,11 @@ def detalle_maquina(request, maquina_id):
 def mis_alquileres(request):
     """
     Vista para que los clientes vean su historial de alquileres
-    Solo accesible para clientes (no empleados/admins)
+    Accesible para clientes y empleados actuando como clientes
     """
-    # Verificar que el usuario NO sea empleado ni admin
-    if es_empleado_o_admin(request.user):
+    # Verificar que el usuario sea cliente o empleado actuando como cliente
+    es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+    if es_empleado_o_admin(request.user) and not es_empleado_actuando_como_cliente:
         messages.error(request, 'Esta sección es solo para clientes. Los empleados no pueden alquilar máquinas.')
         return redirect('persona:gestion')
     
@@ -360,9 +361,11 @@ def mis_alquileres(request):
 def cancelar_mi_alquiler(request, alquiler_id):
     """
     Vista para que los clientes cancelen sus propios alquileres
+    Accesible para clientes y empleados actuando como clientes
     """
-    # Verificar que el usuario NO sea empleado ni admin
-    if es_empleado_o_admin(request.user):
+    # Verificar que el usuario sea cliente o empleado actuando como cliente
+    es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+    if es_empleado_o_admin(request.user) and not es_empleado_actuando_como_cliente:
         messages.error(request, 'Los empleados no pueden usar esta función. Usa la gestión de alquileres.')
         return redirect('persona:gestion')
     
@@ -442,12 +445,16 @@ def registrar_persona(request):
         form = PersonaForm(request.POST)
         if form.is_valid():
             persona = form.save(commit=False)
-            persona.es_cliente = True
+            
+            # Si el usuario que registra no es admin, forzar registro como cliente
+            if not request.user.is_superuser:
+                persona.es_cliente = True
+                persona.es_empleado = False
             
             # Verificar que el email exista
             if not persona.email:
-                form.add_error('email', 'El email es obligatorio para registrar un cliente.')
-                return render(request, 'persona/registrar_persona.html', {'form': form})
+                form.add_error('email', 'El email es obligatorio para registrar un usuario.')
+                return render(request, 'persona/registrar_persona.html', {'form': form, 'is_admin': request.user.is_superuser})
             
             # Generar contraseña aleatoria
             password = generar_password_random()
@@ -459,7 +466,8 @@ def registrar_persona(request):
                     email=persona.email,
                     password=password,
                     first_name=persona.nombre,
-                    last_name=persona.apellido
+                    last_name=persona.apellido,
+                    is_staff=form.cleaned_data['es_empleado'] if request.user.is_superuser else False  # Solo admins pueden crear empleados
                 )
                 
                 persona.save()
@@ -467,23 +475,31 @@ def registrar_persona(request):
                 # Enviar email con la contraseña
                 send_mail(
                     'Bienvenido a Alquil.Ar - Tu contraseña',
-                    f'Hola {persona.nombre},\n\nTu cuenta ha sido creada exitosamente. Tu contraseña es: {password}\n\nPor favor, cambia tu contraseña la próxima vez que inicies sesión.\n\nSaludos,\nEquipo Alquil.Ar',
+                    f'Hola {persona.nombre},\n\n'
+                    f'Tu cuenta ha sido creada exitosamente.\n\n'
+                    f'Credenciales de acceso:\n'
+                    f'• Email: {persona.email}\n'
+                    f'• Contraseña: {password}\n\n'
+                    f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                    f'Tipo de usuario: {"Empleado y Cliente" if persona.es_empleado and persona.es_cliente else "Empleado" if persona.es_empleado else "Cliente"}\n\n'
+                    f'Saludos,\n'
+                    f'Equipo Alquil.Ar',
                     settings.DEFAULT_FROM_EMAIL,
                     [persona.email],
                     fail_silently=False,
                 )
                 
-                messages.success(request, 'Te has registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
+                messages.success(request, 'Usuario registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
                 return redirect('persona:login_unificado2')
             except Exception as e:
                 # Si algo falla, eliminar el usuario si fue creado
                 if 'user' in locals():
                     user.delete()
                 form.add_error(None, f'Error al crear el usuario: {str(e)}')
-                return render(request, 'persona/registrar_persona.html', {'form': form})
+                return render(request, 'persona/registrar_persona.html', {'form': form, 'is_admin': request.user.is_superuser})
     else:
         form = PersonaForm()
-    return render(request, 'persona/registrar_persona.html', {'form': form})
+    return render(request, 'persona/registrar_persona.html', {'form': form, 'is_admin': request.user.is_superuser})
 
 @csrf_protect
 @ensure_csrf_cookie
@@ -530,7 +546,8 @@ def registrar_empleado(request):
         if form.is_valid():
             persona = form.save(commit=False)
             persona.es_empleado = True
-            persona.es_cliente = True  # Todo empleado es cliente
+            # El administrador decide si el empleado también es cliente
+            persona.es_cliente = form.cleaned_data.get('es_cliente', False)
             persona.save()
 
             email = persona.email
@@ -587,91 +604,50 @@ def login_empleado(request):
 @require_http_methods(["GET", "POST"])
 def cambiar_password(request):
     if request.method == 'POST':
-        password_actual = request.POST.get('password_actual')
-        password_nuevo = request.POST.get('password_nuevo')
-        password_confirmacion = request.POST.get('password_confirmacion')
+        paso = request.POST.get('paso')
         
-        # Validar longitud de la nueva contraseña
-        if len(password_nuevo) < 6:
-            messages.error(request, 'La nueva contraseña debe tener al menos 6 caracteres.')
-            return redirect('persona:cambiar_password')
-        
-        if len(password_nuevo) > 16:
-            messages.error(request, 'La nueva contraseña no puede tener más de 16 caracteres.')
-            return redirect('persona:cambiar_password')
-        
-        # Validar que las contraseñas coincidan
-        if password_nuevo != password_confirmacion:
-            messages.error(request, 'Las contraseñas no coinciden.')
-            return redirect('persona:cambiar_password')
-        
-        # Verificar la contraseña actual
-        user = request.user
-        if not user.check_password(password_actual):
-            messages.error(request, 'La contraseña actual es incorrecta.')
-            return redirect('persona:cambiar_password')
-        
-        # Cambiar la contraseña
-        user.set_password(password_nuevo)
-        user.save()
-        
-        # Actualizar la sesión para que el usuario no tenga que volver a iniciar sesión
-        update_session_auth_hash(request, user)
-        
-        messages.success(request, 'Tu contraseña ha sido cambiada exitosamente.')
-        return redirect('persona:inicio')
+        if paso == 'verificar':
+            password_actual = request.POST.get('password_actual')
+            
+            # Verificar la contraseña actual
+            user = request.user
+            if not user.check_password(password_actual):
+                messages.error(request, 'La contraseña actual es incorrecta.')
+                return render(request, 'persona/cambiar_password.html', {'password_verificada': False})
+            
+            # Si la contraseña es correcta, mostrar el formulario de cambio
+            return render(request, 'persona/cambiar_password.html', {'password_verificada': True})
+            
+        elif paso == 'cambiar':
+            password_nuevo = request.POST.get('password_nuevo')
+            password_confirmacion = request.POST.get('password_confirmacion')
+            
+            # Validar longitud de la nueva contraseña
+            if len(password_nuevo) < 6:
+                messages.error(request, 'La nueva contraseña debe tener al menos 6 caracteres.')
+                return render(request, 'persona/cambiar_password.html', {'password_verificada': True})
+            
+            if len(password_nuevo) > 16:
+                messages.error(request, 'La nueva contraseña no puede tener más de 16 caracteres.')
+                return render(request, 'persona/cambiar_password.html', {'password_verificada': True})
+            
+            # Validar que las contraseñas coincidan
+            if password_nuevo != password_confirmacion:
+                messages.error(request, 'Las contraseñas no coinciden.')
+                return render(request, 'persona/cambiar_password.html', {'password_verificada': True})
+            
+            # Cambiar la contraseña
+            user = request.user
+            user.set_password(password_nuevo)
+            user.save()
+            
+            # Actualizar la sesión para que el usuario no tenga que volver a iniciar sesión
+            update_session_auth_hash(request, user)
+            
+            messages.success(request, 'Tu contraseña ha sido cambiada exitosamente.')
+            return redirect('persona:inicio')
     
-    return render(request, 'persona/cambiar_password.html')
-
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["GET", "POST"])
-def cambiar_password_empleado(request):
-    error = None
-    success = None
-    if request.method == 'POST':
-        password1 = request.POST.get('password1')
-        password2 = request.POST.get('password2')
-
-        if password1 != password2:
-            error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 6:
-            error = 'La contraseña debe tener al menos 6 caracteres.'
-        elif len(password1) > 16:
-            error = 'La contraseña no puede tener más de 16 caracteres.'
-        else:
-            user = request.user
-            user.set_password(password1)
-            user.save()
-            update_session_auth_hash(request, user)  # Mantiene la sesión activa
-            success = 'Contraseña cambiada exitosamente.'
-
-    return render(request, 'cambiar_password_empleado.html', {'error': error, 'success': success})
-
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["GET", "POST"])
-def cambiar_password_logueado(request):
-    error = None
-    success = None
-    if request.method == 'POST':
-        password1 = request.POST.get('password1')
-        password2 = request.POST.get('password2')
-
-        if password1 != password2:
-            error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 6:
-            error = 'La contraseña debe tener al menos 6 caracteres.'
-        elif len(password1) > 16:
-            error = 'La contraseña no puede tener más de 16 caracteres.'
-        else:
-            user = request.user
-            user.set_password(password1)
-            user.save()
-            update_session_auth_hash(request, user)  # Mantiene la sesión activa
-            success = 'Contraseña cambiada exitosamente.'
-
-    return render(request, 'cambiar_password_logueado.html', {'error': error, 'success': success})
+    return render(request, 'persona/cambiar_password.html', {'password_verificada': False})
 
 @csrf_protect
 @ensure_csrf_cookie
@@ -679,24 +655,56 @@ def cambiar_password_logueado(request):
 def cambiar_password_empleado_logueado(request):
     error = None
     success = None
+    password_verificada = False
+    
     if request.method == 'POST':
-        password1 = request.POST.get('password1')
-        password2 = request.POST.get('password2')
+        paso = request.POST.get('paso')
+        
+        if paso == 'verificar':
+            password_actual = request.POST.get('password_actual', '')
+            
+            if not password_actual:
+                error = 'Debe ingresar su contraseña actual.'
+            else:
+                # Verificar la contraseña actual
+                user = request.user
+                if not user.check_password(password_actual):
+                    error = 'La contraseña actual es incorrecta.'
+                else:
+                    password_verificada = True
+                
+        elif paso == 'cambiar':
+            password1 = request.POST.get('password1', '')
+            password2 = request.POST.get('password2', '')
 
-        if password1 != password2:
-            error = 'Las contraseñas no coinciden.'
-        elif len(password1) < 6:
-            error = 'La contraseña debe tener al menos 6 caracteres.'
-        elif len(password1) > 16:
-            error = 'La contraseña no puede tener más de 16 caracteres.'
+            if not password1 or not password2:
+                error = 'Debe completar todos los campos.'
+                password_verificada = True
+            elif password1 != password2:
+                error = 'Las contraseñas no coinciden.'
+                password_verificada = True
+            elif len(password1) < 6:
+                error = 'La contraseña debe tener al menos 6 caracteres.'
+                password_verificada = True
+            elif len(password1) > 16:
+                error = 'La contraseña no puede tener más de 16 caracteres.'
+                password_verificada = True
+            else:
+                user = request.user
+                user.set_password(password1)
+                user.save()
+                update_session_auth_hash(request, user)  # Mantiene la sesión activa
+                success = 'Contraseña cambiada exitosamente.'
+                return redirect('persona:inicio')
         else:
-            user = request.user
-            user.set_password(password1)
-            user.save()
-            update_session_auth_hash(request, user)  # Mantiene la sesión activa
-            success = 'Contraseña cambiada exitosamente.'
+            # Si no se especifica el paso, asumimos que es una solicitud GET
+            password_verificada = False
 
-    return render(request, 'cambiar_password_empleado_logueado.html', {'error': error, 'success': success})
+    return render(request, 'persona/cambiar_password_empleado_logueado.html', {
+        'error': error,
+        'success': success,
+        'password_verificada': password_verificada
+    })
 
 @login_required
 @csrf_protect
@@ -709,29 +717,30 @@ def login_as_persona(request):
     # Verificar que el usuario actual es un empleado
     try:
         persona = Persona.objects.get(email=request.user.email)
-        if not persona.es_empleado and not request.user.is_staff:
+        if not persona.es_empleado:
+            messages.error(request, 'Solo los empleados pueden acceder a esta función.')
             return redirect('persona:inicio')
+
+        if request.method == 'POST':
+            # Verificar que el empleado tenga permiso para actuar como cliente
+            if not persona.es_cliente:
+                messages.error(request, 'No tienes permiso para actuar como cliente. Contacta al administrador.')
+                return redirect('persona:inicio')
+
+            # Guardar en la sesión que el usuario es un empleado actuando como cliente
+            request.session['es_empleado_actuando_como_cliente'] = True
+            messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
+            return redirect('persona:inicio')
+
     except Persona.DoesNotExist:
+        messages.error(request, 'No se encontró tu perfil de empleado.')
         return redirect('persona:inicio')
 
-    if request.method == 'POST':
-        email = request.user.email  # El email del empleado actual
-
-        try:
-            # Buscar si existe una cuenta Persona con el mismo email
-            persona = Persona.objects.get(email=email)
-
-            if persona.es_cliente:
-                # Guardar en la sesión que el usuario es un empleado actuando como cliente
-                request.session['es_empleado_actuando_como_cliente'] = True
-                messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
-                return redirect('persona:inicio')
-            else:
-                error = 'No tienes una cuenta personal asociada a este email'
-        except Persona.DoesNotExist:
-            error = 'No existe una cuenta Persona asociada a este email'
-
-    return render(request, 'login_as_persona.html', {'error': error, 'success': success})
+    return render(request, 'login_as_persona.html', {
+        'error': error, 
+        'success': success,
+        'persona': persona
+    })
 
 @login_required
 def inicio_blanco(request):
@@ -763,7 +772,18 @@ def login_unificado2(request):
                 user = authenticate(request, username=email, password=password)
                 if user is not None:
                     login(request, user)
-                    return redirect('persona:inicio')
+                    
+                    # Verificar roles en orden específico
+                    if persona.es_empleado:
+                        messages.success(request, 'Has iniciado sesión como empleado')
+                        return redirect('persona:inicio')
+                    elif persona.es_cliente:
+                        messages.success(request, 'Has iniciado sesión como cliente')
+                        return redirect('persona:inicio')
+                    else:
+                        return render(request, 'persona/login_unificado2.html', {
+                            'error': 'No tienes cuenta activa. Contacta al administrador.'
+                        })
                 else:
                     return render(request, 'persona/login_unificado2.html', {
                         'error': 'Email o contraseña incorrectos'

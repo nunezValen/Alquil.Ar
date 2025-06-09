@@ -25,12 +25,6 @@ class Persona(models.Model):
     es_admin = models.BooleanField(default=False)
     es_baneado = models.BooleanField(default=False)
 
-    def save(self, *args, **kwargs):
-        # Si es empleado, automáticamente es cliente también
-        if self.es_empleado:
-            self.es_cliente = True
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
 
