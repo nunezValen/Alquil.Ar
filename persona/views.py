@@ -3,10 +3,6 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, update_session_auth_hash, logout
-from .models import Persona, Maquina, Sucursal
-from .forms import PersonaForm
-from datetime import date
-from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -14,12 +10,11 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
-from .models import Persona, Maquina, Alquiler
-from maquinas.models import MaquinaBase
-from .forms import PersonaForm, EditarPersonaForm, AlquilerForm, CambiarPasswordForm
-from datetime import date, datetime
-from django.contrib.auth.forms import PasswordChangeForm
-import random, string
+from .models import Persona, Maquina, Sucursal, CodigoVerificacion
+from .forms import PersonaForm
+from datetime import date
+import random
+import string
 import mercadopago
 import binance
 from pyngrok import ngrok
@@ -731,21 +726,21 @@ def login_as_persona(request):
             return redirect('persona:inicio')
 
         if request.method == 'POST':
-            # Verificar que el empleado tenga permiso para actuar como cliente
+            # Verificar que el usuario tenga permiso para actuar como cliente
             if not persona.es_cliente:
                 messages.error(request, 'No tienes permiso para actuar como cliente. Contacta al administrador.')
                 return redirect('persona:inicio')
 
-            # Guardar en la sesión que el usuario es un empleado actuando como cliente
+            # Guardar en la sesión que el usuario es un empleado/admin actuando como cliente
             request.session['es_empleado_actuando_como_cliente'] = True
             messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
             return redirect('persona:inicio')
 
     except Persona.DoesNotExist:
-        messages.error(request, 'No se encontró tu perfil de empleado.')
+        messages.error(request, 'No se encontró tu perfil.')
         return redirect('persona:inicio')
 
-    return render(request, 'login_as_persona.html', {
+    return render(request, 'persona/login_as_persona.html', {
         'error': error, 
         'success': success,
         'persona': persona
@@ -780,6 +775,45 @@ def login_unificado2(request):
             else:
                 user = authenticate(request, username=email, password=password)
                 if user is not None:
+                    # Si es admin, requerir verificación en dos pasos
+                    if persona.es_admin:
+                        # Guardar los datos de usuario en la sesión temporalmente
+                        request.session['temp_user_id'] = user.id
+                        request.session['temp_user_email'] = email
+                        
+                        # Crear y enviar código de verificación
+                        codigo = CodigoVerificacion.objects.create(
+                            persona=persona,
+                            fecha_expiracion=timezone.now() + timezone.timedelta(minutes=10)
+                        )
+                        
+                        # Enviar el código por correo electrónico
+                        subject = 'Código de verificación - Alquil.Ar'
+                        message = f'''
+                        Hola {persona.nombre},
+
+                        Tu código de verificación es: {codigo.codigo}
+
+                        Este código expirará en 10 minutos.
+
+                        Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta.
+
+                        Saludos,
+                        El equipo de Alquil.Ar
+                        '''
+                        
+                        send_mail(
+                            subject,
+                            message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [email],
+                            fail_silently=False,
+                        )
+                        
+                        messages.info(request, 'Por favor, ingresa el código de verificación enviado a tu correo.')
+                        return redirect('persona:verificar_codigo')
+                    
+                    # Para usuarios no admin, proceder con el login normal
                     login(request, user)
                     
                     # Verificar roles en orden específico
@@ -1492,5 +1526,97 @@ def buscar_clientes_json(request):
     
     print(f"📤 Devolviendo {len(resultados)} resultados")
     return JsonResponse({'clientes': resultados})
+
+def enviar_codigo_verificacion(request):
+    if not request.user.is_authenticated:
+        messages.error(request, 'Debes iniciar sesión primero.')
+        return redirect('login')
+
+    # Crear nuevo código de verificación
+    codigo = CodigoVerificacion.objects.create(
+        persona=request.user,
+        fecha_expiracion=timezone.now() + timezone.timedelta(minutes=10)
+    )
+
+    # Enviar el código por correo electrónico
+    subject = 'Código de verificación - Alquil.Ar'
+    message = f'''
+    Hola {request.user.nombre},
+
+    Tu código de verificación es: {codigo.codigo}
+
+    Este código expirará en 10 minutos.
+
+    Si no solicitaste este código, puedes ignorar este mensaje.
+
+    Saludos,
+    El equipo de Alquil.Ar
+    '''
+    
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [request.user.email],
+        fail_silently=False,
+    )
+
+    messages.success(request, 'Se ha enviado un código de verificación a tu correo electrónico.')
+    return redirect('verificar_codigo')
+
+def verificar_codigo(request):
+    # Verificar si hay un usuario temporal en la sesión
+    temp_user_id = request.session.get('temp_user_id')
+    temp_user_email = request.session.get('temp_user_email')
+    
+    if not temp_user_id or not temp_user_email:
+        messages.error(request, 'Sesión inválida. Por favor, inicia sesión nuevamente.')
+        return redirect('persona:login_unificado2')
+
+    try:
+        persona = Persona.objects.get(email=temp_user_email)
+    except Persona.DoesNotExist:
+        messages.error(request, 'Usuario no encontrado. Por favor, inicia sesión nuevamente.')
+        return redirect('persona:login_unificado2')
+
+    if request.method == 'POST':
+        codigo_ingresado = request.POST.get('codigo')
+        
+        # Buscar el código más reciente no usado y no expirado
+        try:
+            codigo = CodigoVerificacion.objects.filter(
+                persona=persona,
+                usado=False,
+                fecha_expiracion__gt=timezone.now()
+            ).latest('fecha_creacion')
+            
+            if codigo.codigo == codigo_ingresado:
+                codigo.usado = True
+                codigo.save()
+                
+                # Obtener el usuario y hacer login
+                user = User.objects.get(id=temp_user_id)
+                
+                # Si es admin, asignar permisos completos
+                if persona.es_admin:
+                    user.is_staff = True
+                    user.is_superuser = True
+                    user.save()
+                
+                login(request, user)
+                
+                # Limpiar datos temporales de la sesión
+                del request.session['temp_user_id']
+                del request.session['temp_user_email']
+                
+                messages.success(request, '¡Verificación exitosa! Has iniciado sesión como administrador con todos los permisos.')
+                return redirect('persona:inicio')
+            else:
+                messages.error(request, 'Código incorrecto. Por favor, intenta nuevamente.')
+        except CodigoVerificacion.DoesNotExist:
+            messages.error(request, 'El código ha expirado o no existe. Por favor, inicia sesión nuevamente.')
+            return redirect('persona:login_unificado2')
+
+    return render(request, 'persona/verificar_codigo.html')
 
 # Create your views here.

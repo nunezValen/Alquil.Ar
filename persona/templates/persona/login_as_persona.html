@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Cambiar a Cuenta de Cliente{% endblock %}
+{% block content %}
+<style>
+    .login-box {
+        max-width: 350px;
+        margin: 80px auto 40px auto;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        padding: 32px 32px 18px 32px;
+        text-align: center;
+    }
+    .login-box .user-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 18px;
+        color: #bdbdbd;
+        background: #f2f2f2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .login-box input[type="password"] {
+        margin-bottom: 14px;
+        border-radius: 2px;
+        border: 1px solid #bdbdbd;
+        font-size: 16px;
+        padding: 8px 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .login-box button {
+        width: 100%;
+        background: #2176d2;
+        color: #fff;
+        border: none;
+        border-radius: 2px;
+        padding: 10px 0;
+        font-size: 17px;
+        font-weight: 500;
+        margin-top: 8px;
+        margin-bottom: 10px;
+        transition: background 0.2s;
+    }
+    .login-box button:hover {
+        background: #185a9d;
+    }
+    .login-box .error {
+        color: #d32f2f;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    .login-box .back-link {
+        display: block;
+        color: #666;
+        text-decoration: none;
+        font-size: 14px;
+        margin-top: 10px;
+    }
+    .login-box .back-link:hover {
+        color: #333;
+    }
+    .login-box .info {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    .error-message {
+        background-color: #fdecea;
+        border: 1px solid #fdccc8;
+        border-radius: 4px;
+        color: #d32f2f;
+        padding: 16px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .error-message i {
+        margin-right: 8px;
+        font-size: 18px;
+    }
+</style>
+<div class="login-box">
+    <div class="user-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+        </svg>
+    </div>
+    <h2>Cambiar a Cuenta de Cliente</h2>
+    {% if not persona.es_cliente %}
+        <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            No tienes cuenta de cliente.
+        </div>
+    {% else %}
+        <div class="info">
+            Haz clic en el botón para cambiar a tu cuenta de cliente. Podrás volver a tu cuenta de {% if persona.es_admin %}administrador{% else %}empleado{% endif %} cuando lo desees.
+        </div>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="post" autocomplete="off">
+            {% csrf_token %}
+            <button type="submit">Cambiar a Cuenta de Cliente</button>
+        </form>
+    {% endif %}
+    <a href="{% url 'persona:inicio' %}" class="back-link">Volver al inicio</a>
+</div>
+{% endblock %} 

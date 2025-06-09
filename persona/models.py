@@ -3,11 +3,37 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.core.exceptions import ValidationError
 import re
+import random
+import string
 
 def validar_email(email):
     """Valida que el email tenga un formato válido y un dominio real"""
     if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
         raise ValidationError('El formato del email no es válido')
+
+def generar_codigo():
+    """Genera un código aleatorio de 6 dígitos"""
+    return ''.join(random.choices(string.digits, k=6))
+
+class CodigoVerificacion(models.Model):
+    persona = models.ForeignKey('Persona', on_delete=models.CASCADE)
+    codigo = models.CharField(max_length=6, default=generar_codigo)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_expiracion = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Código para {self.persona.email}"
+
+    def save(self, *args, **kwargs):
+        if not self.fecha_expiracion:
+            # El código expira en 10 minutos
+            self.fecha_expiracion = timezone.now() + timezone.timedelta(minutes=10)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Código de Verificación"
+        verbose_name_plural = "Códigos de Verificación"
 
 class Persona(models.Model):
     nombre = models.CharField(max_length=100)
@@ -27,6 +53,35 @@ class Persona(models.Model):
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
+
+    def save(self, *args, **kwargs):
+        # Guardar el estado anterior de es_admin si el objeto ya existe
+        if self.pk:
+            old_instance = Persona.objects.get(pk=self.pk)
+            old_es_admin = old_instance.es_admin
+        else:
+            old_es_admin = False
+
+        # Guardar la persona
+        super().save(*args, **kwargs)
+
+        # Si el email existe, actualizar o crear el usuario de Django
+        if self.email:
+            from django.contrib.auth.models import User
+            user, created = User.objects.get_or_create(
+                username=self.email,
+                defaults={
+                    'email': self.email,
+                    'first_name': self.nombre,
+                    'last_name': self.apellido,
+                }
+            )
+
+            # Actualizar permisos si es_admin ha cambiado
+            if self.es_admin != old_es_admin:
+                user.is_staff = self.es_admin
+                user.is_superuser = self.es_admin
+                user.save()
 
     class Meta:
         verbose_name = "Persona"
