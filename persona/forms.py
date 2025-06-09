@@ -5,9 +5,12 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 class PersonaForm(forms.ModelForm):
+    es_cliente = forms.BooleanField(required=False, label='Cliente', initial=False)
+    es_empleado = forms.BooleanField(required=False, label='Empleado', initial=False)
+
     class Meta:
         model = Persona
-        fields = ['nombre', 'apellido', 'dni', 'email', 'fecha_nacimiento']
+        fields = ['nombre', 'apellido', 'dni', 'email', 'fecha_nacimiento', 'es_cliente', 'es_empleado']
         widgets = {
             'nombre': forms.TextInput(attrs={'placeholder': 'Nombre', 'autocomplete': 'off', 'class': 'form-control'}),
             'apellido': forms.TextInput(attrs={'placeholder': 'Apellido', 'autocomplete': 'off', 'class': 'form-control'}),
@@ -30,6 +33,16 @@ class PersonaForm(forms.ModelForm):
                 'unique': 'Este email ya está registrado.'
             }
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        es_cliente = cleaned_data.get('es_cliente')
+        es_empleado = cleaned_data.get('es_empleado')
+
+        if not es_cliente and not es_empleado:
+            raise ValidationError('Debes seleccionar al menos un tipo de usuario (Cliente o Empleado).')
+
+        return cleaned_data
 
     def clean_fecha_nacimiento(self):
         fecha = self.cleaned_data.get('fecha_nacimiento')
