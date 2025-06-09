@@ -9,7 +9,8 @@ from .views import (
     editar_datos_personales, gestion, estadisticas, inicio,
     lista_alquileres, checkout, recuperar_password, mapa_sucursales,
     pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler,
-    lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json
+    lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json,
+    enviar_codigo_verificacion, verificar_codigo
 )
 from maquinas.views import cancelar_alquiler
 
@@ -42,13 +43,16 @@ urlpatterns = [
     path('editar-datos-personales/', editar_datos_personales, name='editar_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
-    path('reembolsos/<int:reembolso_id>/marcar-pagado/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
-    path('api/buscar-clientes/', buscar_clientes_json, name='buscar_clientes_json'),
-    path('recuperar-password/', recuperar_password, name='recuperar_password'),
-    path('sucursales/', mapa_sucursales, name='mapa_sucursales'),
+    path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
+    path('buscar-clientes-json/', buscar_clientes_json, name='buscar_clientes_json'),
     path('pago-exitoso/', pago_exitoso, name='pago_exitoso'),
     path('pago-fallido/', pago_fallido, name='pago_fallido'),
     path('pago-pendiente/', pago_pendiente, name='pago_pendiente'),
+    path('recuperar-password/', recuperar_password, name='recuperar_password'),
+    path('sucursales/', mapa_sucursales, name='mapa_sucursales'),
+    # URLs para verificación en dos pasos
+    path('verificacion/enviar-codigo/', enviar_codigo_verificacion, name='enviar_codigo_verificacion'),
+    path('verificacion/verificar-codigo/', verificar_codigo, name='verificar_codigo'),
 ]
 
 
