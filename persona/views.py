@@ -126,21 +126,21 @@ def inicio(request):
                                     
                                     # Enviar email con PDF al cliente
                                     try:
-                                        print(f"🔄 Intentando enviar email desde persona webhook...")
+                                        print(f"[INFO] Intentando enviar email desde persona webhook...")
                                         resultado_email = enviar_email_alquiler_simple(alquiler)
                                         if resultado_email:
-                                            print(f"✅ Email enviado correctamente desde persona webhook")
+                                            print(f"[SUCCESS] Email enviado correctamente desde persona webhook")
                                         else:
-                                            print(f"❌ Falló el envío de email desde persona webhook")
+                                            print(f"[ERROR] Falló el envío de email desde persona webhook")
                                     except Exception as e:
-                                        print(f"❌ Error al enviar email desde persona webhook: {str(e)}")
+                                        print(f"[ERROR] Error al enviar email desde persona webhook: {str(e)}")
                                         import traceback
                                         traceback.print_exc()
                                     
                                     messages.success(request, f'¡Pago exitoso! Tu número de alquiler es: {alquiler.numero}. Código de retiro: {alquiler.codigo_retiro}')
-                        else:
-                            print(f"Alquiler ya existe: {alquiler_existente.numero}")
-                            messages.success(request, f'Alquiler ya confirmado: {alquiler_existente.numero}')
+                                else:
+                                    print(f"Alquiler ya existe: {alquiler_existente.numero}")
+                                    messages.success(request, f'Alquiler ya confirmado: {alquiler_existente.numero}')
             except Exception as e:
                 print(f"Error al procesar retorno de pago: {str(e)}")
                 messages.error(request, 'Hubo un error al procesar el pago.')
@@ -380,9 +380,9 @@ def cancelar_mi_alquiler(request, alquiler_id):
                 # Enviar email de cancelación
                 try:
                     enviar_email_alquiler_cancelado(alquiler)
-                    print(f"📧 Email de cancelación enviado para alquiler {alquiler.numero}")
+                    print(f"[INFO] Email de cancelación enviado para alquiler {alquiler.numero}")
                 except Exception as e:
-                    print(f"❌ Error al enviar email de cancelación: {str(e)}")
+                    print(f"[ERROR] Error al enviar email de cancelación: {str(e)}")
                 
                 if porcentaje > 0:
                     messages.success(request, 
@@ -1327,14 +1327,14 @@ def pago_exitoso(request):
                             
                             # Enviar email con PDF al cliente
                             try:
-                                print(f"🔄 Intentando enviar email desde fallback...")
+                                print(f"[INFO] Intentando enviar email desde fallback...")
                                 resultado_email = enviar_email_alquiler_simple(alquiler)
                                 if resultado_email:
-                                    print(f"✅ Email enviado correctamente desde fallback")
+                                    print(f"[SUCCESS] Email enviado correctamente desde fallback")
                                 else:
-                                    print(f"❌ Falló el envío de email desde fallback")
+                                    print(f"[ERROR] Falló el envío de email desde fallback")
                             except Exception as e:
-                                print(f"❌ Error al enviar email desde fallback: {str(e)}")
+                                print(f"[ERROR] Error al enviar email desde fallback: {str(e)}")
                                 import traceback
                                 traceback.print_exc()
                         else:

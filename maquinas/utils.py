@@ -302,8 +302,8 @@ def enviar_email_alquiler_simple(alquiler):
     Envía un email simple de confirmación de alquiler (sin PDF)
     """
     try:
-        print(f"🔄 Iniciando envío de email para alquiler {alquiler.numero}")
-        print(f"📧 Email destino: {alquiler.persona.email}")
+        print(f"[INFO] Iniciando envío de email para alquiler {alquiler.numero}")
+        print(f"[INFO] Email destino: {alquiler.persona.email}")
         
         # Crear el mensaje de email
         asunto = f'Confirmación de Alquiler #{alquiler.numero} - ALQUIL.AR'
@@ -396,10 +396,10 @@ def enviar_email_alquiler_simple(alquiler):
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
         
         # Enviar el email
-        print("📤 Enviando email...")
-        print(f"📍 From: {from_email}")
-        print(f"📍 To: {alquiler.persona.email}")
-        print(f"📍 Subject: {asunto}")
+        print("[INFO] Enviando email...")
+        print(f"[INFO] From: {from_email}")
+        print(f"[INFO] To: {alquiler.persona.email}")
+        print(f"[INFO] Subject: {asunto}")
         
         send_mail(
             subject=asunto,
@@ -410,13 +410,13 @@ def enviar_email_alquiler_simple(alquiler):
             fail_silently=False
         )
         
-        print(f"✅ Email enviado exitosamente a: {alquiler.persona.email}")
+        print(f"[SUCCESS] Email enviado exitosamente a: {alquiler.persona.email}")
         return True
         
     except Exception as e:
-        print(f"❌ Error al enviar email: {str(e)}")
+        print(f"[ERROR] Error al enviar email: {str(e)}")
         import traceback
-        print(f"🔍 Traceback completo:")
+        print(f"[DEBUG] Traceback completo:")
         traceback.print_exc()
         return False
 
@@ -426,8 +426,8 @@ def enviar_email_alquiler_cancelado(alquiler):
     Envía un email de notificación de cancelación de alquiler
     """
     try:
-        print(f"🔄 Iniciando envío de email de cancelación para alquiler {alquiler.numero}")
-        print(f"📧 Email destino: {alquiler.persona.email}")
+        print(f"[INFO] Iniciando envío de email de cancelación para alquiler {alquiler.numero}")
+        print(f"[INFO] Email destino: {alquiler.persona.email}")
         
         # Determinar quién canceló
         if alquiler.cancelado_por_empleado:
@@ -553,10 +553,10 @@ def enviar_email_alquiler_cancelado(alquiler):
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
         
         # Enviar el email
-        print("📤 Enviando email de cancelación...")
-        print(f"📍 From: {from_email}")
-        print(f"📍 To: {alquiler.persona.email}")
-        print(f"📍 Subject: {asunto}")
+        print("[INFO] Enviando email de cancelación...")
+        print(f"[INFO] From: {from_email}")
+        print(f"[INFO] To: {alquiler.persona.email}")
+        print(f"[INFO] Subject: {asunto}")
         
         send_mail(
             subject=asunto,
@@ -567,12 +567,12 @@ def enviar_email_alquiler_cancelado(alquiler):
             fail_silently=False
         )
         
-        print(f"✅ Email de cancelación enviado exitosamente a: {alquiler.persona.email}")
+        print(f"[SUCCESS] Email de cancelación enviado exitosamente a: {alquiler.persona.email}")
         return True
         
     except Exception as e:
-        print(f"❌ Error al enviar email de cancelación: {str(e)}")
+        print(f"[ERROR] Error al enviar email de cancelación: {str(e)}")
         import traceback
-        print(f"🔍 Traceback completo:")
+        print(f"[DEBUG] Traceback completo:")
         traceback.print_exc()
         return False 

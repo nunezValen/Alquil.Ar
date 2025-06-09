@@ -226,9 +226,9 @@ def cancelar_alquiler(request, alquiler_id):
             # Enviar email de cancelación
             try:
                 enviar_email_alquiler_cancelado(alquiler)
-                print(f"📧 Email de cancelación enviado para alquiler {alquiler.numero}")
+                print(f"[INFO] Email de cancelación enviado para alquiler {alquiler.numero}")
             except Exception as e:
-                print(f"❌ Error al enviar email de cancelación: {str(e)}")
+                print(f"[ERROR] Error al enviar email de cancelación: {str(e)}")
             
             messages.success(request, 
                 f'Alquiler {alquiler.numero} cancelado exitosamente. '
