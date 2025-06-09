@@ -66,8 +66,13 @@
                                 <div class="alert alert-info">
                                     <small>
                                         <i class="fas fa-info-circle me-1"></i>
-                                        <strong>Importante:</strong> El reembolso se acredita como saldo a favor 
-                                        para tu próxima visita a la tienda.
+                                        <strong>Importante:</strong> Acercate a la sucursal 
+                                        {% if alquiler.unidad.sucursal %}
+                                            {{ alquiler.unidad.sucursal.direccion }}
+                                        {% else %}
+                                            de origen
+                                        {% endif %}
+                                        para retirar el reembolso.
                                     </small>
                                 </div>
                             {% else %}
@@ -111,7 +116,13 @@
                             <p class="mb-0">
                                 Una vez confirmada, la cancelación no se puede deshacer. 
                                 {% if porcentaje_reembolso > 0 %}
-                                    El reembolso quedará disponible para tu próxima visita a la tienda.
+                                    Acercate a la sucursal 
+                                    {% if alquiler.unidad.sucursal %}
+                                        {{ alquiler.unidad.sucursal.direccion }}
+                                    {% else %}
+                                        de origen
+                                    {% endif %}
+                                    para retirar el reembolso.
                                 {% else %}
                                     No recibirás reembolso por esta cancelación.
                                 {% endif %}

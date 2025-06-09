@@ -375,7 +375,7 @@ def enviar_email_alquiler_simple(alquiler):
                 <div style="text-align: center; margin: 30px 0;">
                     <p style="color: #666; margin: 0;">¿Tienes alguna consulta?</p>
                     <p style="margin: 5px 0;">
-                        📧 <a href="mailto:soporte@alquil.ar" style="color: #2e7d32;">soporte@alquil.ar</a> | 
+                        📧 <a href="mailto:contacto.alquilar@gmail.com" style="color: #2e7d32;">contacto.alquilar@gmail.com</a> | 
                         📞 <a href="tel:+541112345678" style="color: #2e7d32;">+54 11 1234-5678</a>
                     </p>
                 </div>
@@ -461,7 +461,7 @@ def enviar_email_alquiler_cancelado(alquiler):
                     </table>
                     <p style="color: #155724; margin: 10px 0 0; font-size: 14px; text-align: center;">
                         <strong>El reembolso será procesado en los próximos días hábiles.</strong><br>
-                        Acércate a nuestras oficinas con tu documento para cobrarlo.
+                        Acércate a la sucursal {alquiler.unidad.sucursal.direccion} con tu documento para cobrarlo.
                     </p>
                 </div>
             """
@@ -531,7 +531,7 @@ def enviar_email_alquiler_cancelado(alquiler):
                 <div style="text-align: center; margin: 30px 0;">
                     <p style="color: #666; margin: 0;">¿Tienes alguna consulta sobre la cancelación?</p>
                     <p style="margin: 5px 0;">
-                        📧 <a href="mailto:soporte@alquil.ar" style="color: #dc3545;">soporte@alquil.ar</a> | 
+                        📧 <a href="mailto:contacto.alquilar@gmail.com" style="color: #dc3545;">contacto.alquilar@gmail.com</a> | 
                         📞 <a href="tel:+541112345678" style="color: #dc3545;">+54 11 1234-5678</a>
                     </p>
                 </div>
