@@ -17,6 +17,11 @@ class SucursalAdmin(admin.ModelAdmin):
         }),
     )
 
+@admin.register(Persona)
+class PersonaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'apellido', 'email', 'es_cliente', 'es_empleado', 'es_admin', 'es_baneado')
+    list_filter = ('es_cliente', 'es_empleado', 'es_admin', 'es_baneado')
+    search_fields = ('nombre', 'apellido', 'email')
+
 # Registramos los demás modelos si no están ya registrados
-admin.site.register(Persona)
 admin.site.register(Maquina)
