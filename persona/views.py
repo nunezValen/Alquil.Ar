@@ -899,16 +899,26 @@ def estadisticas(request):
     return render(request, 'persona/estadisticas.html')
 
 def empleados_processor(request):
-    """Context processor que agrega la lista de emails de empleados al contexto de todos los templates."""
+    """Context processor que agrega datos de sesión y de usuario al contexto de todos los templates."""
     empleados_emails = list(Persona.objects.filter(es_empleado=True, bloqueado_empleado=False).values_list('email', flat=True))
 
     # Agregar la variable de sesión al contexto
     es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
 
-    return {
+    context = {
         'empleados_emails': empleados_emails,
-        'es_empleado_actuando_como_cliente': es_empleado_actuando_como_cliente
+        'es_empleado_actuando_como_cliente': es_empleado_actuando_como_cliente,
+        'usuario_persona': None,
     }
+
+    if request.user.is_authenticated:
+        try:
+            # Añadir el objeto Persona del usuario logueado para usarlo en los templates
+            context['usuario_persona'] = Persona.objects.get(email=request.user.email)
+        except Persona.DoesNotExist:
+            pass # Mantiene usuario_persona como None si no hay perfil
+
+    return context
 
 @login_required
 @csrf_protect
@@ -1799,33 +1809,25 @@ def bloquear_cliente(request, persona_id):
     # Evitar que un empleado bloquee a un admin
     if persona.es_admin and not request.user.is_superuser:
         messages.error(request, 'No tienes permiso para bloquear a un administrador.')
-        return redirect('persona:lista_clientes')
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para bloquear a un administrador.'}, status=403)
 
     persona.bloqueado_cliente = True
     persona.bloqueado_empleado = True
     persona.save()
-    messages.success(request, f'El usuario {persona.email} ha sido bloqueado completamente.')
-
-    # Forzar cierre de sesión del usuario afectado
+    
+    # Forzar cierre de sesión del usuario afectado (la lógica se mantiene)
     try:
         user_afectado = User.objects.get(email=persona.email)
         from django.contrib.sessions.models import Session
-        from django.contrib.auth import get_user_model
-        
-        # Encontrar todas las sesiones activas
         all_sessions = Session.objects.filter(expire_date__gte=timezone.now())
         for session in all_sessions:
             session_data = session.get_decoded()
-            # _auth_user_id es el id del usuario en la sesión
             if str(session_data.get('_auth_user_id')) == str(user_afectado.id):
-                session.delete() # Borrar la sesión
-                print(f"Sesión del usuario {user_afectado.username} cerrada.")
+                session.delete()
+    except (User.DoesNotExist, Exception):
+        pass # No fallar si no se puede cerrar la sesión
 
-    except (User.DoesNotExist, Exception) as e:
-        print(f"No se pudo cerrar la sesión del usuario {persona.email}: {e}")
-        messages.warning(request, f"No se pudo forzar el cierre de sesión de {persona.email}. Puede que ya no estuviera activa.")
-
-    return redirect('persona:lista_clientes')
+    return JsonResponse({'status': 'success', 'message': f'El usuario {persona.email} ha sido bloqueado completamente.'})
 
 
 @login_required
@@ -1833,17 +1835,19 @@ def bloquear_cliente(request, persona_id):
 def desbloquear_cliente(request, persona_id):
     """
     Desbloquea SOLO el rol de cliente.
-    Esta acción está restringida a superusuarios.
+    Esta acción está restringida a administradores.
     """
-    if not request.user.is_superuser:
-        messages.error(request, 'No tienes permiso para realizar esta acción.')
-        return redirect('persona:lista_clientes')
+    try:
+        solicitante = Persona.objects.get(email=request.user.email)
+        if not solicitante.es_admin:
+            return JsonResponse({'status': 'error', 'message': 'No tienes los permisos de administrador para realizar esta acción.'}, status=403)
+    except Persona.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'No se encontró tu perfil de usuario para verificar los permisos.'}, status=403)
 
     persona = get_object_or_404(Persona, id=persona_id)
     persona.bloqueado_cliente = False
     persona.save()
-    messages.success(request, f'El rol de cliente para {persona.email} ha sido desbloqueado.')
     
-    return redirect('persona:lista_clientes')
+    return JsonResponse({'status': 'success', 'message': f'El rol de cliente para {persona.email} ha sido desbloqueado.'})
 
 # Create your views here.

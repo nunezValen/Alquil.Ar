@@ -24,7 +24,7 @@
                     <h5 class="card-title">Gestión de Usuarios</h5>
                     <p class="card-text">Administrar registros y bloqueos.</p>
                     <div class="mt-3">
-                        {% if user.is_superuser %}
+                        {% if user.email in empleados_emails %}
                         <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100">Ver Clientes</a>
                         {% endif %}
                     </div>
