@@ -117,11 +117,21 @@
                                 {{ cliente.promedio_calificacion|floatformat:2 }} ★
                             </td>
                             <td class="text-center">
-                                {% if not cliente.bloqueado_cliente %}
-                                    <span class="badge bg-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Bloqueado</span>
-                                {% endif %}
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    {% if cliente.bloqueado_cliente %}
+                                        <form method="post" action="{% url 'persona:desbloquear_cliente' cliente.id %}" onsubmit="return confirm('¿Estás seguro de que deseas DESBLOQUEAR el rol de cliente para este usuario?');">
+                                            {% csrf_token %}
+                                            <input class="form-check-input" type="checkbox" role="switch" id="switch-{{ cliente.id }}" onchange="this.form.submit()" {% if not request.user.is_superuser %}disabled{% endif %}>
+                                            <label class="form-check-label ms-2" for="switch-{{ cliente.id }}">Bloqueado</label>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{% url 'persona:bloquear_cliente' cliente.id %}" onsubmit="return confirm('¿Estás seguro de que deseas BLOQUEAR este usuario (rol cliente y empleado)? Su sesión se cerrará.');">
+                                            {% csrf_token %}
+                                            <input class="form-check-input" type="checkbox" role="switch" id="switch-{{ cliente.id }}" onchange="this.form.submit()" checked>
+                                            <label class="form-check-label ms-2" for="switch-{{ cliente.id }}">Activo</label>
+                                        </form>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
