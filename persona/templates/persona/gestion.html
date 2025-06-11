@@ -8,10 +8,10 @@
     <div class="row">
         <div class="col-md-4 mb-4">
             <div class="card h-100">
-                <div class="card-body d-flex flex-column">
+                <div class="card-body">
                     <h5 class="card-title">Gestión de Alquileres</h5>
                     <p class="card-text">Administrar alquileres, cancelaciones y reembolsos.</p>
-                    <div class="mt-auto">
+                    <div class="mt-3">
                         <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-primary w-100 mb-2">Ver Alquileres</a>
                         <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-success w-100">Ver Reembolsos</a>
                     </div>
@@ -20,18 +20,23 @@
         </div>
         <div class="col-md-4 mb-4">
             <div class="card h-100">
-                <div class="card-body d-flex flex-column">
+                <div class="card-body">
                     <h5 class="card-title">Gestión de Usuarios</h5>
                     <p class="card-text">Administrar registros y bloqueos.</p>
+                    <div class="mt-3">
+                        {% if user.is_superuser %}
+                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100">Ver Clientes</a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-md-4 mb-4">
             <div class="card h-100">
-                <div class="card-body d-flex flex-column">
+                <div class="card-body">
                     <h5 class="card-title">Gestión de Máquinas</h5>
                     <p class="card-text">Administrar inventario de máquinas.</p>
-                    <div class="mt-auto">
+                    <div class="mt-3">
                         <a href="{% url 'maquinas:lista_maquinas' %}" class="btn btn-primary mb-2 w-100">Ver Máquinas Base</a>
                         {% if user.is_superuser %}
                         <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mb-2 w-100">Cargar Máquina Base</a>

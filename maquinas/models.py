@@ -215,6 +215,14 @@ class Alquiler(models.Model):
     porcentaje_reembolso = models.PositiveIntegerField(null=True, blank=True, verbose_name='Porcentaje de Reembolso')
     observaciones_cancelacion = models.TextField(blank=True, verbose_name='Observaciones de Cancelación')
     
+    calificacion = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        verbose_name='Calificación',
+        help_text='Calificación del servicio por parte del cliente (1 a 5)'
+    )
+
     def clean(self):
         super().clean()
         

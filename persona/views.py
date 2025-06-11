@@ -20,10 +20,12 @@ import binance
 from pyngrok import ngrok
 import json
 from .utils import generar_password_random
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Avg, F, ExpressionWrapper, fields
 from django.core.paginator import Paginator
 from maquinas.models import Alquiler, MaquinaBase
 from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
+from django.db.models.functions import Coalesce
+from django.db.models import Value
 
 def es_admin(user):
     """
@@ -1090,6 +1092,9 @@ def lista_alquileres(request):
     if sucursal_filtro:
         alquileres = alquileres.filter(unidad__sucursal_id=sucursal_filtro)
     
+    # Comprobar si se ha aplicado algún filtro
+    filtros_aplicados = bool(estado_filtro or fecha_desde or fecha_hasta or cliente_filtro or sucursal_filtro)
+
     # Ordenar por fecha de creación más reciente
     alquileres = alquileres.order_by('-fecha_creacion')
     
@@ -1113,9 +1118,9 @@ def lista_alquileres(request):
     if request.GET.get('export') == 'xlsx':
         return exportar_alquileres_xlsx(alquileres)
     
-    # Mostrar mensaje si no hay resultados
+    # Mostrar mensaje si no hay resultados y se aplicaron filtros
     mensaje_sin_resultados = None
-    if not alquileres.exists() and any([estado_filtro, fecha_desde, fecha_hasta, cliente_filtro, sucursal_filtro]):
+    if not page_obj.object_list and filtros_aplicados:
         mensaje_sin_resultados = "No se encontraron alquileres con los filtros aplicados."
     
     context = {
@@ -1618,5 +1623,129 @@ def verificar_codigo(request):
             return redirect('persona:login_unificado2')
 
     return render(request, 'persona/verificar_codigo.html')
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+def lista_clientes(request):
+    queryset = Persona.objects.filter(es_cliente=True).annotate(
+        promedio_calificacion_raw=Avg('alquileres_maquinas__calificacion')
+    ).annotate(
+        promedio_calificacion=Coalesce('promedio_calificacion_raw', Value(5.0))
+    ).order_by('-fecha_registro')
+
+    filtros = {
+        'nombre': request.GET.get('nombre', ''),
+        'dni': request.GET.get('dni', ''),
+        'email': request.GET.get('email', ''),
+        'estado': request.GET.get('estado', ''),
+        'fecha_desde': request.GET.get('fecha_desde', ''),
+        'fecha_hasta': request.GET.get('fecha_hasta', ''),
+        'calificacion_desde': request.GET.get('calificacion_desde', ''),
+        'calificacion_hasta': request.GET.get('calificacion_hasta', ''),
+    }
+
+    if filtros['nombre']:
+        queryset = queryset.filter(
+            Q(nombre__icontains=filtros['nombre']) | Q(apellido__icontains=filtros['nombre'])
+        )
+    if filtros['dni']:
+        queryset = queryset.filter(dni__icontains=filtros['dni'])
+    if filtros['email']:
+        queryset = queryset.filter(email__icontains=filtros['email'])
+    if filtros['estado']:
+        if filtros['estado'] == 'activo':
+            queryset = queryset.filter(es_baneado=False)
+        elif filtros['estado'] == 'bloqueado':
+            queryset = queryset.filter(es_baneado=True)
+    if filtros['fecha_desde']:
+        queryset = queryset.filter(fecha_registro__gte=filtros['fecha_desde'])
+    if filtros['fecha_hasta']:
+        # Añadimos un día para que la búsqueda sea inclusiva
+        from datetime import datetime, timedelta
+        fecha_hasta_dt = datetime.strptime(filtros['fecha_hasta'], '%Y-%m-%d') + timedelta(days=1)
+        queryset = queryset.filter(fecha_registro__lt=fecha_hasta_dt)
+    
+    # El filtrado por calificación se hace después de la anotación
+    if filtros['calificacion_desde']:
+        queryset = queryset.filter(promedio_calificacion__gte=filtros['calificacion_desde'])
+    if filtros['calificacion_hasta']:
+        queryset = queryset.filter(promedio_calificacion__lte=filtros['calificacion_hasta'])
+
+    # Comprobar si se ha aplicado algún filtro
+    filtros_aplicados = any(filtros.values())
+
+    # Exportar a Excel si se solicita
+    if request.GET.get('export') == 'xlsx':
+        import openpyxl
+        from openpyxl.styles import Font, Alignment
+        from django.http import HttpResponse
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Clientes"
+
+        # Encabezados
+        headers = [
+            'Nombre', 'Apellido', 'Email', 'DNI', 
+            'Fecha Nacimiento', 'Fecha Registro', 'Calificación Promedio', 'Estado'
+        ]
+        ws.append(headers)
+
+        # Estilos para cabecera
+        header_font = Font(bold=True)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        # Datos
+        for cliente in queryset:
+            estado = "Bloqueado" if cliente.es_baneado else "Activo"
+            calificacion = cliente.promedio_calificacion if cliente.promedio_calificacion is not None else 5.0
+            
+            # Formatear fecha de nacimiento si existe
+            fecha_nacimiento_str = cliente.fecha_nacimiento.strftime('%d/%m/%Y') if cliente.fecha_nacimiento else 'N/A'
+
+            ws.append([
+                cliente.nombre,
+                cliente.apellido,
+                cliente.email,
+                cliente.dni or 'N/A',
+                fecha_nacimiento_str,
+                cliente.fecha_registro.strftime('%d/%m/%Y %H:%M'),
+                round(calificacion, 2),
+                estado
+            ])
+
+        # Ajustar ancho de columnas
+        for column_cells in ws.columns:
+            length = max(len(str(cell.value or "")) for cell in column_cells)
+            ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+
+        # Crear respuesta HTTP
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=clientes.xlsx'
+        wb.save(response)
+        return response
+
+    paginator = Paginator(queryset, 20)  # 20 clientes por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Mostrar mensaje si no hay resultados y se aplicaron filtros
+    mensaje_sin_resultados = None
+    if not page_obj.object_list and filtros_aplicados:
+        mensaje_sin_resultados = "No se encontraron clientes con los filtros aplicados."
+
+    context = {
+        'clientes': page_obj,
+        'filtros': filtros,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+    }
+
+    return render(request, 'persona/lista_clientes.html', context)
 
 # Create your views here.

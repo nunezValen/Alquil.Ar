@@ -298,9 +298,19 @@
                                 <span class="badge bg-secondary">{{ alquiler.cantidad_dias }} día{{ alquiler.cantidad_dias|pluralize }}</span>
                             </td>
                             <td>
-                                <span class="badge badge-estado badge-{{ alquiler.estado }}">
+                                {% with estado=alquiler.estado %}
+                                <span class="badge
+                                    {% if estado == 'reservado' %}bg-info
+                                    {% elif estado == 'en_curso' %}bg-success
+                                    {% elif estado == 'finalizado' %}bg-secondary
+                                    {% elif estado == 'cancelado' %}bg-danger
+                                    {% elif estado == 'pendiente' %}bg-warning
+                                    {% elif estado == 'rechazado' %}bg-dark
+                                    {% else %}bg-light text-dark
+                                    {% endif %}">
                                     {{ alquiler.get_estado_display }}
                                 </span>
+                                {% endwith %}
                                 {% if alquiler.estado == 'cancelado' %}
                                     <br>
                                     <small class="text-muted">

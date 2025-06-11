@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Clientes - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .row-cancelado {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> Gestión de Clientes</h2>
+                <div>
+                    <a href="?export=xlsx&{{ request.GET.urlencode }}" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </a>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h5><i class="fas fa-filter"></i> Filtros</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="nombre" class="form-label">Nombre o Apellido</label>
+                        <input type="text" name="nombre" id="nombre" class="form-control" value="{{ filtros.nombre|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="dni" class="form-label">DNI</label>
+                        <input type="number" name="dni" id="dni" class="form-control" value="{{ filtros.dni|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="text" name="email" id="email" class="form-control" value="{{ filtros.email|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Fecha de Registro (desde/hasta)</label>
+                        <div class="input-group">
+                            <input type="date" name="fecha_desde" class="form-control" value="{{ filtros.fecha_desde|default:'' }}">
+                            <input type="date" name="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select name="estado" id="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="activo" {% if filtros.estado == 'activo' %}selected{% endif %}>Activo</option>
+                            <option value="bloqueado" {% if filtros.estado == 'bloqueado' %}selected{% endif %}>Bloqueado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Calificación (desde/hasta)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" min="1" max="5" name="calificacion_desde" class="form-control" placeholder="1.0" value="{{ filtros.calificacion_desde|default:'' }}">
+                            <input type="number" step="0.1" min="1" max="5" name="calificacion_hasta" class="form-control" placeholder="5.0" value="{{ filtros.calificacion_hasta|default:'' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-5 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2"><i class="fas fa-search"></i> Filtrar</button>
+                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-secondary"><i class="fas fa-times"></i> Limpiar</a>
+                    </div>
+                </form>
+            </div>
+            
+            {% if mensaje_sin_resultados %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> {{ mensaje_sin_resultados }}
+                </div>
+            {% endif %}
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Email</th>
+                            <th>DNI</th>
+                            <th>Fecha Nacimiento</th>
+                            <th>Fecha Registro</th>
+                            <th class="text-center">Calificación Promedio</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in clientes %}
+                        <tr class="{% if cliente.es_baneado %}row-cancelado{% endif %}">
+                            <td>{{ cliente.nombre|title }}</td>
+                            <td>{{ cliente.apellido|title }}</td>
+                            <td>{{ cliente.email }}</td>
+                            <td>{{ cliente.dni|default:"N/A" }}</td>
+                            <td>{{ cliente.fecha_nacimiento|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ cliente.fecha_registro|date:"d/m/Y H:i" }}</td>
+                            <td class="text-center">
+                                {{ cliente.promedio_calificacion|floatformat:2 }} ★
+                            </td>
+                            <td class="text-center">
+                                {% if not cliente.es_baneado %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Bloqueado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No se encontraron clientes que coincidan con la búsqueda.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if is_paginated %}
+            <nav aria-label="Paginación">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page=1&{{ request.GET.urlencode }}">« Primero</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">‹ Anterior</a></li>
+                    {% endif %}
+            
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+            
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Siguiente ›</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Último »</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

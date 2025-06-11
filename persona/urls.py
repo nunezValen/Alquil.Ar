@@ -7,7 +7,7 @@ from .views import (
     cambiar_password_empleado_logueado, login_as_persona,
     login_unificado2, logout_view, switch_back_to_employee,
     editar_datos_personales, gestion, estadisticas, inicio,
-    lista_alquileres, checkout, recuperar_password, mapa_sucursales,
+    lista_alquileres, lista_clientes, checkout, recuperar_password, mapa_sucursales,
     pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler,
     lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json,
     enviar_codigo_verificacion, verificar_codigo
@@ -53,6 +53,7 @@ urlpatterns = [
     # URLs para verificación en dos pasos
     path('verificacion/enviar-codigo/', enviar_codigo_verificacion, name='enviar_codigo_verificacion'),
     path('verificacion/verificar-codigo/', verificar_codigo, name='verificar_codigo'),
+    path('lista_clientes/', lista_clientes, name='lista_clientes'),
 ]
 
 
