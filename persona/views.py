@@ -518,20 +518,20 @@ def login_view(request):
 
         try:
             persona = Persona.objects.get(email=email)
-            if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
-                error = 'Tu cuenta está suspendida. Contacta al administrador.'
-            else:
-                user = authenticate(request, username=email, password=password)
-                if user is not None:
+            user = authenticate(request, username=email, password=password)
+            if user is not None:
+                if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
+                    error = 'Tu cuenta está suspendida. Contacta al administrador.'
+                else:
                     login(request, user)
-                    if persona.es_empleado or persona.es_admin:
+                    if persona.es_empleado or persona.es_admin or persona.es_cliente:
                         return redirect('persona:inicio')
                     elif persona.es_cliente:
                         return redirect('persona:inicio')
                     else:
-                        error = 'No tienes permisos para acceder.'
-                else:
-                    error = 'Email o contraseña incorrectos'
+                        error = 'Tu cuenta no está registrada como cuenta de empleado ni de cliente.'
+            else:
+                error = 'Email o contraseña incorrectos'
         except Persona.DoesNotExist:
             error = 'Email o contraseña incorrectos'
 
@@ -770,52 +770,52 @@ def login_unificado2(request):
         # 1. Buscar en modelo Persona
         try:
             persona = Persona.objects.get(email=email)
-            if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
-                return render(request, 'persona/login_unificado2.html', {
-                    'error': 'Tu cuenta está suspendida. Contacta al administrador.'
-                })
-            else:
-                user = authenticate(request, username=email, password=password)
-                if user is not None:
-                    # Si es admin, requerir verificación en dos pasos
-                    if persona.es_admin:
-                        # Guardar los datos de usuario en la sesión temporalmente
-                        request.session['temp_user_id'] = user.id
-                        request.session['temp_user_email'] = email
-                        
-                        # Crear y enviar código de verificación
-                        codigo = CodigoVerificacion.objects.create(
-                            persona=persona,
-                            fecha_expiracion=timezone.now() + timezone.timedelta(minutes=10)
-                        )
-                        
-                        # Enviar el código por correo electrónico
-                        subject = 'Código de verificación - Alquil.Ar'
-                        message = f'''
-                        Hola {persona.nombre},
-
-                        Tu código de verificación es: {codigo.codigo}
-
-                        Este código expirará en 10 minutos.
-
-                        Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta.
-
-                        Saludos,
-                        El equipo de Alquil.Ar
-                        '''
-                        
-                        send_mail(
-                            subject,
-                            message,
-                            settings.DEFAULT_FROM_EMAIL,
-                            [email],
-                            fail_silently=False,
-                        )
-                        
-                        messages.info(request, 'Por favor, ingresa el código de verificación enviado a tu correo.')
-                        return redirect('persona:verificar_codigo')
+            user = authenticate(request, username=email, password=password)
+            if user is not None:
+                # Si es admin, requerir verificación en dos pasos
+                if persona.es_admin:
+                    # Guardar los datos de usuario en la sesión temporalmente
+                    request.session['temp_user_id'] = user.id
+                    request.session['temp_user_email'] = email
                     
-                    # Para usuarios no admin, proceder con el login normal
+                    # Crear y enviar código de verificación
+                    codigo = CodigoVerificacion.objects.create(
+                        persona=persona,
+                        fecha_expiracion=timezone.now() + timezone.timedelta(minutes=10)
+                    )
+                    
+                    # Enviar el código por correo electrónico
+                    subject = 'Código de verificación - Alquil.Ar'
+                    message = f'''
+                    Hola {persona.nombre},
+
+                    Tu código de verificación es: {codigo.codigo}
+
+                    Este código expirará en 10 minutos.
+
+                    Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta.
+
+                    Saludos,
+                    El equipo de Alquil.Ar
+                    '''
+                    
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        fail_silently=False,
+                    )
+                    
+                    messages.info(request, 'Por favor, ingresa el código de verificación enviado a tu correo.')
+                    return redirect('persona:verificar_codigo')
+                
+                # Para usuarios no admin, proceder con el login normal
+                if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
+                    return render(request, 'persona/login_unificado2.html', {
+                        'error': 'Tu cuenta está suspendida. Contacta al administrador.'
+                    })
+                else:
                     login(request, user)
                     
                     # Verificar roles en orden específico
@@ -829,10 +829,10 @@ def login_unificado2(request):
                         return render(request, 'persona/login_unificado2.html', {
                             'error': 'No tienes cuenta activa. Contacta al administrador.'
                         })
-                else:
-                    return render(request, 'persona/login_unificado2.html', {
-                        'error': 'Email o contraseña incorrectos'
-                    })
+            else:
+                return render(request, 'persona/login_unificado2.html', {
+                    'error': 'Email o contraseña incorrectos'
+                })
         except Persona.DoesNotExist:
             return render(request, 'persona/login_unificado2.html', {
                 'error': 'Email o contraseña incorrectos'
