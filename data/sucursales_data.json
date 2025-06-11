@@ -11,5 +11,18 @@
     "email": "mario_emp@alquilar.com",
     "horario": "Lunes a viernes: 9:00 a 20:00.\r\nSábados: 13:00 a 17:00."
 }
+},
+{
+  "model": "persona.sucursal",
+  "pk": 2,
+  "fields": {
+    "id_sucursal": 2,
+    "direccion": "47 22/23 1322",
+    "latitud": -34.92697282354831,
+    "longitud": -57.96727854628321,
+    "telefono": "555 123 4507",
+    "email": "ejemplo@ejemplo.com",
+    "horario": "Lunes, miércoles y viernes: 7:00 - 19:00\r\nMartes y jueves: 10:00 - 21:00\r\nSábado: 9:00 - 14:00"
+}
 }
 ]
