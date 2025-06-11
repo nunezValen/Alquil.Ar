@@ -26,6 +26,37 @@ from maquinas.models import Alquiler, MaquinaBase
 from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
 from django.db.models.functions import Coalesce
 from django.db.models import Value
+from functools import wraps
+
+def empleado_requerido(view_func):
+    """
+    Decorador que verifica que el usuario sea un empleado activo o un superusuario.
+    Si no cumple, muestra un mensaje de error y redirige a la página de inicio.
+    """
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Debes iniciar sesión para ver esta página.")
+            return redirect('persona:login_unificado2')
+
+        if request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
+
+        try:
+            persona = Persona.objects.get(email=request.user.email)
+            if persona.es_empleado:
+                if persona.bloqueado_empleado:
+                    messages.error(request, 'Tu rol de empleado está bloqueado. No puedes acceder a esta sección.')
+                    return redirect('persona:inicio')
+                else:
+                    return view_func(request, *args, **kwargs)
+            else:
+                messages.error(request, 'No tienes los permisos de empleado necesarios para acceder a esta página.')
+                return redirect('persona:inicio')
+        except Persona.DoesNotExist:
+            messages.error(request, 'No se encontró un perfil de usuario asociado. Contacta al administrador.')
+            return redirect('persona:inicio')
+    return _wrapped_view
 
 def es_admin(user):
     """
@@ -34,31 +65,28 @@ def es_admin(user):
     return user.is_authenticated and user.is_superuser
 
 def es_empleado_o_admin(user):
-    """Verifica si el usuario es empleado o administrador"""
+    """Verifica si el usuario es empleado (y no está bloqueado) o administrador"""
     if not user.is_authenticated:
         return False
+        
+    # El superusuario (admin) siempre tiene acceso
+    if user.is_superuser:
+        return True
+        
     try:
         persona = Persona.objects.get(email=user.email)
-        return persona.es_empleado or user.is_superuser
+        # Un empleado tiene acceso si tiene el rol Y NO está bloqueado
+        return persona.es_empleado and not persona.bloqueado_empleado
     except Persona.DoesNotExist:
-        return user.is_superuser
+        # Si no tiene perfil de Persona, no puede ser empleado
+        return False
 
 def inicio(request):
     """Vista de inicio con manejo de retorno de MercadoPago"""
     
-    # Obtener datos para mostrar en la página
-    empleados_emails = None
-    es_empleado_actuando_como_cliente = False
-    
-    if request.user.is_authenticated:
-        try:
-            persona = Persona.objects.get(email=request.user.email)
-            es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
-            
-            if es_empleado_actuando_como_cliente or persona.es_empleado:
-                empleados_emails = Persona.objects.filter(es_empleado=True).values_list('email', flat=True)
-        except Persona.DoesNotExist:
-            pass
+    # NOTA: La lógica para 'empleados_emails' y 'es_empleado_actuando_como_cliente'
+    # ahora es manejada por el context_processor para asegurar consistencia.
+    # Ya no se definen localmente en esta vista.
     
     # Manejar retorno de MercadoPago (fallback si el webhook no funciona)
     status = request.GET.get('status')
@@ -157,8 +185,6 @@ def inicio(request):
      
     return render(request, 'persona/inicio.html', {
         'maquinas': maquinas,
-        'empleados_emails': empleados_emails,
-        'es_empleado_actuando_como_cliente': es_empleado_actuando_como_cliente
     })
 
 @login_required
@@ -306,12 +332,19 @@ def mis_alquileres(request):
     """
     # Verificar que el usuario sea cliente o empleado actuando como cliente
     es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+    
+    # Prevenir que empleados que no están en modo cliente accedan
     if es_empleado_o_admin(request.user) and not es_empleado_actuando_como_cliente:
         messages.error(request, 'Esta sección es solo para clientes. Los empleados no pueden alquilar máquinas.')
         return redirect('persona:gestion')
     
     try:
         persona = Persona.objects.get(email=request.user.email)
+        
+        # Verificar que el usuario tenga el rol de cliente activo
+        if not persona.es_cliente or persona.bloqueado_cliente:
+            messages.error(request, 'No tienes acceso a esta sección porque tu rol de cliente no está activo.')
+            return redirect('persona:inicio')
         
         # Obtener todos los alquileres del cliente, ordenados por fecha de creación
         alquileres = Alquiler.objects.filter(persona=persona).order_by('-fecha_creacion')
@@ -368,6 +401,12 @@ def cancelar_mi_alquiler(request, alquiler_id):
     
     try:
         persona = Persona.objects.get(email=request.user.email)
+        
+        # Verificar que el cliente tenga el rol activo
+        if not persona.es_cliente or persona.bloqueado_cliente:
+            messages.error(request, 'No puedes cancelar alquileres porque tu rol de cliente no está activo.')
+            return redirect('persona:inicio')
+
         alquiler = get_object_or_404(Alquiler, id=alquiler_id, persona=persona)
         
         if request.method == 'POST':
@@ -441,8 +480,7 @@ def lista_personas(request):
     personas = Persona.objects.all()  # Consulta todas las personas
     return render(request, 'lista_persona.html', {'personas': personas})
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -520,14 +558,18 @@ def login_view(request):
             persona = Persona.objects.get(email=email)
             user = authenticate(request, username=email, password=password)
             if user is not None:
+                # La comprobación de "ambos bloqueados" ya existe y es correcta.
                 if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
                     error = 'Tu cuenta está suspendida. Contacta al administrador.'
                 else:
                     login(request, user)
-                    if persona.es_empleado or persona.es_admin or persona.es_cliente:
+                    # Redirigir según el rol activo
+                    if persona.es_empleado and not persona.bloqueado_empleado:
                         return redirect('persona:inicio')
-                    elif persona.es_cliente:
+                    elif persona.es_cliente and not persona.bloqueado_cliente:
                         return redirect('persona:inicio')
+                    elif persona.es_admin:
+                         return redirect('persona:inicio')
                     else:
                         error = 'Tu cuenta no está registrada como cuenta de empleado ni de cliente.'
             else:
@@ -723,14 +765,15 @@ def login_as_persona(request):
     # Verificar que el usuario actual es un empleado
     try:
         persona = Persona.objects.get(email=request.user.email)
-        if not persona.es_empleado:
-            messages.error(request, 'Solo los empleados pueden acceder a esta función.')
+        # Solo empleados activos pueden usar esta función
+        if not persona.es_empleado or persona.bloqueado_empleado:
+            messages.error(request, 'Solo los empleados activos pueden acceder a esta función.')
             return redirect('persona:inicio')
 
         if request.method == 'POST':
-            # Verificar que el usuario tenga permiso para actuar como cliente
-            if not persona.es_cliente:
-                messages.error(request, 'No tienes permiso para actuar como cliente. Contacta al administrador.')
+            # El rol de cliente también debe estar activo
+            if not persona.es_cliente or persona.bloqueado_cliente:
+                messages.error(request, 'No tienes permiso para actuar como cliente o tu rol de cliente está bloqueado.')
                 return redirect('persona:inicio')
 
             # Guardar en la sesión que el usuario es un empleado/admin actuando como cliente
@@ -830,9 +873,9 @@ def login_unificado2(request):
                             'error': 'No tienes cuenta activa. Contacta al administrador.'
                         })
             else:
-                return render(request, 'persona/login_unificado2.html', {
+                 return render(request, 'persona/login_unificado2.html', {
                     'error': 'Email o contraseña incorrectos'
-                })
+                 })
         except Persona.DoesNotExist:
             return render(request, 'persona/login_unificado2.html', {
                 'error': 'Email o contraseña incorrectos'
@@ -841,8 +884,7 @@ def login_unificado2(request):
     # Si es GET, mostrar el formulario
     return render(request, 'persona/login_unificado2.html')
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 def gestion(request):
     """Vista de gestión accesible para empleados y administradores"""
     return render(request, 'persona/gestion.html')
@@ -858,7 +900,7 @@ def estadisticas(request):
 
 def empleados_processor(request):
     """Context processor que agrega la lista de emails de empleados al contexto de todos los templates."""
-    empleados_emails = list(Persona.objects.filter(es_empleado=True).values_list('email', flat=True))
+    empleados_emails = list(Persona.objects.filter(es_empleado=True, bloqueado_empleado=False).values_list('email', flat=True))
 
     # Agregar la variable de sesión al contexto
     es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
@@ -1047,7 +1089,7 @@ def checkout(request, alquiler_id):
     
     return redirect('persona:mis_alquileres')
 
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 def lista_alquileres(request):
     """Vista completa de gestión de alquileres para empleados y admins"""
     # Obtener todos los alquileres inicialmente
@@ -1380,8 +1422,7 @@ def pago_pendiente(request):
     """Página para notificar que el pago está pendiente"""
     return render(request, 'persona/pago_pendiente.html')
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 def lista_reembolsos(request):
     """Vista para gestionar reembolsos pendientes y pagados"""
     from maquinas.models import Reembolso
@@ -1460,8 +1501,7 @@ def lista_reembolsos(request):
     
     return render(request, 'persona/lista_reembolsos.html', context)
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 def marcar_reembolso_pagado(request, reembolso_id):
     """Vista para marcar un reembolso como pagado"""
     from maquinas.models import Reembolso
@@ -1624,8 +1664,7 @@ def verificar_codigo(request):
 
     return render(request, 'persona/verificar_codigo.html')
 
-@login_required
-@user_passes_test(es_empleado_o_admin)
+@empleado_requerido
 def lista_clientes(request):
     queryset = Persona.objects.filter(es_cliente=True).annotate(
         promedio_calificacion_raw=Avg('alquileres_maquinas__calificacion')
