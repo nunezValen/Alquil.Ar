@@ -14,7 +14,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": true,
-    "es_baneado": false
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
   }
 },
 {
@@ -32,7 +33,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": false,
-    "es_baneado": false
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
   }
 },
 {
@@ -50,7 +52,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": true,
-    "es_baneado": false
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
   }
 },
 {
@@ -68,7 +71,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": false,
-    "es_baneado": true
+    "bloqueado_cliente": true,
+    "bloqueado_empleado": true
   }
 },
 {
@@ -86,7 +90,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": true,
-    "es_baneado": false
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
   }
 },
 {
@@ -104,7 +109,8 @@
     "es_cliente": true,
     "es_empleado": true,
     "es_admin": true,
-    "es_baneado": false
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
   }
 }
 ]

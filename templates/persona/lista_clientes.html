@@ -106,7 +106,7 @@
                     </thead>
                     <tbody>
                         {% for cliente in clientes %}
-                        <tr class="{% if cliente.es_baneado %}row-cancelado{% endif %}">
+                        <tr class="{% if cliente.bloqueado_cliente %}row-cancelado{% endif %}">
                             <td>{{ cliente.nombre|title }}</td>
                             <td>{{ cliente.apellido|title }}</td>
                             <td>{{ cliente.email }}</td>
@@ -117,7 +117,7 @@
                                 {{ cliente.promedio_calificacion|floatformat:2 }} ★
                             </td>
                             <td class="text-center">
-                                {% if not cliente.es_baneado %}
+                                {% if not cliente.bloqueado_cliente %}
                                     <span class="badge bg-success">Activo</span>
                                 {% else %}
                                     <span class="badge bg-danger">Bloqueado</span>

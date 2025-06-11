@@ -518,7 +518,7 @@ def login_view(request):
 
         try:
             persona = Persona.objects.get(email=email)
-            if persona.es_baneado:
+            if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
                 error = 'Tu cuenta está suspendida. Contacta al administrador.'
             else:
                 user = authenticate(request, username=email, password=password)
@@ -770,7 +770,7 @@ def login_unificado2(request):
         # 1. Buscar en modelo Persona
         try:
             persona = Persona.objects.get(email=email)
-            if persona.es_baneado:
+            if (((not persona.es_cliente) or persona.bloqueado_cliente) and ((not persona.es_empleado) or persona.bloqueado_empleado)):
                 return render(request, 'persona/login_unificado2.html', {
                     'error': 'Tu cuenta está suspendida. Contacta al administrador.'
                 })
@@ -1654,9 +1654,9 @@ def lista_clientes(request):
         queryset = queryset.filter(email__icontains=filtros['email'])
     if filtros['estado']:
         if filtros['estado'] == 'activo':
-            queryset = queryset.filter(es_baneado=False)
+            queryset = queryset.filter(bloqueado_cliente=False)
         elif filtros['estado'] == 'bloqueado':
-            queryset = queryset.filter(es_baneado=True)
+            queryset = queryset.filter(bloqueado_cliente=True)
     if filtros['fecha_desde']:
         queryset = queryset.filter(fecha_registro__gte=filtros['fecha_desde'])
     if filtros['fecha_hasta']:
@@ -1699,7 +1699,7 @@ def lista_clientes(request):
 
         # Datos
         for cliente in queryset:
-            estado = "Bloqueado" if cliente.es_baneado else "Activo"
+            estado = "Bloqueado" if cliente.bloqueado_cliente else "Activo"
             calificacion = cliente.promedio_calificacion if cliente.promedio_calificacion is not None else 5.0
             
             # Formatear fecha de nacimiento si existe
