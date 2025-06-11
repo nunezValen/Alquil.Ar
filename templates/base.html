@@ -244,7 +244,7 @@
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ user.first_name|add:" "|add:user.last_name|truncatechars:20 }}
+                            <i class="bi bi-person-circle"></i> {{ user.first_name }} {{ user.last_name|default:'' }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {% if es_empleado_actuando_como_cliente %}
@@ -252,19 +252,29 @@
                                     <i class="fas fa-history me-2"></i>Mis Alquileres
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:editar_datos_personales' %}">
+                                    <i class="fas fa-user-edit me-2"></i>Editar Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:switch_back_to_employee' %}">Volver a Cuenta Empleado</a></li>
                             {% elif user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
-                                <li><a class="dropdown-item" href="{% url 'persona:registrar_persona' %}">Registrar Usuario</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:registrar_cliente' %}">Registrar Cliente</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:registrar_empleado_nuevo' %}">Registrar Empleado</a></li>
                             {% elif user.email in empleados_emails %}
+                                <li><a class="dropdown-item" href="{% url 'persona:editar_datos_personales' %}">
+                                    <i class="fas fa-user-edit me-2"></i>Editar Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
-                                <li><a class="dropdown-item" href="{% url 'persona:registrar_persona' %}">Registrar Usuario</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:registrar_cliente' %}">Registrar Cliente</a></li>
                             {% else %}
                                 <li><a class="dropdown-item" href="{% url 'persona:mis_alquileres' %}">
                                     <i class="fas fa-history me-2"></i>Mis Alquileres
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:editar_datos_personales' %}">
+                                    <i class="fas fa-user-edit me-2"></i>Editar Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password' %}">Cambiar Contraseña</a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>

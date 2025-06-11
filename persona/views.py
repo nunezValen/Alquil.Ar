@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
-from .forms import PersonaForm
+from .forms import PersonaForm, EditarPersonaForm
 from datetime import date
 import random
 import string
@@ -895,7 +895,28 @@ def logout_view(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def editar_datos_personales(request):
-    return redirect('persona:inicio')
+    # No permitir acceso a administradores
+    if request.user.is_superuser:
+        messages.error(request, 'Los administradores no pueden editar sus datos personales.')
+        return redirect('persona:inicio')
+        
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+        
+        if request.method == 'POST':
+            form = EditarPersonaForm(request.POST, instance=persona)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Datos personales actualizados correctamente.')
+                return redirect('persona:inicio')
+        else:
+            form = EditarPersonaForm(instance=persona)
+        
+        return render(request, 'persona/editar_datos_personales.html', {'form': form})
+        
+    except Persona.DoesNotExist:
+        messages.error(request, 'No se encontró tu perfil en el sistema.')
+        return redirect('persona:inicio')
 
 @csrf_exempt
 def webhook_mercadopago(request):
@@ -1747,5 +1768,135 @@ def lista_clientes(request):
     }
 
     return render(request, 'persona/lista_clientes.html', context)
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def registrar_cliente(request):
+    if request.method == 'POST':
+        form = PersonaForm(request.POST)
+        if form.is_valid():
+            persona = form.save(commit=False)
+            persona.es_cliente = True
+            persona.es_empleado = False
+            
+            # Verificar que el email exista
+            if not persona.email:
+                form.add_error('email', 'El email es obligatorio para registrar un usuario.')
+                return render(request, 'persona/registrar_cliente.html', {'form': form})
+            
+            # Generar contraseña aleatoria
+            password = generar_password_random()
+            
+            try:
+                # Crear usuario en Django
+                user = User.objects.create_user(
+                    username=persona.email,
+                    email=persona.email,
+                    password=password,
+                    first_name=persona.nombre,
+                    last_name=persona.apellido,
+                    is_staff=False
+                )
+                
+                persona.save()
+                
+                # Enviar email con la contraseña
+                send_mail(
+                    'Bienvenido a Alquil.Ar - Tu contraseña',
+                    f'Hola {persona.nombre},\n\n'
+                    f'Tu cuenta ha sido creada exitosamente.\n\n'
+                    f'Credenciales de acceso:\n'
+                    f'• Email: {persona.email}\n'
+                    f'• Contraseña: {password}\n\n'
+                    f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                    f'Tipo de usuario: Cliente\n\n'
+                    f'Saludos,\n'
+                    f'Equipo Alquil.Ar',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [persona.email],
+                    fail_silently=False,
+                )
+                
+                messages.success(request, 'Cliente registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
+                return redirect('persona:login_unificado2')
+            except Exception as e:
+                # Si algo falla, eliminar el usuario si fue creado
+                if 'user' in locals():
+                    user.delete()
+                form.add_error(None, f'Error al crear el usuario: {str(e)}')
+                return render(request, 'persona/registrar_cliente.html', {'form': form})
+    else:
+        form = PersonaForm()
+    return render(request, 'persona/registrar_cliente.html', {'form': form})
+
+@login_required
+@user_passes_test(es_empleado_o_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def registrar_empleado_nuevo(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'Solo los administradores pueden registrar empleados.')
+        return redirect('persona:inicio')
+        
+    if request.method == 'POST':
+        form = PersonaForm(request.POST)
+        if form.is_valid():
+            persona = form.save(commit=False)
+            persona.es_empleado = True
+            persona.es_cliente = False
+            
+            # Verificar que el email exista
+            if not persona.email:
+                form.add_error('email', 'El email es obligatorio para registrar un empleado.')
+                return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+            
+            # Generar contraseña aleatoria
+            password = generar_password_random()
+            
+            try:
+                # Crear usuario en Django
+                user = User.objects.create_user(
+                    username=persona.email,
+                    email=persona.email,
+                    password=password,
+                    first_name=persona.nombre,
+                    last_name=persona.apellido,
+                    is_staff=True
+                )
+                
+                persona.save()
+                
+                # Enviar email con la contraseña
+                send_mail(
+                    'Bienvenido a Alquil.Ar - Tu cuenta de empleado',
+                    f'Hola {persona.nombre},\n\n'
+                    f'Tu cuenta de empleado ha sido creada exitosamente.\n\n'
+                    f'Credenciales de acceso:\n'
+                    f'• Email: {persona.email}\n'
+                    f'• Contraseña: {password}\n\n'
+                    f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                    f'Tipo de usuario: Empleado\n\n'
+                    f'Saludos,\n'
+                    f'Equipo Alquil.Ar',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [persona.email],
+                    fail_silently=False,
+                )
+                
+                messages.success(request, 'Empleado registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
+                return redirect('persona:login_unificado2')
+            except Exception as e:
+                # Si algo falla, eliminar el usuario si fue creado
+                if 'user' in locals():
+                    user.delete()
+                form.add_error(None, f'Error al crear el usuario: {str(e)}')
+                return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+    else:
+        form = PersonaForm()
+    return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
 
 # Create your views here.

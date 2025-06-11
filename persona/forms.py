@@ -12,8 +12,18 @@ class PersonaForm(forms.ModelForm):
         model = Persona
         fields = ['nombre', 'apellido', 'dni', 'email', 'fecha_nacimiento', 'es_cliente', 'es_empleado']
         widgets = {
-            'nombre': forms.TextInput(attrs={'placeholder': 'Nombre', 'autocomplete': 'off', 'class': 'form-control'}),
-            'apellido': forms.TextInput(attrs={'placeholder': 'Apellido', 'autocomplete': 'off', 'class': 'form-control'}),
+            'nombre': forms.TextInput(attrs={
+                'placeholder': 'Nombre', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'required': True
+            }),
+            'apellido': forms.TextInput(attrs={
+                'placeholder': 'Apellido', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'required': True
+            }),
             'dni': forms.NumberInput(attrs={
                 'placeholder': 'DNI', 
                 'autocomplete': 'off', 
@@ -23,26 +33,50 @@ class PersonaForm(forms.ModelForm):
                 'max': '999999999',  # 9 dígitos máximo
                 'oninput': 'javascript: if (this.value.length > 9) this.value = this.value.slice(0, 9);'
             }),
-            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control', 'required': True}),
-            'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off'}),
+            'email': forms.EmailInput(attrs={
+                'placeholder': 'Email', 
+                'autocomplete': 'off', 
+                'class': 'form-control', 
+                'required': True
+            }),
+            'fecha_nacimiento': forms.DateInput(attrs={
+                'placeholder': 'Fecha de Nacimiento', 
+                'type': 'date', 
+                'class': 'form-control', 
+                'autocomplete': 'off'
+            }),
         }
         error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.',
+                'max_length': 'El nombre no puede tener más de 100 caracteres.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.',
+                'max_length': 'El apellido no puede tener más de 100 caracteres.'
+            },
+            'dni': {
+                'required': 'El DNI es obligatorio.',
+                'unique': 'Ya existe una persona registrada con este DNI.'
+            },
             'email': {
                 'required': 'El email es obligatorio.',
-                'invalid': 'Por favor, ingresa una dirección de email válida.',
-                'unique': 'Este email ya está registrado.'
+                'unique': 'Ya existe una persona registrada con este email.',
+                'invalid': 'Por favor, ingrese un email válido.'
             }
         }
 
-    def clean(self):
-        cleaned_data = super().clean()
-        es_cliente = cleaned_data.get('es_cliente')
-        es_empleado = cleaned_data.get('es_empleado')
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        return nombre
 
-        if not es_cliente and not es_empleado:
-            raise ValidationError('Debes seleccionar al menos un tipo de usuario (Cliente o Empleado).')
-
-        return cleaned_data
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        return apellido
 
     def clean_fecha_nacimiento(self):
         fecha = self.cleaned_data.get('fecha_nacimiento')
@@ -52,6 +86,19 @@ class PersonaForm(forms.ModelForm):
             if edad < 18:
                 raise forms.ValidationError('No cumple con la mayoría de edad.')
         return fecha
+
+    def clean(self):
+        cleaned_data = super().clean()
+        nombre = cleaned_data.get('nombre')
+        apellido = cleaned_data.get('apellido')
+        
+        if nombre and not nombre.strip():
+            self.add_error('nombre', 'El nombre no puede estar vacío.')
+        
+        if apellido and not apellido.strip():
+            self.add_error('apellido', 'El apellido no puede estar vacío.')
+        
+        return cleaned_data
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -83,10 +130,13 @@ class PersonaForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre', '').strip()
-        partes = nombre_completo.split(' ', 1)
-        instance.nombre = partes[0]
-        instance.apellido = partes[1] if len(partes) > 1 else ''
+        
+        # Limpiar espacios en blanco de nombre y apellido
+        if instance.nombre:
+            instance.nombre = instance.nombre.strip()
+        if instance.apellido:
+            instance.apellido = instance.apellido.strip()
+            
         if commit:
             instance.save()
         return instance
@@ -137,45 +187,43 @@ class AlquilerForm(forms.ModelForm):
 class EditarPersonaForm(forms.ModelForm):
     class Meta:
         model = Persona
-        fields = ['nombre', 'apellido', 'email']
+        fields = ['nombre', 'apellido']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'apellido': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
+        error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.',
+                'max_length': 'El nombre no puede tener más de 100 caracteres.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.',
+                'max_length': 'El apellido no puede tener más de 100 caracteres.'
+            }
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.fields['nombre'].initial = self.instance.nombre
-            self.fields['apellido'].initial = self.instance.apellido
-            self.fields['email'].initial = self.instance.email
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        return nombre
 
-    def clean_fecha_nacimiento(self):
-        fecha = self.cleaned_data.get('fecha_nacimiento')
-        if fecha:
-            hoy = date.today()
-            edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
-            if edad < 18:
-                raise forms.ValidationError('No cumple con la mayoría de edad.')
-        return fecha
-
-    def clean_email(self):
-        if self.instance and self.instance.pk:
-            return self.instance.email
-        return self.cleaned_data.get('email')
-
-    def clean_dni(self):
-        if self.instance and self.instance.pk:
-            return self.instance.dni
-        return self.cleaned_data.get('dni')
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        return apellido
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre', '').strip()
-        partes = nombre_completo.split(' ', 1)
-        instance.nombre = partes[0]
-        instance.apellido = partes[1] if len(partes) > 1 else ''
+        
+        # Limpiar espacios en blanco
+        if instance.nombre:
+            instance.nombre = instance.nombre.strip()
+        if instance.apellido:
+            instance.apellido = instance.apellido.strip()
+            
         if commit:
             instance.save()
         return instance

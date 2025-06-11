@@ -55,6 +55,12 @@ class Persona(models.Model):
         return f"{self.nombre} {self.apellido}"
 
     def save(self, *args, **kwargs):
+        # Limpiar espacios en blanco
+        if self.nombre:
+            self.nombre = self.nombre.strip()
+        if self.apellido:
+            self.apellido = self.apellido.strip()
+            
         # Guardar el estado anterior de es_admin si el objeto ya existe
         if self.pk:
             old_instance = Persona.objects.get(pk=self.pk)
@@ -77,11 +83,18 @@ class Persona(models.Model):
                 }
             )
 
+            # Si el usuario ya existía, actualizar sus datos
+            if not created:
+                user.first_name = self.nombre
+                user.last_name = self.apellido
+                user.email = self.email
+
             # Actualizar permisos si es_admin ha cambiado
             if self.es_admin != old_es_admin:
                 user.is_staff = self.es_admin
                 user.is_superuser = self.es_admin
-                user.save()
+            
+            user.save()
 
     class Meta:
         verbose_name = "Persona"
