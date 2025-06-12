@@ -10,7 +10,7 @@ from .views import (
     lista_alquileres, lista_clientes, checkout, recuperar_password, mapa_sucursales,
     pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler,
     lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json,
-    enviar_codigo_verificacion, verificar_codigo
+    enviar_codigo_verificacion, verificar_codigo, cambiar_password_2
 )
 from maquinas.views import cancelar_alquiler
 
@@ -35,6 +35,7 @@ urlpatterns = [
     path('cambiar-password/', cambiar_password, name='cambiar_password'),
     path('cambiar-password-empleado/', cambiar_password_empleado_logueado, name='cambiar_password_empleado'),
     path('cambiar-password-empleado-logueado/', cambiar_password_empleado_logueado, name='cambiar_password_empleado_logueado'),
+    path('cambiar-password-2/', cambiar_password_2, name='cambiar_password_2'),
     path('login-as-persona/', login_as_persona, name='login_as_persona'),
     path('switch-back-to-employee/', switch_back_to_employee, name='switch_back_to_employee'),
     path('gestion/', gestion, name='gestion'),

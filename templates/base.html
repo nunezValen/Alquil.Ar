@@ -139,23 +139,53 @@
             top: 20px;
             right: 20px;
             z-index: 1050;
-            width: 300px;
+            width: 350px;
         }
 
         #django-messages .alert {
             margin-bottom: 10px;
             padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             opacity: 0;
             transform: translateX(100%);
-            animation: slideIn 0.5s forwards;
+            animation: slideIn 0.5s forwards, fadeOut 0.5s 4.5s forwards;
+            border-left: 5px solid;
+        }
+
+        #django-messages .alert-success {
+            border-left-color: #28a745;
+        }
+
+        #django-messages .alert-danger {
+            border-left-color: #dc3545;
+        }
+
+        #django-messages .alert-warning {
+            border-left-color: #ffc107;
+        }
+
+        #django-messages .alert-info {
+            border-left-color: #17a2b8;
         }
 
         @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
             to {
                 opacity: 1;
                 transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
             }
         }
 
@@ -205,9 +235,73 @@
             border-color: #ced4da;
             background-image: none;
         }
+
+        /* Estilos para mensajes de validación */
+        .messages-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 350px;
+        }
+        
+        .validation-message {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 14px;
+            text-align: left;
+            border-left: 5px solid;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        .validation-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+        
+        .validation-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
     </style>
 </head>
 <body>
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="validation-message {% if message.tags %}{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="section-container">
@@ -255,17 +349,17 @@
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:switch_back_to_employee' %}">Volver a Cuenta Empleado</a></li>
                             {% elif user.is_superuser %}
-                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:registrar_persona' %}">Registrar Usuario</a></li>
                             {% elif user.email in empleados_emails %}
-                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_empleado_logueado' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:registrar_persona' %}">Registrar Usuario</a></li>
                             {% else %}
                                 <li><a class="dropdown-item" href="{% url 'persona:mis_alquileres' %}">
                                     <i class="fas fa-history me-2"></i>Mis Alquileres
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'persona:logout' %}">Cerrar Sesión</a></li>
@@ -313,26 +407,18 @@
     <!-- Script para mensajes -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Auto-cerrar mensajes después de 5 segundos
-            const messages = document.querySelectorAll('#django-messages .alert');
-            messages.forEach(function(message) {
-                setTimeout(function() {
-                    message.classList.remove('show');
-                    setTimeout(function() {
-                        message.remove();
-                    }, 150);
+            const validationMessages = document.querySelectorAll('.validation-message');
+            
+            validationMessages.forEach(message => {
+                // Auto-ocultar después de 5 segundos
+                setTimeout(() => {
+                    message.style.animation = 'fadeOut 0.5s forwards';
+                    setTimeout(() => {
+                        message.style.display = 'none';
+                        // Remover el mensaje del DOM después de la animación
+                        message.parentElement.removeChild(message);
+                    }, 500);
                 }, 5000);
-            });
-
-            // Manejar el cierre manual de mensajes
-            document.querySelectorAll('.alert .btn-close').forEach(function(button) {
-                button.addEventListener('click', function() {
-                    const alert = this.closest('.alert');
-                    alert.classList.remove('show');
-                    setTimeout(function() {
-                        alert.remove();
-                    }, 150);
-                });
             });
         });
     </script>

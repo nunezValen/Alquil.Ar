@@ -655,6 +655,7 @@ def cambiar_password(request):
     
     return render(request, 'persona/cambiar_password.html', {'password_verificada': False})
 
+@login_required
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -678,7 +679,60 @@ def cambiar_password_empleado_logueado(request):
                     error = 'La contraseña actual es incorrecta.'
                 else:
                     password_verificada = True
-                
+                    success = 'Contraseña verificada correctamente.'
+        
+        elif paso == 'cambiar':
+            password_nuevo = request.POST.get('password_nuevo', '')
+            password_confirmacion = request.POST.get('password_confirmacion', '')
+            password_verificada = True  # Mantener el formulario de cambio visible
+
+            if not password_nuevo or not password_confirmacion:
+                error = 'Debe completar todos los campos.'
+            elif password_nuevo != password_confirmacion:
+                error = 'Las contraseñas no coinciden.'
+            elif len(password_nuevo) < 6:
+                error = 'La contraseña debe tener al menos 6 caracteres.'
+            elif len(password_nuevo) > 16:
+                error = 'La contraseña no puede tener más de 16 caracteres.'
+            else:
+                user = request.user
+                user.set_password(password_nuevo)
+                user.save()
+                update_session_auth_hash(request, user)  # Mantiene la sesión activa
+                messages.success(request, 'Contraseña cambiada exitosamente.')
+                return redirect('persona:inicio')
+    
+    return render(request, 'persona/cambiar_password_empleado_logueado.html', {
+        'error': error,
+        'success': success,
+        'password_verificada': password_verificada
+    })
+
+@login_required
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def cambiar_password_logueado(request):
+    error = None
+    success = None
+    password_verificada = False
+    
+    if request.method == 'POST':
+        paso = request.POST.get('paso')
+        
+        if paso == 'verificar':
+            password_actual = request.POST.get('password_actual', '')
+            
+            if not password_actual:
+                error = 'Debe ingresar su contraseña actual.'
+            else:
+                # Verificar la contraseña actual
+                user = request.user
+                if not user.check_password(password_actual):
+                    error = 'La contraseña actual es incorrecta.'
+                else:
+                    password_verificada = True
+        
         elif paso == 'cambiar':
             password1 = request.POST.get('password1', '')
             password2 = request.POST.get('password2', '')
@@ -700,13 +754,10 @@ def cambiar_password_empleado_logueado(request):
                 user.set_password(password1)
                 user.save()
                 update_session_auth_hash(request, user)  # Mantiene la sesión activa
-                success = 'Contraseña cambiada exitosamente.'
+                messages.success(request, 'Contraseña cambiada exitosamente.')
                 return redirect('persona:inicio')
-        else:
-            # Si no se especifica el paso, asumimos que es una solicitud GET
-            password_verificada = False
-
-    return render(request, 'persona/cambiar_password_empleado_logueado.html', {
+    
+    return render(request, 'cambiar_password_logueado.html', {
         'error': error,
         'success': success,
         'password_verificada': password_verificada
@@ -1747,5 +1798,63 @@ def lista_clientes(request):
     }
 
     return render(request, 'persona/lista_clientes.html', context)
+
+@login_required
+def cambiar_password_2(request):
+    # Solo resetear la verificación si es la primera vez que se accede a la vista
+    if request.method == 'GET' and not request.GET.get('verified'):
+        request.session['password_verificada'] = False
+    
+    if request.method == 'POST':
+        paso = request.POST.get('paso')
+        
+        if paso == 'verificar':
+            password_actual = request.POST.get('password_actual')
+            user = authenticate(username=request.user.username, password=password_actual)
+            
+            if user is not None:
+                request.session['password_verificada'] = True
+                messages.success(request, 'Contraseña verificada correctamente')
+                return redirect(reverse('persona:cambiar_password_2') + '?verified=true')
+            else:
+                return redirect('persona:cambiar_password_2')
+        
+        elif paso == 'cambiar':
+            if not request.session.get('password_verificada', False):
+                messages.error(request, 'Debe verificar su contraseña actual primero')
+                return redirect('persona:cambiar_password_2')
+                
+            password_nueva = request.POST.get('password_nueva')
+            password_confirmar = request.POST.get('password_confirmar')
+            
+            if len(password_nueva) < 6 or len(password_nueva) > 16:
+                messages.error(request, 'La contraseña debe estar entre 6 y 16 dígitos')
+                return redirect(reverse('persona:cambiar_password_2') + '?verified=true')
+            
+            if password_nueva != password_confirmar:
+                messages.error(request, 'Las contraseñas no coinciden')
+                return redirect(reverse('persona:cambiar_password_2') + '?verified=true')
+            
+            request.user.set_password(password_nueva)
+            request.user.save()
+            update_session_auth_hash(request, request.user)
+            messages.success(request, 'Contraseña cambiada exitosamente')
+            # Después de cambiar la contraseña, resetear la verificación
+            request.session['password_verificada'] = False
+            
+            # Redirigir según el tipo de usuario
+            try:
+                persona = Persona.objects.get(email=request.user.email)
+                if persona.es_empleado or request.user.is_superuser:
+                    return redirect('persona:inicio')
+                else:
+                    return redirect('persona:inicio')  # O cualquier otra vista para clientes
+            except Persona.DoesNotExist:
+                return redirect('persona:inicio')
+    
+    password_verificada = request.session.get('password_verificada', False)
+    return render(request, 'persona/cambiar_password_2.html', {
+        'password_verificada': password_verificada
+    })
 
 # Create your views here.
