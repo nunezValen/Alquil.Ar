@@ -10,7 +10,8 @@ from .views import (
     lista_alquileres, lista_clientes, checkout, recuperar_password, mapa_sucursales,
     pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler,
     lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json,
-    enviar_codigo_verificacion, verificar_codigo, bloquear_cliente, desbloquear_cliente
+    enviar_codigo_verificacion, verificar_codigo, bloquear_cliente, desbloquear_cliente,
+    lista_empleados_gestion, bloquear_empleado, desbloquear_empleado
 )
 from maquinas.views import cancelar_alquiler
 
@@ -57,6 +58,10 @@ urlpatterns = [
     # Rutas para gestión de clientes (bloqueo/desbloqueo)
     path('clientes/<int:persona_id>/bloquear/', bloquear_cliente, name='bloquear_cliente'),
     path('clientes/<int:persona_id>/desbloquear/', desbloquear_cliente, name='desbloquear_cliente'),
+    # Rutas para gestión de empleados (bloqueo/desbloqueo)
+    path('gestion/empleados/', lista_empleados_gestion, name='lista_empleados_gestion'),
+    path('empleados/<int:persona_id>/bloquear/', bloquear_empleado, name='bloquear_empleado'),
+    path('empleados/<int:persona_id>/desbloquear/', desbloquear_empleado, name='desbloquear_empleado'),
 ]
 
 

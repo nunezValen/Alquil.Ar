@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Empleados - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .row-cancelado {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1090;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4" data-es-admin="{{ usuario_persona.es_admin|yesno:'true,false' }}">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-shield"></i> Gestión de Empleados</h2>
+                <a href="?export=xlsx&{{ request.GET.urlencode }}" class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </a>
+            </div>
+
+            <div class="filter-section">
+                <h5><i class="fas fa-filter"></i> Filtros</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="nombre" class="form-label">Nombre o Apellido</label>
+                        <input type="text" name="nombre" id="nombre" class="form-control" value="{{ filtros.nombre|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dni" class="form-label">DNI</label>
+                        <input type="number" name="dni" id="dni" class="form-control" value="{{ filtros.dni|default:'' }}">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Fecha de Registro (desde/hasta)</label>
+                        <div class="input-group">
+                            <input type="date" name="fecha_desde" class="form-control" value="{{ filtros.fecha_desde|default:'' }}">
+                            <input type="date" name="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta|default:'' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select name="estado" id="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="activo" {% if filtros.estado == 'activo' %}selected{% endif %}>Activo</option>
+                            <option value="bloqueado" {% if filtros.estado == 'bloqueado' %}selected{% endif %}>Bloqueado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2"><i class="fas fa-search"></i> Filtrar</button>
+                        <a href="{% url 'persona:lista_empleados_gestion' %}" class="btn btn-secondary"><i class="fas fa-times"></i> Limpiar</a>
+                    </div>
+                </form>
+            </div>
+
+            {% if mensaje_sin_resultados %}
+            <div class="alert alert-info"><i class="fas fa-info-circle"></i> {{ mensaje_sin_resultados }}</div>
+            {% endif %}
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Email</th>
+                            <th>DNI</th>
+                            <th>Fecha Nacimiento</th>
+                            <th>Fecha Registro</th>
+                            <th class="text-center">Estado (Empleado)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for empleado in empleados %}
+                        <tr id="row-{{ empleado.id }}" class="{% if empleado.bloqueado_empleado %}row-cancelado{% endif %}">
+                            <td>{{ empleado.nombre|title }}</td>
+                            <td>{{ empleado.apellido|title }}</td>
+                            <td>{{ empleado.email }}</td>
+                            <td>{{ empleado.dni|default:"N/A" }}</td>
+                            <td>{{ empleado.fecha_nacimiento|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ empleado.fecha_registro|date:"d/m/Y H:i" }}</td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    <form id="form-{{ empleado.id }}" class="toggle-form"
+                                          data-confirm-bloquear="¿Estás seguro de que deseas BLOQUEAR el rol de empleado para este usuario? Su sesión se cerrará."
+                                          data-confirm-desbloquear="¿Estás seguro de que deseas DESBLOQUEAR el rol de empleado para este usuario?">
+                                        {% csrf_token %}
+                                        <input class="form-check-input" type="checkbox" role="switch" 
+                                               id="switch-{{ empleado.id }}" 
+                                               onchange="toggleBloqueoEmpleado(this, '{{ empleado.id }}')"
+                                               {% if not empleado.bloqueado_empleado %}checked{% endif %}
+                                               {% if request.user.id == empleado.user.id %}disabled{% endif %}
+                                               data-url-bloquear="{% url 'persona:bloquear_empleado' empleado.id %}"
+                                               data-url-desbloquear="{% url 'persona:desbloquear_empleado' empleado.id %}">
+                                        <label class="form-check-label ms-2" for="switch-{{ empleado.id }}" id="label-{{ empleado.id }}">
+                                            {% if empleado.bloqueado_empleado %}Bloqueado{% else %}Activo{% endif %}
+                                        </label>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No se encontraron empleados que coincidan con la búsqueda.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if is_paginated %}
+            <nav aria-label="Paginación">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page=1&{{ request.GET.urlencode }}">« Primero</a></li><li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">‹ Anterior</a></li>{% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Siguiente ›</a></li><li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Último »</a></li>{% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const IS_USER_ADMIN = document.querySelector('.container-fluid').dataset.esAdmin === 'true';
+
+    window.toggleBloqueoEmpleado = function(switchElement, personaId) {
+        const isChecked = switchElement.checked;
+        const form = switchElement.closest('.toggle-form');
+        const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+        const url = isChecked ? switchElement.dataset.urlDesbloquear : switchElement.dataset.urlBloquear;
+        const confirmationMessage = isChecked ? form.dataset.confirmDesbloquear : form.dataset.confirmBloquear;
+
+        if (!confirm(confirmationMessage)) {
+            switchElement.checked = !isChecked;
+            return;
+        }
+        switchElement.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.ok ? response.json() : response.json().then(err => { throw new Error(err.message || 'Error en servidor') }))
+        .then(data => {
+            showToast(data.message, 'success');
+            const label = document.getElementById(`label-${personaId}`);
+            const row = document.getElementById(`row-${personaId}`);
+            label.textContent = isChecked ? 'Activo' : 'Bloqueado';
+            row.classList.toggle('row-cancelado', !isChecked);
+            switchElement.disabled = false;
+        })
+        .catch(error => {
+            showToast(error.message, 'error');
+            switchElement.checked = !isChecked;
+            switchElement.disabled = false;
+        });
+    }
+
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+        const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        const toastHTML = `<div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>`;
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+    }
+});
+</script>
+{% endblock %} 

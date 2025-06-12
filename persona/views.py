@@ -1676,7 +1676,7 @@ def verificar_codigo(request):
 
 @empleado_requerido
 def lista_clientes(request):
-    queryset = Persona.objects.filter(es_cliente=True).annotate(
+    queryset = Persona.objects.filter(es_cliente=True, es_admin=False).annotate(
         promedio_calificacion_raw=Avg('alquileres_maquinas__calificacion')
     ).annotate(
         promedio_calificacion=Coalesce('promedio_calificacion_raw', Value(5.0))
@@ -1849,5 +1849,118 @@ def desbloquear_cliente(request, persona_id):
     persona.save()
     
     return JsonResponse({'status': 'success', 'message': f'El rol de cliente para {persona.email} ha sido desbloqueado.'})
+
+@empleado_requerido
+def lista_empleados_gestion(request):
+    """
+    Vista para que los administradores gestionen a otros empleados (no-admins).
+    """
+    # Solo los admins pueden acceder
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+
+    queryset = Persona.objects.filter(es_empleado=True, es_admin=False).order_by('apellido', 'nombre')
+
+    filtros = {
+        'nombre': request.GET.get('nombre', ''),
+        'dni': request.GET.get('dni', ''),
+        'email': request.GET.get('email', ''),
+        'estado': request.GET.get('estado', ''),
+        'fecha_desde': request.GET.get('fecha_desde', ''),
+        'fecha_hasta': request.GET.get('fecha_hasta', ''),
+    }
+
+    if filtros['nombre']:
+        queryset = queryset.filter(
+            Q(nombre__icontains=filtros['nombre']) | Q(apellido__icontains=filtros['nombre'])
+        )
+    if filtros['dni']:
+        queryset = queryset.filter(dni__icontains=filtros['dni'])
+    if filtros['email']:
+        queryset = queryset.filter(email__icontains=filtros['email'])
+    if filtros['estado']:
+        if filtros['estado'] == 'activo':
+            queryset = queryset.filter(bloqueado_empleado=False)
+        elif filtros['estado'] == 'bloqueado':
+            queryset = queryset.filter(bloqueado_empleado=True)
+    if filtros['fecha_desde']:
+        queryset = queryset.filter(fecha_registro__gte=filtros['fecha_desde'])
+    if filtros['fecha_hasta']:
+        from datetime import datetime, timedelta
+        fecha_hasta_dt = datetime.strptime(filtros['fecha_hasta'], '%Y-%m-%d') + timedelta(days=1)
+        queryset = queryset.filter(fecha_registro__lt=fecha_hasta_dt)
+
+    filtros_aplicados = any(f for f in filtros.values())
+
+    if request.GET.get('export') == 'xlsx':
+        import openpyxl
+        from django.http import HttpResponse
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Empleados"
+        headers = ['Nombre', 'Apellido', 'Email', 'DNI', 'Fecha Nacimiento', 'Fecha Registro', 'Estado']
+        ws.append(headers)
+        for empleado in queryset:
+            estado = "Bloqueado" if empleado.bloqueado_empleado else "Activo"
+            fecha_nac_str = empleado.fecha_nacimiento.strftime('%d/%m/%Y') if empleado.fecha_nacimiento else 'N/A'
+            ws.append([
+                empleado.nombre, empleado.apellido, empleado.email,
+                empleado.dni or 'N/A', fecha_nac_str,
+                empleado.fecha_registro.strftime('%d/%m/%Y %H:%M'), estado
+            ])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=empleados.xlsx'
+        wb.save(response)
+        return response
+
+    paginator = Paginator(queryset, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    mensaje_sin_resultados = "No se encontraron empleados con los filtros aplicados." if not page_obj.object_list and filtros_aplicados else None
+
+    context = {
+        'empleados': page_obj,
+        'filtros': filtros,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+    }
+    return render(request, 'persona/lista_empleados_gestion.html', context)
+
+
+@require_http_methods(["POST"])
+def bloquear_empleado(request, persona_id):
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    empleado = get_object_or_404(Persona, id=persona_id)
+    empleado.bloqueado_empleado = True
+    empleado.save()
+    
+    # Cerrar sesión del empleado afectado
+    try:
+        user_afectado = User.objects.get(email=empleado.email)
+        from django.contrib.sessions.models import Session
+        all_sessions = Session.objects.filter(expire_date__gte=timezone.now())
+        for session in all_sessions:
+            if str(session.get_decoded().get('_auth_user_id')) == str(user_afectado.id):
+                session.delete()
+    except:
+        pass
+
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ha sido bloqueado.'})
+
+
+@require_http_methods(["POST"])
+def desbloquear_empleado(request, persona_id):
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    empleado = get_object_or_404(Persona, id=persona_id)
+    empleado.bloqueado_empleado = False
+    empleado.save()
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ha sido desbloqueado.'})
 
 # Create your views here.

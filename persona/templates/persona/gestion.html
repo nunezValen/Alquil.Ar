@@ -13,7 +13,7 @@
                     <p class="card-text">Administrar alquileres, cancelaciones y reembolsos.</p>
                     <div class="mt-3">
                         <a href="{% url 'persona:lista_alquileres' %}" class="btn btn-primary w-100 mb-2">Ver Alquileres</a>
-                        <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-success w-100">Ver Reembolsos</a>
+                        <a href="{% url 'persona:lista_reembolsos' %}" class="btn btn-primary w-100">Ver Reembolsos</a>
                     </div>
                 </div>
             </div>
@@ -25,7 +25,10 @@
                     <p class="card-text">Administrar registros y bloqueos.</p>
                     <div class="mt-3">
                         {% if user.email in empleados_emails %}
-                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100">Ver Clientes</a>
+                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100 mb-2">Ver Clientes</a>
+                        {% endif %}
+                        {% if usuario_persona.es_admin %}
+                        <a href="{% url 'persona:lista_empleados_gestion' %}" class="btn btn-primary w-100">Ver Empleados</a>
                         {% endif %}
                     </div>
                 </div>
