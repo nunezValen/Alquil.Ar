@@ -112,5 +112,43 @@
     "bloqueado_cliente": false,
     "bloqueado_empleado": false
   }
+},
+{
+  "model": "persona.persona",
+  "pk": 14,
+  "fields": {
+    "nombre": "Mario",
+    "apellido": "Bro",
+    "dni": "35000000",
+    "email": "emp_mario@alquilar.com",
+    "telefono": null,
+    "fecha_nacimiento": "1995-02-16",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T03:16:33.420Z",
+    "es_cliente": false,
+    "es_empleado": true,
+    "es_admin": true,
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
+  }
+},
+{
+  "model": "persona.persona",
+  "pk": 15,
+  "fields": {
+    "nombre": "Luigi",
+    "apellido": "Bro",
+    "dni": "35000001",
+    "email": "emp_luigi@alquilar.com",
+    "telefono": null,
+    "fecha_nacimiento": "1995-02-16",
+    "direccion": null,
+    "fecha_registro": "2025-06-05T03:16:33.420Z",
+    "es_cliente": false,
+    "es_empleado": true,
+    "es_admin": true,
+    "bloqueado_cliente": false,
+    "bloqueado_empleado": false
+  }
 }
 ]
