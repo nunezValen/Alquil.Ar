@@ -36,12 +36,12 @@ class CodigoVerificacion(models.Model):
         verbose_name_plural = "Códigos de Verificación"
 
 class Persona(models.Model):
-    nombre = models.CharField(max_length=100)
-    apellido = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=50)
+    apellido = models.CharField(max_length=50)
     dni = models.CharField(max_length=20, unique=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     telefono = models.CharField(max_length=20, null=True, blank=True, editable=False)
-    fecha_nacimiento = models.DateField(null=True, blank=True)
+    fecha_nacimiento = models.DateField(null=False, blank=False)
     direccion = models.TextField(null=True, blank=True, editable=False)
     fecha_registro = models.DateTimeField(default=timezone.now)
     

@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
-from .forms import PersonaForm, EditarPersonaForm
+from .forms import PersonaForm, EditarPersonaForm, CambiarPasswordForm
 from datetime import date
 import random
 import string
@@ -26,6 +26,7 @@ from maquinas.models import Alquiler, MaquinaBase
 from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
 from django.db.models.functions import Coalesce
 from django.db.models import Value
+from django.contrib.auth.password_validation import validate_password, ValidationError
 
 def es_admin(user):
     """
@@ -609,6 +610,7 @@ def login_empleado(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def cambiar_password(request):
+    """Vista para cambiar contraseña"""
     if request.method == 'POST':
         paso = request.POST.get('paso')
         
@@ -622,6 +624,7 @@ def cambiar_password(request):
                 return render(request, 'persona/cambiar_password.html', {'password_verificada': False})
             
             # Si la contraseña es correcta, mostrar el formulario de cambio
+            messages.success(request, 'Contraseña verificada correctamente. Ahora puedes establecer tu nueva contraseña.')
             return render(request, 'persona/cambiar_password.html', {'password_verificada': True})
             
         elif paso == 'cambiar':
@@ -650,19 +653,15 @@ def cambiar_password(request):
             # Actualizar la sesión para que el usuario no tenga que volver a iniciar sesión
             update_session_auth_hash(request, user)
             
-            messages.success(request, 'Tu contraseña ha sido cambiada exitosamente.')
+            messages.success(request, '¡Tu contraseña ha sido actualizada exitosamente!')
             return redirect('persona:inicio')
-    
+
     return render(request, 'persona/cambiar_password.html', {'password_verificada': False})
 
 @csrf_protect
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def cambiar_password_empleado_logueado(request):
-    error = None
-    success = None
-    password_verificada = False
-    
     if request.method == 'POST':
         paso = request.POST.get('paso')
         
@@ -670,47 +669,41 @@ def cambiar_password_empleado_logueado(request):
             password_actual = request.POST.get('password_actual', '')
             
             if not password_actual:
-                error = 'Debe ingresar su contraseña actual.'
+                messages.error(request, 'Debe ingresar su contraseña actual.')
             else:
                 # Verificar la contraseña actual
                 user = request.user
                 if not user.check_password(password_actual):
-                    error = 'La contraseña actual es incorrecta.'
+                    messages.error(request, 'La contraseña actual es incorrecta.')
                 else:
-                    password_verificada = True
+                    messages.success(request, 'Contraseña verificada correctamente. Ahora puedes establecer tu nueva contraseña.')
+                    return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': True})
                 
         elif paso == 'cambiar':
             password1 = request.POST.get('password1', '')
             password2 = request.POST.get('password2', '')
 
             if not password1 or not password2:
-                error = 'Debe completar todos los campos.'
-                password_verificada = True
+                messages.error(request, 'Debe completar todos los campos.')
+                return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': True})
             elif password1 != password2:
-                error = 'Las contraseñas no coinciden.'
-                password_verificada = True
+                messages.error(request, 'Las contraseñas no coinciden.')
+                return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': True})
             elif len(password1) < 6:
-                error = 'La contraseña debe tener al menos 6 caracteres.'
-                password_verificada = True
+                messages.error(request, 'La contraseña debe tener al menos 6 caracteres.')
+                return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': True})
             elif len(password1) > 16:
-                error = 'La contraseña no puede tener más de 16 caracteres.'
-                password_verificada = True
+                messages.error(request, 'La contraseña no puede tener más de 16 caracteres.')
+                return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': True})
             else:
                 user = request.user
                 user.set_password(password1)
                 user.save()
                 update_session_auth_hash(request, user)  # Mantiene la sesión activa
-                success = 'Contraseña cambiada exitosamente.'
+                messages.success(request, '¡Tu contraseña ha sido actualizada exitosamente!')
                 return redirect('persona:inicio')
-        else:
-            # Si no se especifica el paso, asumimos que es una solicitud GET
-            password_verificada = False
 
-    return render(request, 'persona/cambiar_password_empleado_logueado.html', {
-        'error': error,
-        'success': success,
-        'password_verificada': password_verificada
-    })
+    return render(request, 'persona/cambiar_password_empleado_logueado.html', {'password_verificada': False})
 
 @login_required
 @csrf_protect
@@ -766,86 +759,29 @@ def login_unificado2(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
-
-        # 1. Buscar en modelo Persona
-        try:
-            persona = Persona.objects.get(email=email)
-            if persona.es_baneado:
-                return render(request, 'persona/login_unificado2.html', {
-                    'error': 'Tu cuenta está suspendida. Contacta al administrador.'
-                })
+        user = authenticate(request, username=email, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, '¡Bienvenido! Has iniciado sesión exitosamente.')
+            if user.is_staff:
+                return redirect('persona:inicio')
             else:
-                user = authenticate(request, username=email, password=password)
-                if user is not None:
-                    # Si es admin, requerir verificación en dos pasos
-                    if persona.es_admin:
-                        # Guardar los datos de usuario en la sesión temporalmente
-                        request.session['temp_user_id'] = user.id
-                        request.session['temp_user_email'] = email
-                        
-                        # Crear y enviar código de verificación
-                        codigo = CodigoVerificacion.objects.create(
-                            persona=persona,
-                            fecha_expiracion=timezone.now() + timezone.timedelta(minutes=10)
-                        )
-                        
-                        # Enviar el código por correo electrónico
-                        subject = 'Código de verificación - Alquil.Ar'
-                        message = f'''
-                        Hola {persona.nombre},
-
-                        Tu código de verificación es: {codigo.codigo}
-
-                        Este código expirará en 10 minutos.
-
-                        Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta.
-
-                        Saludos,
-                        El equipo de Alquil.Ar
-                        '''
-                        
-                        send_mail(
-                            subject,
-                            message,
-                            settings.DEFAULT_FROM_EMAIL,
-                            [email],
-                            fail_silently=False,
-                        )
-                        
-                        messages.info(request, 'Por favor, ingresa el código de verificación enviado a tu correo.')
-                        return redirect('persona:verificar_codigo')
-                    
-                    # Para usuarios no admin, proceder con el login normal
-                    login(request, user)
-                    
-                    # Verificar roles en orden específico
-                    if persona.es_empleado:
-                        messages.success(request, 'Has iniciado sesión como empleado')
-                        return redirect('persona:inicio')
-                    elif persona.es_cliente:
-                        messages.success(request, 'Has iniciado sesión como cliente')
-                        return redirect('persona:inicio')
-                    else:
-                        return render(request, 'persona/login_unificado2.html', {
-                            'error': 'No tienes cuenta activa. Contacta al administrador.'
-                        })
-                else:
-                    return render(request, 'persona/login_unificado2.html', {
-                        'error': 'Email o contraseña incorrectos'
-                    })
-        except Persona.DoesNotExist:
-            return render(request, 'persona/login_unificado2.html', {
-                'error': 'Email o contraseña incorrectos'
-            })
-
-    # Si es GET, mostrar el formulario
+                return redirect('persona:inicio')
+        else:
+            error = 'Email o contraseña incorrectos'
+            return render(request, 'persona/login_unificado2.html', {'error': error})
     return render(request, 'persona/login_unificado2.html')
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
 def gestion(request):
     """Vista de gestión accesible para empleados y administradores"""
-    return render(request, 'persona/gestion.html')
+    context = {
+        'is_staff': request.user.is_staff,
+        'is_superuser': request.user.is_superuser,
+        'empleados_emails': Persona.objects.filter(es_empleado=True).values_list('email', flat=True)
+    }
+    return render(request, 'persona/gestion.html', context)
 
 @login_required
 @user_passes_test(es_admin)
@@ -882,13 +818,10 @@ def switch_back_to_employee(request):
     return redirect('persona:inicio')
 
 def logout_view(request):
-    """Vista para cerrar sesión"""
-    # Limpiar la variable de sesión que indica que el usuario es un empleado actuando como cliente
-    if 'es_empleado_actuando_como_cliente' in request.session:
-        del request.session['es_empleado_actuando_como_cliente']
+    if request.user.is_authenticated:
+        messages.success(request, 'Sesión cerrada exitosamente.')
     logout(request)
-    messages.success(request, 'Cierre de sesión exitoso')
-    return redirect('persona:inicio')
+    return redirect('persona:login_unificado2')
 
 @login_required
 @csrf_protect
@@ -907,8 +840,26 @@ def editar_datos_personales(request):
             form = EditarPersonaForm(request.POST, instance=persona)
             if form.is_valid():
                 form.save()
+                # Actualizar también el usuario de Django
+                user = request.user
+                user.first_name = form.cleaned_data['nombre']
+                user.last_name = form.cleaned_data['apellido']
+                user.save()
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Datos personales actualizados correctamente'
+                    })
                 messages.success(request, 'Datos personales actualizados correctamente.')
                 return redirect('persona:inicio')
+            else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    errors = {field: str(error[0]) for field, error in form.errors.items()}
+                    return JsonResponse({
+                        'success': False,
+                        'errors': errors
+                    })
         else:
             form = EditarPersonaForm(instance=persona)
         
@@ -1617,6 +1568,7 @@ def verificar_codigo(request):
             ).latest('fecha_creacion')
             
             if codigo.codigo == codigo_ingresado:
+                # Marcar el código como usado
                 codigo.usado = True
                 codigo.save()
                 
@@ -1635,14 +1587,13 @@ def verificar_codigo(request):
                 del request.session['temp_user_id']
                 del request.session['temp_user_email']
                 
-                messages.success(request, '¡Verificación exitosa! Has iniciado sesión como administrador con todos los permisos.')
+                messages.success(request, '¡Verificación exitosa! Has iniciado sesión como administrador.')
                 return redirect('persona:inicio')
             else:
                 messages.error(request, 'Código incorrecto. Por favor, intenta nuevamente.')
         except CodigoVerificacion.DoesNotExist:
-            messages.error(request, 'El código ha expirado o no existe. Por favor, inicia sesión nuevamente.')
-            return redirect('persona:login_unificado2')
-
+            messages.error(request, 'El código ha expirado o no existe. Por favor, solicita un nuevo código.')
+            
     return render(request, 'persona/verificar_codigo.html')
 
 @login_required
@@ -1787,6 +1738,11 @@ def registrar_cliente(request):
                 form.add_error('email', 'El email es obligatorio para registrar un usuario.')
                 return render(request, 'persona/registrar_cliente.html', {'form': form})
             
+            # Verificar que tenga fecha de nacimiento
+            if not persona.fecha_nacimiento:
+                form.add_error('fecha_nacimiento', 'La fecha de nacimiento es obligatoria para registrar un cliente.')
+                return render(request, 'persona/registrar_cliente.html', {'form': form})
+            
             # Generar contraseña aleatoria
             password = generar_password_random()
             
@@ -1821,7 +1777,7 @@ def registrar_cliente(request):
                 )
                 
                 messages.success(request, 'Cliente registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
-                return redirect('persona:login_unificado2')
+                return redirect('persona:inicio')
             except Exception as e:
                 # Si algo falla, eliminar el usuario si fue creado
                 if 'user' in locals():
@@ -1854,6 +1810,11 @@ def registrar_empleado_nuevo(request):
                 form.add_error('email', 'El email es obligatorio para registrar un empleado.')
                 return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
             
+            # Verificar que tenga fecha de nacimiento
+            if not persona.fecha_nacimiento:
+                form.add_error('fecha_nacimiento', 'La fecha de nacimiento es obligatoria para registrar un empleado.')
+                return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+            
             # Generar contraseña aleatoria
             password = generar_password_random()
             
@@ -1865,7 +1826,7 @@ def registrar_empleado_nuevo(request):
                     password=password,
                     first_name=persona.nombre,
                     last_name=persona.apellido,
-                    is_staff=True
+                    is_staff=True  # Asegurarnos que tenga acceso al admin
                 )
                 
                 persona.save()
@@ -1888,7 +1849,7 @@ def registrar_empleado_nuevo(request):
                 )
                 
                 messages.success(request, 'Empleado registrado exitosamente. Por favor, revisa tu email para obtener tu contraseña.')
-                return redirect('persona:login_unificado2')
+                return redirect('persona:inicio')
             except Exception as e:
                 # Si algo falla, eliminar el usuario si fue creado
                 if 'user' in locals():
@@ -1898,5 +1859,52 @@ def registrar_empleado_nuevo(request):
     else:
         form = PersonaForm()
     return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def cambiar_password_empleado(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        
+        try:
+            # Verificar que el email exista
+            user = User.objects.get(email=email)
+            persona = Persona.objects.get(email=email)
+            
+            if not persona.es_empleado:
+                messages.error(request, 'Este usuario no es un empleado.')
+                return render(request, 'persona/cambiar_password_empleado.html')
+            
+            # Generar nueva contraseña
+            password = generar_password_random()
+            user.set_password(password)
+            user.save()
+            
+            # Enviar email con la nueva contraseña
+            send_mail(
+                'Alquil.Ar - Nueva contraseña',
+                f'Hola {user.first_name},\n\n'
+                f'Tu contraseña ha sido restablecida.\n\n'
+                f'Tu nueva contraseña es: {password}\n\n'
+                f'Por favor, cambia tu contraseña la próxima vez que inicies sesión.\n\n'
+                f'Saludos,\n'
+                f'Equipo Alquil.Ar',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            
+            messages.success(request, 'Se ha enviado una nueva contraseña a tu correo electrónico.')
+            return redirect('persona:login_unificado2')
+            
+        except User.DoesNotExist:
+            messages.error(request, 'No existe un usuario con ese email.')
+        except Persona.DoesNotExist:
+            messages.error(request, 'No existe una persona con ese email.')
+        except Exception as e:
+            messages.error(request, f'Error al restablecer la contraseña: {str(e)}')
+    
+    return render(request, 'persona/cambiar_password_empleado.html')
 
 # Create your views here.

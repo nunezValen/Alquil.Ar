@@ -4,6 +4,50 @@
 {% block title %}Iniciar Sesión - Alquil.ar{% endblock %}
 
 {% block content %}
+<style>
+    .alert-floating {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        padding: 15px 20px;
+    }
+
+    .alert-success {
+        background-color: #28a745;
+        color: white;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    .fade-out {
+        animation: fadeOut 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-20px); }
+    }
+</style>
+
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
@@ -12,11 +56,6 @@
                     <h4 class="mb-0">Iniciar Sesión</h4>
                 </div>
                 <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
                     {% if error %}
                         <div class="alert alert-danger">{{ error }}</div>
                     {% endif %}
@@ -43,92 +82,32 @@
     </div>
 </div>
 
-<style>
-.login-container {
-    max-width: 400px;
-    margin: 2rem auto;
-    padding: 2rem;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+<!-- Alerta flotante para mensajes -->
+<div id="alertMessage" class="alert-floating alert-success">
+    <span id="alertText"></span>
+</div>
 
-.login-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if messages %}
+        {% for message in messages %}
+            if ("{{ message.tags }}" === "success") {
+                const alertMessage = document.getElementById('alertMessage');
+                const alertText = document.getElementById('alertText');
+                
+                alertMessage.className = 'alert-floating alert-success fade-in';
+                alertText.textContent = "{{ message }}";
+                alertMessage.style.display = 'block';
 
-.login-header h2 {
-    color: #333;
-    margin-bottom: 0.5rem;
-}
-
-.login-header p {
-    color: #666;
-    margin: 0;
-}
-
-.login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    color: #555;
-    font-weight: 500;
-}
-
-.form-group input {
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.submit-button {
-    padding: 0.75rem;
-    cursor: pointer;
-    margin-top: 1rem;
-}
-
-.submit-button:hover {
-    background-color: #2468b3;
-}
-
-.error-message {
-    background-color: #fff2f2;
-    border: 1px solid #ffcdd2;
-    color: #d32f2f;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-}
-
-.login-footer {
-    margin-top: 2rem;
-    text-align: center;
-    display: flex;
-    justify-content: space-between;
-}
-
-.login-footer a {
-    color: #2D7DD2;
-    text-decoration: none;
-}
-
-.login-footer a:hover {
-    text-decoration: underline;
-}
-
-a {
-   color: #2D7DD2;
-}
-</style>
+                setTimeout(() => {
+                    alertMessage.className = 'alert-floating alert-success fade-out';
+                    setTimeout(() => {
+                        alertMessage.style.display = 'none';
+                    }, 500);
+                }, 3000);
+            }
+        {% endfor %}
+    {% endif %}
+});
+</script>
 {% endblock %} 

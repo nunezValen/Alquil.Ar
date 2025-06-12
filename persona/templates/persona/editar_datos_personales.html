@@ -4,6 +4,69 @@
 {% block title %}Editar Datos Personales{% endblock %}
 
 {% block content %}
+<style>
+    .alert-floating {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        padding: 15px 20px;
+    }
+
+    .alert-success {
+        background-color: #28a745;
+        color: white;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    .fade-out {
+        animation: fadeOut 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-20px); }
+    }
+
+    .form-control:focus {
+        border-color: #2D7DD2;
+        box-shadow: 0 0 0 0.2rem rgba(45, 125, 210, 0.25);
+    }
+
+    .btn-primary {
+        background-color: #2D7DD2;
+        border-color: #2D7DD2;
+    }
+
+    .btn-primary:hover {
+        background-color: #2463A6;
+        border-color: #2463A6;
+    }
+
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-6 offset-md-3">
@@ -11,17 +74,7 @@
                 <div class="card-body">
                     <h2 class="card-title text-center mb-4">Editar Datos Personales</h2>
                     
-                    {% if messages %}
-                    <div class="messages">
-                        {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">
-                            {{ message }}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    
-                    <form method="post">
+                    <form method="post" id="editForm">
                         {% csrf_token %}
                         
                         <div class="mb-3">
@@ -54,4 +107,107 @@
         </div>
     </div>
 </div>
+
+<!-- Alerta flotante para mensajes -->
+<div id="alertMessage" class="alert-floating alert-success">
+    <span id="alertText"></span>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editForm');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertText = document.getElementById('alertText');
+    const nombreInput = form.querySelector('[name="nombre"]');
+    const apellidoInput = form.querySelector('[name="apellido"]');
+
+    // Función para validar un campo
+    function validarCampo(input) {
+        const valor = input.value.trim();
+        const nombre = input.name;
+        const label = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+        
+        if (valor.length < 2) {
+            input.setCustomValidity(`El ${nombre} debe tener al menos 2 caracteres.`);
+            return false;
+        }
+        if (valor.length > 50) {
+            input.setCustomValidity(`El ${nombre} no puede tener más de 50 caracteres.`);
+            return false;
+        }
+        input.setCustomValidity('');
+        return true;
+    }
+
+    // Función para mostrar mensaje
+    function mostrarMensaje(mensaje, tipo) {
+        alertMessage.className = `alert-floating alert-${tipo} fade-in`;
+        alertText.textContent = mensaje;
+        alertMessage.style.display = 'block';
+
+        setTimeout(() => {
+            alertMessage.className = `alert-floating alert-${tipo} fade-out`;
+            setTimeout(() => {
+                alertMessage.style.display = 'none';
+                if (tipo === 'success') {
+                    window.location.href = '{% url "persona:inicio" %}';
+                }
+            }, 500);
+        }, 3000);
+    }
+
+    // Validar campos al escribir
+    nombreInput.addEventListener('input', function() {
+        validarCampo(this);
+        this.reportValidity();
+    });
+
+    apellidoInput.addEventListener('input', function() {
+        validarCampo(this);
+        this.reportValidity();
+    });
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Validar ambos campos antes de enviar
+        const nombreValido = validarCampo(nombreInput);
+        const apellidoValido = validarCampo(apellidoInput);
+
+        if (!nombreValido || !apellidoValido) {
+            return;
+        }
+
+        // Enviar el formulario usando Fetch API
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarMensaje(data.message, 'success');
+            } else if (data.errors) {
+                // Mostrar errores en los campos correspondientes
+                Object.keys(data.errors).forEach(field => {
+                    const input = form.querySelector(`[name="${field}"]`);
+                    if (input) {
+                        input.setCustomValidity(data.errors[field]);
+                        input.reportValidity();
+                    }
+                });
+                mostrarMensaje('Por favor, corrija los errores en el formulario.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarMensaje('Ocurrió un error al actualizar los datos', 'danger');
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -24,8 +24,14 @@
                     <h5 class="card-title">Gestión de Usuarios</h5>
                     <p class="card-text">Administrar registros y bloqueos.</p>
                     <div class="mt-3">
-                        {% if user.is_superuser %}
-                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100">Ver Clientes</a>
+                        {% if is_superuser %}
+                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100 mb-2">Ver Clientes</a>
+                        {% endif %}
+                        {% if user.email in empleados_emails or is_superuser %}
+                        <a href="{% url 'persona:registrar_cliente' %}" class="btn btn-primary w-100 mb-2">Registrar Cliente</a>
+                        {% endif %}
+                        {% if is_superuser %}
+                        <a href="{% url 'persona:registrar_empleado_nuevo' %}" class="btn btn-primary w-100">Registrar Empleado</a>
                         {% endif %}
                     </div>
                 </div>
@@ -38,11 +44,11 @@
                     <p class="card-text">Administrar inventario de máquinas.</p>
                     <div class="mt-3">
                         <a href="{% url 'maquinas:lista_maquinas' %}" class="btn btn-primary mb-2 w-100">Ver Máquinas Base</a>
-                        {% if user.is_superuser %}
+                        {% if is_superuser %}
                         <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mb-2 w-100">Cargar Máquina Base</a>
                         {% endif %}
                         <a href="{% url 'maquinas:lista_unidades' %}" class="btn btn-primary mb-2 w-100">Ver Unidades</a>
-                        {% if user.is_superuser %}
+                        {% if is_superuser %}
                         <a href="{% url 'maquinas:cargar_unidad' %}" class="btn btn-primary w-100">Cargar Unidad</a>
                         {% endif %}
                     </div>

@@ -158,6 +158,50 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    .alert-floating {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        padding: 15px 20px;
+    }
+
+    .alert-success {
+        background-color: #28a745;
+        color: white;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    .fade-out {
+        animation: fadeOut 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-20px); }
+    }
+</style>
+
 <section class="py-5">
     {% if maquinas %}
         <h2 class="text-center mb-5">Explorá nuestro catálogo</h2>
@@ -195,4 +239,33 @@
         </div>
     {% endif %}
 </section>
+
+<!-- Alerta flotante para mensajes -->
+<div id="alertMessage" class="alert-floating alert-success">
+    <span id="alertText"></span>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if messages %}
+        {% for message in messages %}
+            if ("{{ message.tags }}" === "success") {
+                const alertMessage = document.getElementById('alertMessage');
+                const alertText = document.getElementById('alertText');
+                
+                alertMessage.className = 'alert-floating alert-success fade-in';
+                alertText.textContent = "{{ message }}";
+                alertMessage.style.display = 'block';
+
+                setTimeout(() => {
+                    alertMessage.className = 'alert-floating alert-success fade-out';
+                    setTimeout(() => {
+                        alertMessage.style.display = 'none';
+                    }, 500);
+                }, 3000);
+            }
+        {% endfor %}
+    {% endif %}
+});
+</script>
 {% endblock %} 

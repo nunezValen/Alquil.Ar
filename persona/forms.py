@@ -7,6 +7,16 @@ from django.core.exceptions import ValidationError
 class PersonaForm(forms.ModelForm):
     es_cliente = forms.BooleanField(required=False, label='Cliente', initial=False)
     es_empleado = forms.BooleanField(required=False, label='Empleado', initial=False)
+    fecha_nacimiento = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={
+            'placeholder': 'Fecha de Nacimiento', 
+            'type': 'date', 
+            'class': 'form-control', 
+            'autocomplete': 'off',
+            'required': True
+        })
+    )
 
     class Meta:
         model = Persona
@@ -38,13 +48,7 @@ class PersonaForm(forms.ModelForm):
                 'autocomplete': 'off', 
                 'class': 'form-control', 
                 'required': True
-            }),
-            'fecha_nacimiento': forms.DateInput(attrs={
-                'placeholder': 'Fecha de Nacimiento', 
-                'type': 'date', 
-                'class': 'form-control', 
-                'autocomplete': 'off'
-            }),
+            })
         }
         error_messages = {
             'nombre': {
@@ -79,13 +83,20 @@ class PersonaForm(forms.ModelForm):
         return apellido
 
     def clean_fecha_nacimiento(self):
-        fecha = self.cleaned_data.get('fecha_nacimiento')
-        if fecha:
-            hoy = date.today()
-            edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
-            if edad < 18:
-                raise forms.ValidationError('No cumple con la mayoría de edad.')
-        return fecha
+        fecha_nacimiento = self.cleaned_data.get('fecha_nacimiento')
+        if not fecha_nacimiento:
+            raise ValidationError('La fecha de nacimiento es obligatoria.')
+        
+        # Verificar que la fecha no sea futura
+        if fecha_nacimiento > date.today():
+            raise ValidationError('La fecha de nacimiento no puede ser futura.')
+        
+        # Verificar que la persona sea mayor de 18 años
+        edad = (date.today() - fecha_nacimiento).days / 365.25
+        if edad < 18:
+            raise ValidationError('Debe ser mayor de 18 años para registrarse.')
+        
+        return fecha_nacimiento
 
     def clean(self):
         cleaned_data = super().clean()
@@ -189,17 +200,27 @@ class EditarPersonaForm(forms.ModelForm):
         model = Persona
         fields = ['nombre', 'apellido']
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'apellido': forms.TextInput(attrs={'class': 'form-control'}),
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'apellido': forms.TextInput(attrs={
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
         }
         error_messages = {
             'nombre': {
                 'required': 'El nombre es obligatorio.',
-                'max_length': 'El nombre no puede tener más de 100 caracteres.'
+                'max_length': 'El nombre no puede tener más de 50 caracteres.',
+                'min_length': 'El nombre debe tener al menos 2 caracteres.'
             },
             'apellido': {
                 'required': 'El apellido es obligatorio.',
-                'max_length': 'El apellido no puede tener más de 100 caracteres.'
+                'max_length': 'El apellido no puede tener más de 50 caracteres.',
+                'min_length': 'El apellido debe tener al menos 2 caracteres.'
             }
         }
 
@@ -207,12 +228,20 @@ class EditarPersonaForm(forms.ModelForm):
         nombre = self.cleaned_data.get('nombre', '').strip()
         if not nombre:
             raise forms.ValidationError('El nombre es obligatorio.')
+        if len(nombre) < 2:
+            raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+        if len(nombre) > 50:
+            raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
         return nombre
 
     def clean_apellido(self):
         apellido = self.cleaned_data.get('apellido', '').strip()
         if not apellido:
             raise forms.ValidationError('El apellido es obligatorio.')
+        if len(apellido) < 2:
+            raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+        if len(apellido) > 50:
+            raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
         return apellido
 
     def save(self, commit=True):
