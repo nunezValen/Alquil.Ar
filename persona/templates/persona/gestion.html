@@ -24,11 +24,16 @@
                     <h5 class="card-title">Gestión de Usuarios</h5>
                     <p class="card-text">Administrar registros y bloqueos.</p>
                     <div class="mt-3">
+                        {% if user.is_superuser or usuario_persona.es_admin %}
+                        <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100 mb-2">Ver Clientes</a>
+                        <a href="{% url 'persona:registrar_cliente_nuevo' %}" class="btn boton-principal w-100 mb-2">Registrar Cliente</a>
+                        <a href="{% url 'persona:lista_empleados_gestion' %}" class="btn btn-primary w-100 mb-2">Ver Empleados</a>
+                        <a href="{% url 'persona:registrar_empleado_nuevo' %}" class="btn boton-principal w-100">Registrar Empleado</a>
+                        {% else %}
                         {% if user.email in empleados_emails %}
                         <a href="{% url 'persona:lista_clientes' %}" class="btn btn-primary w-100 mb-2">Ver Clientes</a>
+                        <a href="{% url 'persona:registrar_cliente_nuevo' %}" class="btn boton-principal w-100 mb-2">Registrar Cliente</a>
                         {% endif %}
-                        {% if usuario_persona.es_admin %}
-                        <a href="{% url 'persona:lista_empleados_gestion' %}" class="btn btn-primary w-100">Ver Empleados</a>
                         {% endif %}
                     </div>
                 </div>
@@ -42,11 +47,11 @@
                     <div class="mt-3">
                         <a href="{% url 'maquinas:lista_maquinas' %}" class="btn btn-primary mb-2 w-100">Ver Máquinas Base</a>
                         {% if user.is_superuser %}
-                        <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn btn-primary mb-2 w-100">Cargar Máquina Base</a>
+                        <a href="{% url 'maquinas:cargar_maquina_base' %}" class="btn boton-principal mb-2 w-100">Cargar Máquina Base</a>
                         {% endif %}
                         <a href="{% url 'maquinas:lista_unidades' %}" class="btn btn-primary mb-2 w-100">Ver Unidades</a>
                         {% if user.is_superuser %}
-                        <a href="{% url 'maquinas:cargar_unidad' %}" class="btn btn-primary w-100">Cargar Unidad</a>
+                        <a href="{% url 'maquinas:cargar_unidad' %}" class="btn boton-principal w-100">Cargar Unidad</a>
                         {% endif %}
                     </div>
                 </div>

@@ -6,13 +6,14 @@ from .views import (
     pagina_principal, registrar_empleado, cambiar_password,
     cambiar_password_empleado_logueado, login_as_persona,
     login_unificado2, logout_view, switch_back_to_employee,
-    editar_datos_personales, gestion, estadisticas, inicio,
+    modificar_datos_personales, gestion, estadisticas, inicio,
     lista_alquileres, lista_clientes, checkout, recuperar_password, mapa_sucursales,
     pago_exitoso, pago_fallido, pago_pendiente, cancelar_mi_alquiler,
     lista_reembolsos, marcar_reembolso_pagado, buscar_clientes_json,
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
-    lista_empleados_gestion, bloquear_empleado, desbloquear_empleado
+    lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
+    registrar_cliente_nuevo, registrar_empleado_nuevo
 )
 from maquinas.views import cancelar_alquiler
 
@@ -26,6 +27,8 @@ urlpatterns = [
     path('empleados/', lista_empleados, name='lista_empleados'),
     path('registrar/', registrar_persona, name='registrar_persona'),
     path('registrar-empleado/', registrar_empleado, name='registrar_empleado'),
+    path('registrar-cliente-nuevo/', registrar_cliente_nuevo, name='registrar_cliente_nuevo'),
+    path('registrar-empleado-nuevo/', registrar_empleado_nuevo, name='registrar_empleado_nuevo'),
     path('login-unificado2/', login_unificado2, name='login_unificado2'),
     path('catalogo/', catalogo_maquinas, name='catalogo_maquinas'),
     path('maquina/<int:maquina_id>/', detalle_maquina, name='detalle_maquina'),
@@ -43,7 +46,7 @@ urlpatterns = [
     path('gestion/', gestion, name='gestion'),
     path('estadisticas/', estadisticas, name='estadisticas'),
     path('logout/', logout_view, name='logout'),
-    path('editar-datos-personales/', editar_datos_personales, name='editar_datos_personales'),
+    path('modificar-datos-personales/', modificar_datos_personales, name='modificar_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
     path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),

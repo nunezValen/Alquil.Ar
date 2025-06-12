@@ -78,11 +78,18 @@ class Persona(models.Model):
                 }
             )
 
+            # Si el usuario ya existía, actualizar sus datos
+            if not created:
+                user.first_name = self.nombre
+                user.last_name = self.apellido
+                user.email = self.email
+
             # Actualizar permisos si es_admin ha cambiado
             if self.es_admin != old_es_admin:
                 user.is_staff = self.es_admin
                 user.is_superuser = self.es_admin
-                user.save()
+            
+            user.save()
 
     class Meta:
         verbose_name = "Persona"

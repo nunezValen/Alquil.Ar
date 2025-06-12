@@ -83,10 +83,6 @@ class PersonaForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre', '').strip()
-        partes = nombre_completo.split(' ', 1)
-        instance.nombre = partes[0]
-        instance.apellido = partes[1] if len(partes) > 1 else ''
         if commit:
             instance.save()
         return instance
@@ -137,11 +133,10 @@ class AlquilerForm(forms.ModelForm):
 class EditarPersonaForm(forms.ModelForm):
     class Meta:
         model = Persona
-        fields = ['nombre', 'apellido', 'email']
+        fields = ['nombre', 'apellido']
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'apellido': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellido'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -149,33 +144,9 @@ class EditarPersonaForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['nombre'].initial = self.instance.nombre
             self.fields['apellido'].initial = self.instance.apellido
-            self.fields['email'].initial = self.instance.email
-
-    def clean_fecha_nacimiento(self):
-        fecha = self.cleaned_data.get('fecha_nacimiento')
-        if fecha:
-            hoy = date.today()
-            edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
-            if edad < 18:
-                raise forms.ValidationError('No cumple con la mayoría de edad.')
-        return fecha
-
-    def clean_email(self):
-        if self.instance and self.instance.pk:
-            return self.instance.email
-        return self.cleaned_data.get('email')
-
-    def clean_dni(self):
-        if self.instance and self.instance.pk:
-            return self.instance.dni
-        return self.cleaned_data.get('dni')
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        nombre_completo = self.cleaned_data.get('nombre', '').strip()
-        partes = nombre_completo.split(' ', 1)
-        instance.nombre = partes[0]
-        instance.apellido = partes[1] if len(partes) > 1 else ''
         if commit:
             instance.save()
         return instance
@@ -211,3 +182,302 @@ class CambiarPasswordForm(forms.Form):
             if password_nuevo != password_confirmacion:
                 raise ValidationError('Las contraseñas no coinciden.')
         return cleaned_data
+
+class ClienteForm(forms.ModelForm):
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'apellido', 'dni', 'email', 'fecha_nacimiento']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'placeholder': 'Nombre', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'apellido': forms.TextInput(attrs={
+                'placeholder': 'Apellido', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'dni': forms.NumberInput(attrs={
+                'placeholder': 'DNI', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'type': 'number',
+                'min': '1000000',  # 7 dígitos mínimo
+                'max': '999999999',  # 9 dígitos máximo
+                'oninput': 'javascript: if (this.value.length > 9) this.value = this.value.slice(0, 9);'
+            }),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control', 'required': True}),
+            'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off', 'required': True}),
+        }
+        error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.'
+            },
+            'dni': {
+                'required': 'El DNI es obligatorio.'
+            },
+            'email': {
+                'required': 'El email es obligatorio.',
+                'invalid': 'Por favor, ingresa una dirección de email válida.',
+                'unique': 'Este email ya está registrado.'
+            },
+            'fecha_nacimiento': {
+                'required': 'La fecha de nacimiento es obligatoria.'
+            }
+        }
+
+    def clean_fecha_nacimiento(self):
+        fecha = self.cleaned_data.get('fecha_nacimiento')
+        if not fecha:
+            raise forms.ValidationError('La fecha de nacimiento es obligatoria.')
+        hoy = date.today()
+        edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
+        if edad < 18:
+            raise forms.ValidationError('No cumple con la mayoría de edad.')
+        return fecha
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if not email:
+            raise forms.ValidationError('El email es obligatorio.')
+        if Persona.objects.filter(email=email).exists():
+            raise forms.ValidationError('El email ya se encuentra registrado.')
+        return email
+
+    def clean_dni(self):
+        dni = self.cleaned_data.get('dni')
+        if dni:
+            # Verificar si el DNI ya existe
+            if Persona.objects.filter(dni=dni).exists():
+                raise forms.ValidationError('El DNI ya se encuentra registrado.')
+            
+            # Eliminar cualquier espacio en blanco
+            dni = dni.strip()
+            
+            # Verificar que solo contenga números
+            if not dni.isdigit():
+                raise forms.ValidationError('El DNI debe contener solo números.')
+            
+            # Verificar la longitud (entre 7 y 9 números)
+            if len(dni) < 7 or len(dni) > 9:
+                raise forms.ValidationError('El DNI debe tener entre 7 y 9 números.')
+        
+        return dni
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        if len(nombre) < 2:
+            raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+        if len(nombre) > 50:
+            raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
+        return nombre
+
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        if len(apellido) < 2:
+            raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+        if len(apellido) > 50:
+            raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
+        return apellido
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.es_cliente = True
+        instance.es_empleado = False
+        if commit:
+            instance.save()
+        return instance
+
+class EmpleadoForm(forms.ModelForm):
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'apellido', 'dni', 'email', 'fecha_nacimiento']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'placeholder': 'Nombre', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'apellido': forms.TextInput(attrs={
+                'placeholder': 'Apellido', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'dni': forms.NumberInput(attrs={
+                'placeholder': 'DNI', 
+                'autocomplete': 'off', 
+                'class': 'form-control',
+                'type': 'number',
+                'min': '1000000',  # 7 dígitos mínimo
+                'max': '999999999',  # 9 dígitos máximo
+                'oninput': 'javascript: if (this.value.length > 9) this.value = this.value.slice(0, 9);'
+            }),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email', 'autocomplete': 'off', 'class': 'form-control', 'required': True}),
+            'fecha_nacimiento': forms.DateInput(attrs={'placeholder': 'Fecha de Nacimiento', 'type': 'date', 'class': 'form-control', 'autocomplete': 'off', 'required': True}),
+        }
+        error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.'
+            },
+            'dni': {
+                'required': 'El DNI es obligatorio.'
+            },
+            'email': {
+                'required': 'El email es obligatorio.',
+                'invalid': 'Por favor, ingresa una dirección de email válida.',
+                'unique': 'Este email ya está registrado.'
+            },
+            'fecha_nacimiento': {
+                'required': 'La fecha de nacimiento es obligatoria.'
+            }
+        }
+
+    def clean_fecha_nacimiento(self):
+        fecha = self.cleaned_data.get('fecha_nacimiento')
+        if not fecha:
+            raise forms.ValidationError('La fecha de nacimiento es obligatoria.')
+        hoy = date.today()
+        edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
+        if edad < 18:
+            raise forms.ValidationError('No cumple con la mayoría de edad.')
+        return fecha
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if not email:
+            raise forms.ValidationError('El email es obligatorio.')
+        if Persona.objects.filter(email=email).exists():
+            raise forms.ValidationError('El email ya se encuentra registrado.')
+        return email
+
+    def clean_dni(self):
+        dni = self.cleaned_data.get('dni')
+        if dni:
+            # Verificar si el DNI ya existe
+            if Persona.objects.filter(dni=dni).exists():
+                raise forms.ValidationError('El DNI ya se encuentra registrado.')
+            
+            # Eliminar cualquier espacio en blanco
+            dni = dni.strip()
+            
+            # Verificar que solo contenga números
+            if not dni.isdigit():
+                raise forms.ValidationError('El DNI debe contener solo números.')
+            
+            # Verificar la longitud (entre 7 y 9 números)
+            if len(dni) < 7 or len(dni) > 9:
+                raise forms.ValidationError('El DNI debe tener entre 7 y 9 números.')
+        
+        return dni
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        if len(nombre) < 2:
+            raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+        if len(nombre) > 50:
+            raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
+        return nombre
+
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        if len(apellido) < 2:
+            raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+        if len(apellido) > 50:
+            raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
+        return apellido
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.es_empleado = True
+        instance.es_cliente = False
+        if commit:
+            instance.save()
+        return instance
+
+class ModificarDatosPersonalesForm(forms.ModelForm):
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'apellido']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese su nombre',
+                'autocomplete': 'off',
+                'minlength': '2',
+                'maxlength': '50'
+            }),
+            'apellido': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese su apellido',
+                'autocomplete': 'off',
+                'minlength': '2',
+                'maxlength': '50'
+            })
+        }
+        labels = {
+            'nombre': 'Nombre',
+            'apellido': 'Apellido'
+        }
+        error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.'
+            }
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['nombre'].initial = self.instance.nombre
+            self.fields['apellido'].initial = self.instance.apellido
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        if len(nombre) < 2:
+            raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+        if len(nombre) > 50:
+            raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
+        return nombre
+
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido', '').strip()
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        if len(apellido) < 2:
+            raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+        if len(apellido) > 50:
+            raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
+        return apellido
+
+    def save(self, commit=True):
+        persona = super().save(commit=False)
+        if commit:
+            persona.save()
+        return persona

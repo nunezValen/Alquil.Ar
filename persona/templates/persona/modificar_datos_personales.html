@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Modificar Datos Personales{% endblock %}
+
+{% block content %}
+<style>
+    .modificar-datos {
+        max-width: 500px;
+        margin: 60px auto;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .modificar-datos h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        border-color: #2176d2;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(33, 118, 210, 0.2);
+    }
+
+    .error-message {
+        color: #dc3545;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+
+    .form-errors {
+        background-color: #fff3f3;
+        border: 1px solid #dc3545;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #dc3545;
+    }
+
+    .form-errors ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .btn-guardar {
+        width: 100%;
+        padding: 12px;
+        background-color: #2176d2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-guardar:hover {
+        background-color: #1565c0;
+    }
+
+    .btn-guardar:active {
+        background-color: #0d47a1;
+    }
+</style>
+
+<div class="modificar-datos">
+    <h2>Modificar Datos Personales</h2>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if form.errors %}
+    <div class="form-errors">
+        <ul>
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}
+            <div class="error-message">{{ form.nombre.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.apellido.id_for_label }}">{{ form.apellido.label }}</label>
+            {{ form.apellido }}
+            {% if form.apellido.errors %}
+            <div class="error-message">{{ form.apellido.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn-guardar">Guardar Cambios</button>
+    </form>
+</div>
+{% endblock %} 
