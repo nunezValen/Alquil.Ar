@@ -49,7 +49,8 @@ class Persona(models.Model):
     es_cliente = models.BooleanField(default=False)
     es_empleado = models.BooleanField(default=False)
     es_admin = models.BooleanField(default=False)
-    es_baneado = models.BooleanField(default=False)
+    bloqueado_cliente = models.BooleanField(default=False, help_text="Si el usuario está bloqueado para actuar como cliente")
+    bloqueado_empleado = models.BooleanField(default=False, help_text="Si el usuario está bloqueado para actuar como empleado")
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"

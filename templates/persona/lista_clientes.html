@@ -22,6 +22,17 @@
         background-color: #f8d7da !important;
         border-left: 4px solid #dc3545;
     }
+
+    /* Estilos para las notificaciones Toast */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1090;
+    }
+    .toast {
+        min-width: 250px;
+    }
 </style>
 {% endblock %}
 
@@ -106,7 +117,7 @@
                     </thead>
                     <tbody>
                         {% for cliente in clientes %}
-                        <tr class="{% if cliente.es_baneado %}row-cancelado{% endif %}">
+                        <tr id="row-{{ cliente.id }}" class="{% if cliente.bloqueado_cliente %}row-cancelado{% endif %}">
                             <td>{{ cliente.nombre|title }}</td>
                             <td>{{ cliente.apellido|title }}</td>
                             <td>{{ cliente.email }}</td>
@@ -117,11 +128,22 @@
                                 {{ cliente.promedio_calificacion|floatformat:2 }} ★
                             </td>
                             <td class="text-center">
-                                {% if not cliente.es_baneado %}
-                                    <span class="badge bg-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Bloqueado</span>
-                                {% endif %}
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    <form id="form-{{ cliente.id }}" class="toggle-form"
+                                          data-confirm-bloquear="¿Estás seguro de que deseas BLOQUEAR este usuario (rol cliente y empleado)? Su sesión se cerrará."
+                                          data-confirm-desbloquear="¿Estás seguro de que deseas DESBLOQUEAR el rol de cliente para este usuario?">
+                                        {% csrf_token %}
+                                        <input class="form-check-input" type="checkbox" role="switch" 
+                                               id="switch-{{ cliente.id }}" 
+                                               onchange="toggleBloqueo(this, '{{ cliente.id }}')"
+                                               {% if not cliente.bloqueado_cliente %}checked{% endif %}
+                                               data-url-bloquear="{% url 'persona:bloquear_cliente' cliente.id %}"
+                                               data-url-desbloquear="{% url 'persona:desbloquear_cliente' cliente.id %}">
+                                        <label class="form-check-label ms-2" for="switch-{{ cliente.id }}" id="label-{{ cliente.id }}">
+                                            {% if cliente.bloqueado_cliente %}Bloqueado{% else %}Activo{% endif %}
+                                        </label>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
@@ -156,4 +178,81 @@
         </div>
     </div>
 </div>
+
+<!-- Contenedor para las notificaciones Toast -->
+<div class="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showToast(message, type = 'success') {
+    const toastContainer = document.querySelector('.toast-container');
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+}
+
+function toggleBloqueo(switchElement, personaId) {
+    const isChecked = switchElement.checked;
+    const form = switchElement.closest('.toggle-form');
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+    const url = isChecked ? switchElement.dataset.urlDesbloquear : switchElement.dataset.urlBloquear;
+    const confirmationMessage = isChecked ? form.dataset.confirmDesbloquear : form.dataset.confirmBloquear;
+
+    if (!confirm(confirmationMessage)) {
+        switchElement.checked = !isChecked; // Revertir el cambio visual si se cancela
+        return;
+    }
+
+    switchElement.disabled = true;
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, data })))
+    .then(({ ok, status, data }) => {
+        if (ok) {
+            showToast(data.message, 'success');
+            const label = document.getElementById(`label-${personaId}`);
+            const row = document.getElementById(`row-${personaId}`);
+            if (isChecked) { // Si está 'checked', el estado final es Activo.
+                label.textContent = 'Activo';
+                row.classList.remove('row-cancelado');
+            } else { // Si no está 'checked', el estado final es Bloqueado.
+                label.textContent = 'Bloqueado';
+                row.classList.add('row-cancelado');
+            }
+        } else {
+            throw new Error(data.message || `Error ${status}`);
+        }
+    })
+    .catch(error => {
+        showToast(error.message, 'error');
+        switchElement.checked = !isChecked; // Revertir en caso de error
+    })
+    .finally(() => {
+        switchElement.disabled = false;
+    });
+}
+</script>
 {% endblock %} 
