@@ -261,6 +261,12 @@
             color: #721c24;
             border-left-color: #dc3545;
         }
+
+        .validation-message.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
         
         .validation-message.success {
             background-color: #d4edda;
@@ -268,6 +274,11 @@
             border-left-color: #28a745;
         }
         
+        .dropdown-menu:active {
+            background-color: #f8f9fa !important;
+            color: #495057 !important;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -321,9 +332,6 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'persona:mapa_sucursales' %}">Sucursales</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contacto' %}">Contacto</a>
                     </li>
                     {% if user.is_authenticated and user.is_superuser or user.email in empleados_emails and not es_empleado_actuando_como_cliente %}
                     <li class="nav-item">

@@ -50,6 +50,12 @@ class MaquinaBase(models.Model):
         upload_to='maquinas/',
         null=True,
         blank=True,
+        verbose_name='Imagen',
+        error_messages={
+            'required': 'La imagen es obligatoria.',
+            'invalid': 'Por favor, suba una imagen válida de la máquina.',
+            'invalid_image': 'Por favor, suba una imagen válida de la máquina.',
+        }
     )
     dias_alquiler_min = models.PositiveIntegerField(
         verbose_name='Cantidad mínima de días de alquiler',
@@ -60,6 +66,11 @@ class MaquinaBase(models.Model):
         validators=[MinValueValidator(1)]
     )
     stock = models.IntegerField(default=0, editable=False)
+    visible = models.BooleanField(
+        default=True,
+        verbose_name='Visible',
+        help_text='Indica si la máquina base es visible en el sistema'
+    )
 
     # Campos para política de cancelación
     dias_cancelacion_total = models.PositiveIntegerField(
@@ -98,6 +109,14 @@ class MaquinaBase(models.Model):
 
     def tiene_unidades_disponibles(self):
         return self.unidades.filter(estado='disponible', visible=True).exists()
+
+    def todas_unidades_ocultas(self):
+        """Verifica si todas las unidades de la máquina base están ocultas"""
+        return not self.unidades.filter(visible=True).exists()
+
+    def puede_ser_oculta(self):
+        """Verifica si la máquina base puede ser ocultada (todas sus unidades deben estar ocultas)"""
+        return self.todas_unidades_ocultas()
 
     def __str__(self):
         return f"{self.nombre} ({self.get_marca_display()} {self.modelo})"

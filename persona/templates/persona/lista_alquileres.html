@@ -235,12 +235,8 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h1 class="mb-2">Gestión de Alquileres</h1>
-                        <p class="mb-0 opacity-75">Administra y supervisa todos los alquileres del sistema</p>
                     </div>
                     <div class="d-flex gap-3">
-                        <button class="btn btn-success">
-                            Exportar Excel
-                        </button>
                         <a href="{% url 'persona:gestion' %}" class="btn btn-outline-light">
                             Volver a Gestión
                         </a>
@@ -652,8 +648,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 /* Estilos para el autocompletado */
 .dropdown-item.active {
-    background-color: #f8f9fa;
-    color: #495057;
+    background-color: #f8f9fa !important;
+    color: #495057 !important;
 }
 
 .dropdown-item:hover {

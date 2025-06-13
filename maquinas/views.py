@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_http_methods
 from persona.views import es_empleado_o_admin
-from .forms import MaquinaBaseForm, AlquilerForm
+from .forms import MaquinaBaseForm, AlquilerForm, CargarUnidadForm
 from .models import MaquinaBase, Unidad, Alquiler
 from .forms import UnidadForm
 from django.conf import settings
@@ -141,17 +141,21 @@ def eliminar_maquina_base(request, maquina_id):
     if request.method == 'POST':
         nombre_maquina = maquina.nombre
         try:
-            maquina.delete()
-            messages.success(request, f'La máquina base {nombre_maquina} ha sido eliminada exitosamente.')
+            if maquina.puede_ser_oculta():
+                maquina.visible = False
+                maquina.save()
+                messages.success(request, f'La máquina base {nombre_maquina} ha sido ocultada exitosamente.')
+            else:
+                messages.error(request, 'No se puede ocultar la máquina porque tiene unidades visibles. Primero debe ocultar todas sus unidades.')
             return redirect('maquinas:lista_maquinas')
         except Exception as e:
-            messages.error(request, 'No se puede eliminar la máquina porque tiene unidades asociadas.')
+            messages.error(request, f'Error al ocultar la máquina: {str(e)}')
             return redirect('maquinas:lista_maquinas')
 
     return render(request, 'maquinas/eliminar_maquina_base.html', {'maquina': maquina})
 
 @login_required
-@user_passes_test(es_empleado_o_admin)
+@user_passes_test(es_admin)
 def lista_maquinas(request):
     maquinas = MaquinaBase.objects.all().order_by('nombre')
     return render(request, 'maquinas/lista_maquinas.html', {'maquinas': maquinas})
@@ -171,19 +175,23 @@ def toggle_visibilidad_unidad(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     maquina_base = unidad.maquina_base
     
+    # Si se intenta desocultar una unidad, verificar que su máquina base esté visible
+    if not unidad.visible and not maquina_base.visible:
+        messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su máquina base está oculta.')
+        return redirect('maquinas:lista_unidades')
+    
     # Cambiar visibilidad y actualizar stock
     if unidad.visible:
         unidad.visible = False
         maquina_base.stock = max(0, maquina_base.stock - 1)  # Evitar stock negativo
-        messages.success(request, f'La unidad {unidad.patente} ahora está oculta.')
+        messages.success(request, f'La unidad {unidad.patente} ha sido ocultada.')
     else:
         unidad.visible = True
         maquina_base.stock += 1
-        messages.success(request, f'La unidad {unidad.patente} ahora es visible.')
+        messages.success(request, f'La unidad {unidad.patente} ha sido desoculta.')
     
     unidad.save()
     maquina_base.save()
-    
     return redirect('maquinas:lista_unidades')
 
 @login_required
@@ -256,13 +264,13 @@ def cancelar_alquiler(request, alquiler_id):
 @require_http_methods(["GET", "POST"])
 def cargar_unidad(request):
     if request.method == 'POST':
-        form = UnidadForm(request.POST)
+        form = CargarUnidadForm(request.POST)
         if form.is_valid():
             unidad = form.save()
             messages.success(request, f"La unidad con patente '{unidad.patente}' ha sido cargada con éxito.")
             return redirect('maquinas:lista_unidades')
     else:
-        form = UnidadForm()
+        form = CargarUnidadForm()
 
     return render(request, 'maquinas/cargar_unidad.html', {
         'form': form
@@ -681,28 +689,17 @@ def editar_maquina_base(request, pk):
     })
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@user_passes_test(es_admin)
 def editar_unidad(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     if request.method == 'POST':
-        form = UnidadForm(request.POST, request.FILES, instance=unidad)
+        form = UnidadForm(request.POST, instance=unidad, initial={'patente_original': unidad.patente})
         if form.is_valid():
-            patente_nueva = form.cleaned_data['patente']
-            # Buscar si existe otra unidad (diferente a la actual) con la misma patente
-            existe_patente = Unidad.objects.filter(patente=patente_nueva).exclude(id=pk).exists()
-            
-            if existe_patente:
-                form.add_error('patente', 'Ya existe otra unidad con esta patente.')
-                return render(request, 'maquinas/editar_unidad.html', {
-                    'form': form,
-                    'unidad': unidad
-                })
-            
             form.save()
-            messages.success(request, 'Unidad actualizada exitosamente.')
+            messages.success(request, f'Unidad {unidad.patente} actualizada correctamente.')
             return redirect('maquinas:lista_unidades')
     else:
-        form = UnidadForm(instance=unidad)
+        form = UnidadForm(instance=unidad, initial={'patente_original': unidad.patente})
     
     return render(request, 'maquinas/editar_unidad.html', {
         'form': form,
@@ -728,3 +725,19 @@ def toggle_mantenimiento_unidad(request, pk):
     unidad.save()
     messages.success(request, mensaje)
     return redirect('maquinas:lista_unidades')
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["POST"])
+def desocultar_maquina_base(request, maquina_id):
+    maquina = get_object_or_404(MaquinaBase, id=maquina_id)
+    nombre_maquina = maquina.nombre
+    try:
+        maquina.visible = True
+        maquina.save()
+        messages.success(request, f'La máquina base {nombre_maquina} ha sido desocultada exitosamente.')
+    except Exception as e:
+        messages.error(request, f'Error al desocultar la máquina: {str(e)}')
+    return redirect('maquinas:lista_maquinas')

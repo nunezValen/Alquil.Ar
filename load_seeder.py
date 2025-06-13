@@ -16,7 +16,6 @@ def load_seeder():
         'auth_data.json',      # Primero usuarios y grupos
         'persona_data.json',   # Luego datos de personas
         'sucursales_data.json', # Luego sucursales
-        'maquinas_data.json',  # Finalmente máquinas y alquileres
         'sessions_data.json'   # Y sesiones al final
     ]
 

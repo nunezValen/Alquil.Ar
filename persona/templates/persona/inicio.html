@@ -177,9 +177,11 @@
                         </div>
                         <p class="description">{{ maquina.descripcion_vista|truncatechars:200 }}</p>
                         <div class="saber-mas-container">
+                            {% if request.user.is_authenticated %}
                             <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="saber-mas">
                                 Saber más <i class="fas fa-chevron-right"></i>
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

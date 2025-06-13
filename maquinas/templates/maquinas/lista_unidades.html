@@ -54,14 +54,6 @@
 </style>
 
 <div class="section-container py-5">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:"info" }} text-center mb-4">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Gestión de Unidades de Máquinas</h2>
         <div class="d-flex gap-3">
