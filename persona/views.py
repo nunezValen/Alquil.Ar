@@ -263,6 +263,7 @@ def detalle_maquina(request, maquina_id):
                             "auto_return": "approved",
                             "external_reference": str(alquiler.id),
                             "notification_url": f"{base_url}/persona/webhook/mercadopago/",
+                            "binary_mode": True,
                             "payer": {
                                 "email": request.user.email
                             },

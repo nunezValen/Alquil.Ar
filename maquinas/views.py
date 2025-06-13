@@ -559,6 +559,7 @@ def alquilar_maquina(request, maquina_id):
                 },
                 "external_reference": external_reference,
                 "notification_url": webhook_url,
+                "binary_mode": True,
                 "payer": {
                     "email": request.user.email
                 },
