@@ -31,7 +31,7 @@
     "direccion": null,
     "fecha_registro": "2025-06-03T03:37:55.302Z",
     "es_cliente": true,
-    "es_empleado": true,
+    "es_empleado": false,
     "es_admin": false,
     "bloqueado_cliente": false,
     "bloqueado_empleado": false
