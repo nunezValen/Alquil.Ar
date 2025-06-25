@@ -6,7 +6,7 @@
 {% block content %}
 <style>
     .modificar-datos {
-        max-width: 500px;
+        max-width: 600px;
         margin: 60px auto;
         padding: 30px;
         background-color: #fff;
@@ -47,6 +47,12 @@
         box-shadow: 0 0 0 2px rgba(33, 118, 210, 0.2);
     }
 
+    .form-control[readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+    }
+
     .error-message {
         color: #dc3545;
         font-size: 14px;
@@ -69,6 +75,19 @@
 
     .btn-guardar {
         width: 100%;
+    }
+
+    .datos-info {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .datos-info h3 {
+        color: #495057;
+        font-size: 18px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 8px;
     }
 </style>
 
@@ -100,6 +119,47 @@
     </div>
     {% endif %}
 
+    <!-- Sección de datos de solo lectura -->
+    <div class="datos-info">
+        
+        <div class="form-group">
+            <label>DNI</label>
+            <input type="text" class="form-control" value="{{ persona.dni }}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="form-control" value="{{ persona.email }}" readonly>
+        </div>
+
+        {% if persona.fecha_nacimiento %}
+        <div class="form-group">
+            <label>Fecha de Nacimiento</label>
+            <input type="date" class="form-control" value="{{ persona.fecha_nacimiento|date:'Y-m-d' }}" readonly>
+        </div>
+        {% endif %}
+
+        {% if persona.telefono %}
+        <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" class="form-control" value="{{ persona.telefono }}" readonly>
+        </div>
+        {% endif %}
+
+        {% if persona.direccion %}
+        <div class="form-group">
+            <label>Dirección</label>
+            <textarea class="form-control" rows="3" readonly>{{ persona.direccion }}</textarea>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label>Fecha de Registro</label>
+            <input type="text" class="form-control" value="{{ persona.fecha_registro|date:'d/m/Y H:i' }}" readonly>
+        </div>
+    </div>
+
+    <!-- Formulario para editar nombre y apellido -->
     <form method="post" autocomplete="off">
         {% csrf_token %}
         

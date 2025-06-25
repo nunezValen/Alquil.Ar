@@ -370,6 +370,7 @@
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:login_as_persona' %}"><i class="fas fa-user-switch me-2"></i>Actuar como cliente</a></li>
                             {% else %}
                                 <li><a class="dropdown-item" href="{% url 'persona:modificar_datos_personales' %}">
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales

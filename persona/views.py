@@ -765,15 +765,29 @@ def login_as_persona(request):
             return redirect('persona:inicio')
 
         if request.method == 'POST':
-            # El rol de cliente también debe estar activo
-            if not persona.es_cliente or persona.bloqueado_cliente:
+            # Verificar que el empleado también tiene rol de cliente
+            if not persona.es_cliente:
+                messages.error(request, 'No tienes cuenta de cliente.')
+                return redirect('persona:inicio')
+            
+            # Verificar que no esté bloqueado como cliente
+            if persona.bloqueado_cliente:
                 messages.error(request, 'No tienes permiso para actuar como cliente o tu rol de cliente está bloqueado.')
                 return redirect('persona:inicio')
 
-            # Guardar en la sesión que el usuario es un empleado/admin actuando como cliente
-            request.session['es_empleado_actuando_como_cliente'] = True
-            messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
-            return redirect('persona:inicio')
+            # Verificar contraseña
+            password = request.POST.get('password')
+            if not password:
+                error = 'Debes ingresar tu contraseña.'
+            else:
+                user = authenticate(request, username=request.user.email, password=password)
+                if user is not None:
+                    # Guardar en la sesión que el usuario es un empleado/admin actuando como cliente
+                    request.session['es_empleado_actuando_como_cliente'] = True
+                    messages.success(request, 'Has cambiado a tu cuenta personal exitosamente.')
+                    return redirect('persona:inicio')
+                else:
+                    error = 'Contraseña incorrecta.'
 
     except Persona.DoesNotExist:
         messages.error(request, 'No se encontró tu perfil.')
@@ -934,12 +948,38 @@ def empleados_processor(request):
 @require_http_methods(["GET", "POST"])
 def switch_back_to_employee(request):
     """Vista para volver a la cuenta de empleado desde la cuenta personal"""
+    error = None
+    
     # Verificar si el usuario está actuando como cliente pero es empleado
-    if request.session.get('es_empleado_actuando_como_cliente', False):
-        # Eliminar la variable de sesión
-        del request.session['es_empleado_actuando_como_cliente']
-        messages.success(request, 'Has vuelto a tu cuenta de empleado exitosamente.')
-    return redirect('persona:inicio')
+    if not request.session.get('es_empleado_actuando_como_cliente', False):
+        messages.error(request, 'No estás en modo cliente.')
+        return redirect('persona:inicio')
+    
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+    except Persona.DoesNotExist:
+        messages.error(request, 'No se encontró tu perfil.')
+        return redirect('persona:inicio')
+    
+    if request.method == 'POST':
+        # Verificar contraseña
+        password = request.POST.get('password')
+        if not password:
+            error = 'Debes ingresar tu contraseña.'
+        else:
+            user = authenticate(request, username=request.user.email, password=password)
+            if user is not None:
+                # Eliminar la variable de sesión
+                del request.session['es_empleado_actuando_como_cliente']
+                messages.success(request, 'Has vuelto a tu cuenta de empleado exitosamente.')
+                return redirect('persona:inicio')
+            else:
+                error = 'Contraseña incorrecta.'
+    
+    return render(request, 'persona/switch_back_to_employee.html', {
+        'error': error,
+        'persona': persona
+    })
 
 def logout_view(request):
     """Vista para cerrar sesión"""
@@ -982,7 +1022,10 @@ def modificar_datos_personales(request):
     else:
         form = ModificarDatosPersonalesForm(instance=persona)
     
-    return render(request, 'persona/modificar_datos_personales.html', {'form': form})
+    return render(request, 'persona/modificar_datos_personales.html', {
+        'form': form,
+        'persona': persona
+    })
 
 @csrf_exempt
 def webhook_mercadopago(request):

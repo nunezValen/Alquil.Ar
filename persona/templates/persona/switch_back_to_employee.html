@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Iniciar Sesión como Persona{% endblock %}
+{% block title %}Volver a Cuenta Empleado{% endblock %}
 {% block content %}
 <style>
     .login-box {
@@ -71,48 +71,26 @@
         color: #666;
         margin-bottom: 20px;
     }
-    .error-message {
-        background-color: #fdecea;
-        border: 1px solid #fdccc8;
-        border-radius: 4px;
-        color: #d32f2f;
-        padding: 16px;
-        margin-bottom: 20px;
-        text-align: center;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .error-message i {
-        margin-right: 8px;
-        font-size: 18px;
-    }
 </style>
 <div class="login-box">
     <div class="user-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
-            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="currentColor" class="bi bi-person-badge" viewBox="0 0 16 16">
+            <path d="M6.5 2a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+            <path d="M4.5 0A2.5 2.5 0 0 0 2 2.5V14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2.5A2.5 2.5 0 0 0 11.5 0h-7zM3 2.5A1.5 1.5 0 0 1 4.5 1h7A1.5 1.5 0 0 1 13 2.5v10.795a4.2 4.2 0 0 0-.776-.492C11.392 12.387 10.063 12 8 12s-3.392.387-4.224.803a4.2 4.2 0 0 0-.776.492V2.5z"/>
         </svg>
     </div>
-    <h2>Cambiar a Cuenta de Cliente</h2>
-    {% if not persona.es_cliente %}
-        <div class="error-message">
-            <i class="fas fa-exclamation-circle"></i>
-            No tienes cuenta de cliente.
-        </div>
-    {% else %}
-        <div class="info">
-            Haz clic en el botón para cambiar a tu cuenta de cliente.
-        </div>
-        {% if error %}
-        <div class="error">{{ error }}</div>
-        {% endif %}
-        <form method="post" autocomplete="off">
-            {% csrf_token %}
-            <button type="submit">Cambiar a Cuenta de Cliente</button>
-        </form>
+    <h2>Volver a Cuenta Empleado</h2>
+    <div class="info">
+        Ingresa tu contraseña para volver a tu cuenta de empleado.
+    </div>
+    {% if error %}
+    <div class="error">{{ error }}</div>
     {% endif %}
-    <a href="{% url 'persona:inicio' %}" class="back-link">Volver al inicio</a>
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <input type="password" name="password" placeholder="Contraseña" required>
+        <button type="submit">Volver a Cuenta Empleado</button>
+    </form>
+    <a href="{% url 'persona:inicio' %}" class="back-link">Cancelar</a>
 </div>
 {% endblock %} 
