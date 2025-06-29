@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Cambiar a Cuenta de Cliente{% endblock %}
+{% block title %}Iniciar Sesión como Persona{% endblock %}
 {% block content %}
 <style>
     .login-box {
@@ -103,13 +103,14 @@
         </div>
     {% else %}
         <div class="info">
-            Haz clic en el botón para cambiar a tu cuenta de cliente. Podrás volver a tu cuenta de {% if persona.es_admin %}administrador{% else %}empleado{% endif %} cuando lo desees.
+            Ingresa tu contraseña para cambiar a tu cuenta de cliente.
         </div>
         {% if error %}
         <div class="error">{{ error }}</div>
         {% endif %}
         <form method="post" autocomplete="off">
             {% csrf_token %}
+            <input type="password" name="password" placeholder="Contraseña" required>
             <button type="submit">Cambiar a Cuenta de Cliente</button>
         </form>
     {% endif %}
