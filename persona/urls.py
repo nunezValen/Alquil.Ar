@@ -13,7 +13,7 @@ from .views import (
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
-    registrar_cliente_nuevo, registrar_empleado_nuevo
+    registrar_cliente_nuevo, registrar_empleado_nuevo, lista_sucursales, cargar_sucursal
 )
 from maquinas.views import cancelar_alquiler
 
@@ -67,6 +67,8 @@ urlpatterns = [
     path('gestion/empleados/', lista_empleados_gestion, name='lista_empleados_gestion'),
     path('empleados/<int:persona_id>/bloquear/', bloquear_empleado, name='bloquear_empleado'),
     path('empleados/<int:persona_id>/desbloquear/', desbloquear_empleado, name='desbloquear_empleado'),
+    path('gestion/sucursales/', lista_sucursales, name='lista_sucursales'),
+    path('sucursales/cargar/', cargar_sucursal, name='cargar_sucursal'),
 ]
 
 

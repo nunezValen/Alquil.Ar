@@ -13,7 +13,8 @@ from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
     PersonaForm, ClienteForm, EmpleadoForm, EditarPersonaForm,
-    CambiarPasswordForm, ModificarDatosPersonalesForm
+    CambiarPasswordForm, ModificarDatosPersonalesForm,
+    SucursalForm
 )
 from datetime import date
 import random
@@ -2223,5 +2224,65 @@ def registrar_empleado_nuevo(request):
     else:
         form = EmpleadoForm()
     return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+
+@empleado_requerido
+def lista_sucursales(request):
+    from django.db.models.functions import Replace
+    """Gestionar listado de sucursales con filtros y paginación"""
+    queryset = Sucursal.objects.all().order_by('direccion')
+
+    # Filtros
+    filtros = {
+        'direccion': request.GET.get('direccion', ''),
+        'telefono': request.GET.get('telefono', '').replace(' ',''),
+        'email': request.GET.get('email', ''),
+    }
+
+    if filtros['direccion']:
+        queryset = queryset.filter(direccion__icontains=filtros['direccion'])
+    if filtros['telefono']:
+        queryset = queryset.annotate(
+    telefono_sin_espacios=Replace(F('telefono'), Value(' '), Value(''))
+).filter(
+    telefono_sin_espacios__icontains=filtros['telefono']
+)
+    if filtros['email']:
+        queryset = queryset.filter(email__icontains=filtros['email'])
+
+    filtros_aplicados = any(filtros.values())
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(queryset, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    mensaje_sin_resultados = None
+    if not page_obj.object_list and filtros_aplicados:
+        mensaje_sin_resultados = "No se encontraron sucursales con los filtros aplicados."
+
+    return render(request, 'persona/lista_sucursales.html', {
+        'sucursales': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'filtros': filtros,
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+    })
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def cargar_sucursal(request):
+    """Formulario para cargar una nueva sucursal (solo admins)"""
+    if request.method == 'POST':
+        form = SucursalForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal creada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = SucursalForm()
+    return render(request, 'persona/cargar_sucursal.html', {'form': form})
 
 # Create your views here.

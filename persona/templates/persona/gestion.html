@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <h2>Panel de Gestión</h2>
     <div class="row">
-        <div class="col-md-4 mb-4">
+        <div class="col-md-3 mb-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Gestión de Alquileres</h5>
@@ -18,7 +18,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
+        <div class="col-md-3 mb-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Gestión de Usuarios</h5>
@@ -39,7 +39,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
+        <div class="col-md-3 mb-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">Gestión de Máquinas</h5>
@@ -52,6 +52,20 @@
                         <a href="{% url 'maquinas:lista_unidades' %}" class="btn btn-primary mb-2 w-100">Ver Unidades</a>
                         {% if user.is_superuser %}
                         <a href="{% url 'maquinas:cargar_unidad' %}" class="btn boton-principal w-100">Cargar Unidad</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Gestión de Sucursales</h5>
+                    <p class="card-text">Administrar sucursales y ubicaciones.</p>
+                    <div class="mt-3">
+                        <a href="{% url 'persona:lista_sucursales' %}" class="btn btn-primary w-100 mb-2">Ver Sucursales</a>
+                        {% if user.is_superuser or usuario_persona.es_admin %}
+                        <a href="{% url 'persona:cargar_sucursal' %}" class="btn boton-principal w-100">Cargar Sucursal</a>
                         {% endif %}
                     </div>
                 </div>

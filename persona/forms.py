@@ -1,5 +1,5 @@
 from django import forms
-from .models import Persona, Alquiler
+from .models import Persona, Alquiler, Sucursal
 from datetime import date
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -481,3 +481,16 @@ class ModificarDatosPersonalesForm(forms.ModelForm):
         if commit:
             persona.save()
         return persona
+
+class SucursalForm(forms.ModelForm):
+    class Meta:
+        model = Sucursal
+        fields = ['direccion', 'latitud', 'longitud', 'telefono', 'email', 'horario']
+        widgets = {
+            'direccion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dirección completa'}),
+            'latitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Latitud'}),
+            'longitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Longitud'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'horario': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Horario de atención', 'rows': 3}),
+        }
