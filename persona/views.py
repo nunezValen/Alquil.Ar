@@ -2225,3 +2225,123 @@ def registrar_empleado_nuevo(request):
     return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
 
 # Create your views here.
+
+@require_http_methods(["POST"])
+def habilitar_cliente(request, persona_id):
+    """Vista para habilitar a un empleado como cliente"""
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    empleado = get_object_or_404(Persona, id=persona_id)
+    empleado.es_cliente = True
+    empleado.save()
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ahora está habilitado como cliente.'})
+
+
+@require_http_methods(["POST"])
+def deshabilitar_cliente(request, persona_id):
+    """Vista para deshabilitar a un empleado como cliente"""
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    empleado = get_object_or_404(Persona, id=persona_id)
+    empleado.es_cliente = False
+    empleado.save()
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ya no está habilitado como cliente.'})
+
+@require_http_methods(["POST"])
+def habilitar_empleado(request, persona_id):
+    """Vista para habilitar a un cliente como empleado"""
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    cliente = get_object_or_404(Persona, id=persona_id)
+    cliente.es_empleado = True
+    cliente.save()
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ahora está habilitado como empleado.'})
+
+
+@require_http_methods(["POST"])
+def deshabilitar_empleado(request, persona_id):
+    """Vista para deshabilitar a un cliente como empleado"""
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    cliente = get_object_or_404(Persona, id=persona_id)
+    cliente.es_empleado = False
+    cliente.save()
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ya no está habilitado como empleado.'})
+
+@empleado_requerido
+def modificar_datos_admin(request, persona_id):
+    """Vista para que los administradores modifiquen datos de usuarios"""
+    # Solo los admins pueden acceder
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+    
+    persona = get_object_or_404(Persona, id=persona_id)
+    
+    if request.method == 'POST':
+        # Crear un formulario con los datos del POST
+        form_data = request.POST.copy()
+        
+        # Validar que el email no se haya cambiado
+        if form_data.get('email') != persona.email:
+            messages.error(request, "No se puede modificar el correo electrónico.")
+            return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+        
+        # Validar fecha de nacimiento (mayor de edad)
+        nueva_fecha_nacimiento = form_data.get('fecha_nacimiento')
+        if nueva_fecha_nacimiento:
+            from datetime import datetime, date
+            try:
+                fecha_nac = datetime.strptime(nueva_fecha_nacimiento, '%Y-%m-%d').date()
+                hoy = date.today()
+                edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
+                
+                if edad < 18:
+                    messages.error(request, "El usuario debe ser mayor de edad (mínimo 18 años).")
+                    return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+            except ValueError:
+                messages.error(request, "Formato de fecha inválido.")
+                return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+        
+        # Validar DNI único
+        nuevo_dni = form_data.get('dni', '').strip()
+        if nuevo_dni:
+            # Verificar si el DNI ya existe en otro usuario
+            dni_existente = Persona.objects.filter(dni=nuevo_dni).exclude(id=persona_id).first()
+            if dni_existente:
+                messages.error(request, f"El DNI {nuevo_dni} ya está registrado por otro usuario.")
+                return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+        
+        # Actualizar los campos permitidos
+        persona.nombre = form_data.get('nombre', persona.nombre)
+        persona.apellido = form_data.get('apellido', persona.apellido)
+        persona.dni = nuevo_dni
+        persona.fecha_nacimiento = nueva_fecha_nacimiento or persona.fecha_nacimiento
+        
+        try:
+            persona.save()
+            messages.success(request, f'Los datos de {persona.nombre} {persona.apellido} han sido actualizados exitosamente.')
+            return redirect('persona:gestion')
+        except Exception as e:
+            messages.error(request, f'Error al actualizar los datos: {str(e)}')
+    
+    # Calcular la fecha máxima (18 años atrás desde hoy)
+    from datetime import date
+    hoy = date.today()
+    max_date = date(hoy.year - 18, hoy.month, hoy.day).strftime('%Y-%m-%d')
+    
+    context = {
+        'persona': persona,
+        'usuario_persona': getattr(request.user, 'persona', None),
+        'max_date': max_date,
+    }
+    
+    return render(request, 'persona/modificar_datos_admin.html', context)

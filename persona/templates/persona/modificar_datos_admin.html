@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Modificar Datos de Usuario - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .email-field {
+        background-color: #e9ecef;
+        color: #6c757d;
+    }
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
+    .success-message {
+        color: #198754;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    .form-control.is-valid {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-edit"></i> 
+                        Modificar Datos de Usuario
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" class="needs-validation" novalidate id="modificarForm">
+                        {% csrf_token %}
+                        
+                        <div class="form-section">
+                            <h5><i class="fas fa-user"></i> Información Personal</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nombre" class="form-label">Nombre *</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" 
+                                           value="{{ persona.nombre }}" required>
+                                    <div class="error-message" id="nombre-error"></div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="apellido" class="form-label">Apellido *</label>
+                                    <input type="text" class="form-control" id="apellido" name="apellido" 
+                                           value="{{ persona.apellido }}" required>
+                                    <div class="error-message" id="apellido-error"></div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="dni" class="form-label">DNI</label>
+                                    <input type="text" class="form-control" id="dni" name="dni" 
+                                           value="{{ persona.dni|default:'' }}" 
+                                           maxlength="9"
+                                           placeholder="Ingrese solo números">
+                                    <div class="error-message" id="dni-error"></div>
+                                    <div class="success-message" id="dni-success"></div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                                    <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" 
+                                           value="{{ persona.fecha_nacimiento|date:'Y-m-d'|default:'' }}"
+                                           max="{{ max_date }}">
+                                    <div class="error-message" id="fecha-error"></div>
+                                    <div class="success-message" id="fecha-success"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Correo Electrónico</label>
+                                <input type="email" class="form-control email-field" id="email" name="email" 
+                                       value="{{ persona.email }}" readonly>
+                                <small class="form-text text-muted">El correo electrónico no se puede modificar</small>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'persona:gestion' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('modificarForm');
+    const dniInput = document.getElementById('dni');
+    const fechaInput = document.getElementById('fecha_nacimiento');
+    const nombreInput = document.getElementById('nombre');
+    const apellidoInput = document.getElementById('apellido');
+    const submitBtn = document.getElementById('submitBtn');
+    
+
+    
+    // Función para mostrar mensaje de error
+    function showError(elementId, message) {
+        const errorElement = document.getElementById(elementId);
+        const successElement = document.getElementById(elementId.replace('-error', '-success'));
+        const inputElement = document.getElementById(elementId.replace('-error', ''));
+        
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        if (successElement) successElement.style.display = 'none';
+        inputElement.classList.remove('is-valid');
+        inputElement.classList.add('is-invalid');
+    }
+    
+    // Función para mostrar mensaje de éxito
+    function showSuccess(elementId, message) {
+        const successElement = document.getElementById(elementId);
+        const errorElement = document.getElementById(elementId.replace('-success', '-error'));
+        const inputElement = document.getElementById(elementId.replace('-success', ''));
+        
+        successElement.textContent = message;
+        successElement.style.display = 'block';
+        if (errorElement) errorElement.style.display = 'none';
+        inputElement.classList.remove('is-invalid');
+        inputElement.classList.add('is-valid');
+    }
+    
+    // Función para limpiar mensajes
+    function clearMessages(elementId) {
+        const errorElement = document.getElementById(elementId + '-error');
+        const successElement = document.getElementById(elementId + '-success');
+        const inputElement = document.getElementById(elementId);
+        
+        if (errorElement) errorElement.style.display = 'none';
+        if (successElement) successElement.style.display = 'none';
+        inputElement.classList.remove('is-invalid', 'is-valid');
+    }
+    
+    // Validar DNI en tiempo real
+    dniInput.addEventListener('input', function() {
+        let dni = this.value.replace(/\D/g, ''); // Solo números
+        this.value = dni; // Actualizar el valor sin caracteres no numéricos
+        
+        clearMessages('dni');
+        
+        if (dni.length === 0) {
+            // DNI vacío es válido (opcional)
+            return;
+        }
+        
+        if (dni.length < 7) {
+            showError('dni-error', 'El DNI debe tener al menos 7 dígitos.');
+        } else if (dni.length > 9) {
+            showError('dni-error', 'El DNI no puede tener más de 9 dígitos.');
+        } else {
+            showSuccess('dni-success', 'DNI válido.');
+        }
+    });
+    
+    // Validar fecha de nacimiento en tiempo real
+    fechaInput.addEventListener('change', function() {
+        clearMessages('fecha');
+        
+        if (!this.value) {
+            // Fecha vacía es válida (opcional)
+            return;
+        }
+        
+        const fechaSeleccionada = new Date(this.value);
+        const hoy = new Date();
+        const edad = hoy.getFullYear() - fechaSeleccionada.getFullYear();
+        const mes = hoy.getMonth() - fechaSeleccionada.getMonth();
+        
+        if (mes < 0 || (mes === 0 && hoy.getDate() < fechaSeleccionada.getDate())) {
+            edad--;
+        }
+        
+        if (edad < 18) {
+            showError('fecha-error', 'El usuario debe ser mayor de edad (mínimo 18 años).');
+        } else {
+            showSuccess('fecha-success', 'Fecha válida.');
+        }
+    });
+    
+    // Validar nombre en tiempo real
+    nombreInput.addEventListener('input', function() {
+        clearMessages('nombre');
+        
+        if (this.value.trim().length === 0) {
+            showError('nombre-error', 'El nombre es obligatorio.');
+        } else if (this.value.trim().length < 2) {
+            showError('nombre-error', 'El nombre debe tener al menos 2 caracteres.');
+        } else {
+            showSuccess('nombre-success', 'Nombre válido.');
+        }
+    });
+    
+    // Validar apellido en tiempo real
+    apellidoInput.addEventListener('input', function() {
+        clearMessages('apellido');
+        
+        if (this.value.trim().length === 0) {
+            showError('apellido-error', 'El apellido es obligatorio.');
+        } else if (this.value.trim().length < 2) {
+            showError('apellido-error', 'El apellido debe tener al menos 2 caracteres.');
+        } else {
+            showSuccess('apellido-success', 'Apellido válido.');
+        }
+    });
+    
+    // Función para validar todo el formulario y retornar errores
+    function validateForm() {
+        const dni = dniInput.value.trim();
+        const fecha = fechaInput.value;
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        
+        const errors = [];
+        
+        // Validar nombre
+        if (nombre.length === 0) {
+            errors.push('El nombre es obligatorio.');
+        } else if (nombre.length < 2) {
+            errors.push('El nombre debe tener al menos 2 caracteres.');
+        }
+        
+        // Validar apellido
+        if (apellido.length === 0) {
+            errors.push('El apellido es obligatorio.');
+        } else if (apellido.length < 2) {
+            errors.push('El apellido debe tener al menos 2 caracteres.');
+        }
+        
+        // Validar DNI si no está vacío
+        if (dni.length > 0 && dni.length < 7) {
+            errors.push('El DNI debe tener al menos 7 dígitos.');
+        } else if (dni.length > 0 && dni.length > 9) {
+            errors.push('El DNI no puede tener más de 9 dígitos.');
+        }
+        
+        // Validar fecha si no está vacía
+        if (fecha) {
+            const fechaSeleccionada = new Date(fecha);
+            const hoy = new Date();
+            const edad = hoy.getFullYear() - fechaSeleccionada.getFullYear();
+            const mes = hoy.getMonth() - fechaSeleccionada.getMonth();
+            
+            if (mes < 0 || (mes === 0 && hoy.getDate() < fechaSeleccionada.getDate())) {
+                edad--;
+            }
+            
+            if (edad < 18) {
+                errors.push('El usuario debe ser mayor de edad (mínimo 18 años).');
+            }
+        }
+        
+        return errors;
+    }
+    
+    // Validar formulario al enviar
+    form.addEventListener('submit', function(event) {
+        const errors = validateForm();
+        
+        if (errors.length > 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Mostrar mensaje de error específico
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            
+            let errorHtml = '<strong>Errores encontrados:</strong><ul>';
+            errors.forEach(error => {
+                errorHtml += `<li>${error}</li>`;
+            });
+            errorHtml += '</ul>';
+            errorHtml += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            
+            alertDiv.innerHTML = errorHtml;
+            
+            const cardBody = document.querySelector('.card-body');
+            const existingAlert = cardBody.querySelector('.alert-danger');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            cardBody.insertBefore(alertDiv, form);
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -108,6 +108,10 @@
                             <th>Fecha Registro</th>
                             <th class="text-center">Calificación Promedio</th>
                             <th class="text-center">Estado</th>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <th class="text-center">Habilitar Como Empleado</th>
+                            <th class="text-center">Modificar Datos</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -124,26 +128,53 @@
                             </td>
                             <td class="text-center">
                                 <div class="form-check form-switch d-flex justify-content-center align-items-center">
-                                    <form id="form-{{ cliente.id }}" class="toggle-form"
+                                    <form id="form-estado-{{ cliente.id }}" class="toggle-form"
                                           data-confirm-bloquear="¿Estás seguro de que deseas BLOQUEAR este usuario (rol cliente y empleado)? Su sesión se cerrará."
                                           data-confirm-desbloquear="¿Estás seguro de que deseas DESBLOQUEAR el rol de cliente para este usuario?">
                                         {% csrf_token %}
                                         <input class="form-check-input" type="checkbox" role="switch" 
-                                               id="switch-{{ cliente.id }}" 
+                                               id="switch-estado-{{ cliente.id }}" 
                                                onchange="toggleBloqueo(this, '{{ cliente.id }}')"
                                                {% if not cliente.bloqueado_cliente %}checked{% endif %}
                                                data-url-bloquear="{% url 'persona:bloquear_cliente' cliente.id %}"
                                                data-url-desbloquear="{% url 'persona:desbloquear_cliente' cliente.id %}">
-                                        <label class="form-check-label ms-2" for="switch-{{ cliente.id }}" id="label-{{ cliente.id }}">
+                                        <label class="form-check-label ms-2" for="switch-estado-{{ cliente.id }}" id="label-estado-{{ cliente.id }}">
                                             {% if cliente.bloqueado_cliente %}Bloqueado{% else %}Activo{% endif %}
                                         </label>
                                     </form>
                                 </div>
                             </td>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    <form id="form-empleado-{{ cliente.id }}" class="toggle-form"
+                                          data-confirm-habilitar="¿Estás seguro de que deseas HABILITAR a este cliente como empleado?"
+                                          data-confirm-deshabilitar="¿Estás seguro de que deseas DESHABILITAR a este cliente como empleado?">
+                                        {% csrf_token %}
+                                        <input class="form-check-input" type="checkbox" role="switch" 
+                                               id="switch-empleado-{{ cliente.id }}" 
+                                               onchange="toggleEmpleado(this, '{{ cliente.id }}')"
+                                               {% if cliente.es_empleado %}checked{% endif %}
+                                               data-url-habilitar="{% url 'persona:habilitar_empleado' cliente.id %}"
+                                               data-url-deshabilitar="{% url 'persona:deshabilitar_empleado' cliente.id %}">
+                                        <label class="form-check-label ms-2" for="switch-empleado-{{ cliente.id }}" id="label-empleado-{{ cliente.id }}">
+                                            {% if cliente.es_empleado %}Habilitado{% else %}Deshabilitado{% endif %}
+                                        </label>
+                                    </form>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'persona:modificar_datos_admin' cliente.id %}" 
+                                   class="btn btn-sm btn-outline-primary" 
+                                   title="Modificar datos del cliente">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center py-4">
+                            <td colspan="{% if user.is_superuser or usuario_persona.es_admin %}10{% else %}8{% endif %}" class="text-center py-4">
                                 <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
                                 <p class="text-muted">No se encontraron clientes que coincidan con la búsqueda.</p>
                             </td>
@@ -228,7 +259,7 @@ function toggleBloqueo(switchElement, personaId) {
     .then(({ ok, status, data }) => {
         if (ok) {
             showToast(data.message, 'success');
-            const label = document.getElementById(`label-${personaId}`);
+            const label = document.getElementById(`label-estado-${personaId}`);
             const row = document.getElementById(`row-${personaId}`);
             if (isChecked) { // Si está 'checked', el estado final es Activo.
                 label.textContent = 'Activo';
@@ -246,6 +277,37 @@ function toggleBloqueo(switchElement, personaId) {
         switchElement.checked = !isChecked; // Revertir en caso de error
     })
     .finally(() => {
+        switchElement.disabled = false;
+    });
+}
+
+function toggleEmpleado(switchElement, personaId) {
+    const isChecked = switchElement.checked;
+    const form = switchElement.closest('.toggle-form');
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+    const url = isChecked ? switchElement.dataset.urlHabilitar : switchElement.dataset.urlDeshabilitar;
+    const confirmationMessage = isChecked ? form.dataset.confirmHabilitar : form.dataset.confirmDeshabilitar;
+
+    if (!confirm(confirmationMessage)) {
+        switchElement.checked = !isChecked;
+        return;
+    }
+    switchElement.disabled = true;
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.ok ? response.json() : response.json().then(err => { throw new Error(err.message || 'Error en servidor') }))
+    .then(data => {
+        showToast(data.message, 'success');
+        const label = document.getElementById(`label-empleado-${personaId}`);
+        label.textContent = isChecked ? 'Habilitado' : 'Deshabilitado';
+        switchElement.disabled = false;
+    })
+    .catch(error => {
+        showToast(error.message, 'error');
+        switchElement.checked = !isChecked;
         switchElement.disabled = false;
     });
 }

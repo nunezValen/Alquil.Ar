@@ -13,7 +13,10 @@ from .views import (
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
-    registrar_cliente_nuevo, registrar_empleado_nuevo
+    registrar_cliente_nuevo, registrar_empleado_nuevo,
+    habilitar_cliente, deshabilitar_cliente,
+    habilitar_empleado, deshabilitar_empleado,
+    modificar_datos_admin
 )
 from maquinas.views import cancelar_alquiler
 
@@ -67,6 +70,11 @@ urlpatterns = [
     path('gestion/empleados/', lista_empleados_gestion, name='lista_empleados_gestion'),
     path('empleados/<int:persona_id>/bloquear/', bloquear_empleado, name='bloquear_empleado'),
     path('empleados/<int:persona_id>/desbloquear/', desbloquear_empleado, name='desbloquear_empleado'),
+    path('clientes/<int:persona_id>/habilitar/', habilitar_cliente, name='habilitar_cliente'),
+    path('clientes/<int:persona_id>/deshabilitar/', deshabilitar_cliente, name='deshabilitar_cliente'),
+    path('empleados/<int:persona_id>/habilitar/', habilitar_empleado, name='habilitar_empleado'),
+    path('empleados/<int:persona_id>/deshabilitar/', deshabilitar_empleado, name='deshabilitar_empleado'),
+    path('modificar-datos-admin/<int:persona_id>/', modificar_datos_admin, name='modificar_datos_admin'),
 ]
 
 
