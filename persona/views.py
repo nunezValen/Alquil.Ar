@@ -2289,11 +2289,19 @@ def modificar_datos_admin(request, persona_id):
     if request.method == 'POST':
         # Crear un formulario con los datos del POST
         form_data = request.POST.copy()
+        form_errors = []
         
         # Validar que el email no se haya cambiado
         if form_data.get('email') != persona.email:
-            messages.error(request, "No se puede modificar el correo electrónico.")
-            return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+            form_errors.append("No se puede modificar el correo electrónico.")
+        
+        # Validar nombre y apellido (máximo 50 caracteres)
+        nombre = form_data.get('nombre', '').strip()
+        apellido = form_data.get('apellido', '').strip()
+        if len(nombre) > 50:
+            form_errors.append("El nombre no puede tener más de 50 caracteres.")
+        if len(apellido) > 50:
+            form_errors.append("El apellido no puede tener más de 50 caracteres.")
         
         # Validar fecha de nacimiento (mayor de edad)
         nueva_fecha_nacimiento = form_data.get('fecha_nacimiento')
@@ -2303,22 +2311,34 @@ def modificar_datos_admin(request, persona_id):
                 fecha_nac = datetime.strptime(nueva_fecha_nacimiento, '%Y-%m-%d').date()
                 hoy = date.today()
                 edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
-                
                 if edad < 18:
-                    messages.error(request, "El usuario debe ser mayor de edad (mínimo 18 años).")
-                    return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+                    form_errors.append("El usuario debe ser mayor de edad (mínimo 18 años).")
             except ValueError:
-                messages.error(request, "Formato de fecha inválido.")
-                return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+                form_errors.append("Formato de fecha inválido.")
         
-        # Validar DNI único
+        # Validar DNI único y longitud mínima
         nuevo_dni = form_data.get('dni', '').strip()
-        if nuevo_dni:
-            # Verificar si el DNI ya existe en otro usuario
+        if not nuevo_dni:
+            form_errors.append("El DNI no puede estar vacío.")
+        else:
+            if len(nuevo_dni) <= 2:
+                form_errors.append("El DNI debe tener más de 2 dígitos.")
             dni_existente = Persona.objects.filter(dni=nuevo_dni).exclude(id=persona_id).first()
             if dni_existente:
-                messages.error(request, f"El DNI {nuevo_dni} ya está registrado por otro usuario.")
-                return redirect('persona:modificar_datos_admin', persona_id=persona_id)
+                form_errors.append(f"El DNI {nuevo_dni} ya está registrado por otro usuario.")
+        
+        if form_errors:
+            # Calcular la fecha máxima (18 años atrás desde hoy)
+            from datetime import date
+            hoy = date.today()
+            max_date = date(hoy.year - 18, hoy.month, hoy.day).strftime('%Y-%m-%d')
+            context = {
+                'persona': persona,
+                'usuario_persona': getattr(request.user, 'persona', None),
+                'max_date': max_date,
+                'form_errors': form_errors,
+            }
+            return render(request, 'persona/modificar_datos_admin.html', context)
         
         # Actualizar los campos permitidos
         persona.nombre = form_data.get('nombre', persona.nombre)

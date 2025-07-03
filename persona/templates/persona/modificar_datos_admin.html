@@ -53,13 +53,14 @@
                     </h3>
                 </div>
                 <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
+                    {% if form_errors %}
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                {% for error in form_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     {% endif %}
 
                     <form method="post" class="needs-validation" novalidate id="modificarForm">
@@ -227,6 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('nombre-error', 'El nombre es obligatorio.');
         } else if (this.value.trim().length < 2) {
             showError('nombre-error', 'El nombre debe tener al menos 2 caracteres.');
+        } else if (this.value.trim().length > 50) {
+            showError('nombre-error', 'El nombre no puede tener más de 50 caracteres.');
         } else {
             showSuccess('nombre-success', 'Nombre válido.');
         }
@@ -240,6 +243,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('apellido-error', 'El apellido es obligatorio.');
         } else if (this.value.trim().length < 2) {
             showError('apellido-error', 'El apellido debe tener al menos 2 caracteres.');
+        } else if (this.value.trim().length > 50) {
+            showError('apellido-error', 'El apellido no puede tener más de 50 caracteres.');
         } else {
             showSuccess('apellido-success', 'Apellido válido.');
         }
