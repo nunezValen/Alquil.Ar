@@ -274,7 +274,7 @@
 </div>
 
 <!-- Modal de Alquiler -->
-<div class="modal fade" id="alquilerModal" tabindex="-1" aria-labelledby="alquilerModalLabel" aria-hidden="true">
+<div class="modal fade" id="alquilerModal" tabindex="-1" aria-labelledby="alquilerModalLabel">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -333,7 +333,7 @@
                             <!-- Selección de cliente (solo para empleados) -->
                             <div id="cliente-selection" class="mb-4" style="display: none;">
                                 <label for="cliente_id" class="form-label">Seleccionar Cliente</label>
-                                <select id="cliente_id" name="cliente_id" class="form-select select2-cliente" aria-label="Seleccionar Cliente">
+                                <select id="cliente_id" name="cliente_id" class="form-select select2-cliente" aria-label="Seleccionar Cliente" disabled>
                                     <option value="">-- Seleccionar Cliente --</option>
                                 </select>
                                 <div class="form-text">
@@ -388,7 +388,7 @@
 </div>
 
 <!-- Modal de QR dinámico -->
-<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -436,7 +436,7 @@
 </div>
 
 <!-- Modal de Pago Exitoso -->
-<div class="modal fade" id="pagoExitosoModal" tabindex="-1" aria-labelledby="pagoExitosoModalLabel" aria-hidden="true">
+<div class="modal fade" id="pagoExitosoModal" tabindex="-1" aria-labelledby="pagoExitosoModalLabel">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
@@ -701,8 +701,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             }, 100);
                         }
                         
-                        // Mostrar sección de clientes
+                        // Mostrar sección de clientes y habilitar el campo
                         clienteSection.style.display = 'block';
+                        document.getElementById('cliente_id').disabled = false;
                     }
                     
                     // Usuario puede alquilar, mostrar modal normalmente
@@ -724,6 +725,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof $ !== 'undefined' && $('.select2-cliente').length > 0) {
             $('.select2-cliente').val(null).trigger('change');
         }
+        // Ocultar y deshabilitar sección de clientes
+        const clienteSection = document.getElementById('cliente-selection');
+        const clienteSelect = document.getElementById('cliente_id');
+        if (clienteSection) {
+            clienteSection.style.display = 'none';
+        }
+        if (clienteSelect) {
+            clienteSelect.disabled = true;
+        }
+        // Restaurar aria-hidden cuando el modal se cierre
+        this.setAttribute('aria-hidden', 'true');
+    });
+    
+    // Manejar aria-hidden cuando el modal se muestre
+    document.getElementById('alquilerModal').addEventListener('shown.bs.modal', function () {
+        this.removeAttribute('aria-hidden');
+    });
+    
+    // Manejar aria-hidden para el modal de QR
+    document.getElementById('qrModal').addEventListener('shown.bs.modal', function () {
+        this.removeAttribute('aria-hidden');
+    });
+    
+    document.getElementById('qrModal').addEventListener('hidden.bs.modal', function () {
+        this.setAttribute('aria-hidden', 'true');
+    });
+    
+    // Manejar aria-hidden para el modal de pago exitoso
+    document.getElementById('pagoExitosoModal').addEventListener('shown.bs.modal', function () {
+        this.removeAttribute('aria-hidden');
+    });
+    
+    document.getElementById('pagoExitosoModal').addEventListener('hidden.bs.modal', function () {
+        this.setAttribute('aria-hidden', 'true');
     });
 
     alquilerForm.addEventListener('submit', function(e) {
@@ -739,6 +774,13 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
         
         const formData = new FormData(this);
+        
+        // Si el campo de cliente está deshabilitado, no incluirlo en el FormData
+        const clienteSelect = document.getElementById('cliente_id');
+        if (clienteSelect && clienteSelect.disabled) {
+            formData.delete('cliente_id');
+        }
+        
         const alquilerUrl = `{% url 'maquinas:alquilar_maquina' maquina.id %}`;
         
         fetch(alquilerUrl, {

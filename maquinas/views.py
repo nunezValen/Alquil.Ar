@@ -697,7 +697,19 @@ def alquilar_maquina(request, maquina_id):
             total = dias * maquina.precio_por_dia
             
             # Verificar si el usuario es empleado para usar QR dinámico o API normal
-            es_empleado = request.user.persona.es_empleado
+            try:
+                es_empleado = request.user.persona.es_empleado
+            except:
+                # Si no tiene persona asociada, buscar por email y asociar
+                try:
+                    persona_usuario = Persona.objects.get(email=request.user.email)
+                    persona_usuario.user = request.user
+                    persona_usuario.save()
+                    es_empleado = persona_usuario.es_empleado
+                except Persona.DoesNotExist:
+                    return JsonResponse({
+                        'error': 'No se encontró tu perfil de persona. Por favor, contacta al administrador.'
+                    }, status=400)
             
             if es_empleado:
                 # EMPLEADOS: Usar QR dinámico con nuevas credenciales
@@ -741,7 +753,18 @@ def alquilar_maquina(request, maquina_id):
                 es_admin=False
             ).values('id', 'nombre', 'apellido', 'email', 'dni'))
     except:
-        pass
+        # Si no tiene persona asociada, buscar por email y asociar
+        try:
+            persona_usuario = Persona.objects.get(email=request.user.email)
+            persona_usuario.user = request.user
+            persona_usuario.save()
+            if persona_usuario.es_empleado:
+                clientes = list(Persona.objects.filter(
+                    es_empleado=False,
+                    es_admin=False
+                ).values('id', 'nombre', 'apellido', 'email', 'dni'))
+        except Persona.DoesNotExist:
+            pass
     
     return JsonResponse({
         'maquina': {
