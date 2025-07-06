@@ -332,12 +332,17 @@ def webhook_mercadopago(request):
                 payment_id = data.get('data', {}).get('id')
                 print(f"Payment ID: {payment_id}")
                 
-                # Inicializar el SDK de MercadoPago
-                sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
-                
-                # Obtener información del pago
-                payment_info = sdk.payment().get(payment_id)
-                print(f"Payment info: {payment_info}")
+                # Para pagos de empleados (QR dinámico), usar las credenciales de empleado
+                try:
+                    # Intentar primero con credenciales de empleado
+                    sdk = mercadopago.SDK(settings.MERCADOPAGO_EMPLOYEE_ACCESS_TOKEN)
+                    payment_info = sdk.payment().get(payment_id)
+                    print(f"Payment info (empleado): {payment_info}")
+                except:
+                    # Si falla, usar credenciales normales
+                    sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+                    payment_info = sdk.payment().get(payment_id)
+                    print(f"Payment info (normal): {payment_info}")
                 
                 if payment_info['status'] == 200:
                     payment_data = payment_info['response']
@@ -377,7 +382,8 @@ def webhook_mercadopago(request):
                                         fecha_fin=fecha_fin,
                                         metodo_pago=metodo_pago,
                                         estado='reservado',  # Cambiar a reservado
-                                        monto_total=total
+                                        monto_total=total,
+                                        external_reference=external_reference
                                     )
                                     
                                     # NO marcar la unidad como alquilada hasta que comience el alquiler
@@ -431,6 +437,168 @@ def webhook_mercadopago(request):
     
     return HttpResponse(status=405)  # Method Not Allowed
 
+def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago):
+    """
+    Procesa pago para empleados usando QR dinámico con nuevas credenciales
+    """
+    import requests
+    import qrcode
+    from io import BytesIO
+    import base64
+    
+    try:
+        # Preparar external_reference con los datos del alquiler
+        external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
+        
+        # Configurar URL base para ngrok
+        base_url = request.build_absolute_uri('/').rstrip('/')
+        if 'ngrok-free.app' in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        
+        # Datos para crear orden QR dinámico
+        url = "https://api.mercadopago.com/instore/orders/qr/seller/collectors/343205143/pos/CAJA001/qrs"
+        headers = {
+            "Authorization": f"Bearer {settings.MERCADOPAGO_EMPLOYEE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "external_reference": external_reference,
+            "title": f"Alquiler de {maquina.nombre}",
+            "description": f"Alquiler de {maquina.nombre} por {dias} días",
+            "total_amount": float(total),
+            "items": [
+                {
+                    "title": f"Alquiler de {maquina.nombre}",
+                    "quantity": 1,
+                    "unit_price": float(total),
+                    "unit_measure": "unit",
+                    "total_amount": float(total)
+                }
+            ],
+            "notification_url": f"{base_url}/maquinas/webhook-mercadopago/"
+        }
+        
+        print(f"=== CREANDO QR DINÁMICO ===")
+        print(f"URL: {url}")
+        print(f"External reference: {external_reference}")
+        print(f"Total amount: {total} (tipo: {type(total)})")
+        print(f"Payload completo: {payload}")
+        
+        response = requests.post(url, headers=headers, json=payload)
+        
+        if response.status_code == 201:
+            data = response.json()
+            qr_data = data.get('qr_data')
+            
+            if qr_data:
+                # Generar imagen QR
+                qr = qrcode.QRCode(version=1, box_size=10, border=5)
+                qr.add_data(qr_data)
+                qr.make(fit=True)
+                
+                img = qr.make_image(fill_color="black", back_color="white")
+                
+                # Convertir a base64
+                buffer = BytesIO()
+                img.save(buffer, format="PNG")
+                img_b64 = base64.b64encode(buffer.getvalue()).decode()
+                
+                print(f"✓ QR dinámico creado exitosamente")
+                
+                return JsonResponse({
+                    'qr_code_base64': img_b64,
+                    'qr_data': qr_data,
+                    'order_id': data.get('in_store_order_id'),
+                    'external_reference': external_reference,
+                    'success': True
+                })
+            else:
+                return JsonResponse({
+                    'error': 'No se pudo generar el código QR'
+                }, status=500)
+        else:
+            error_msg = f"Error al crear orden QR: {response.status_code} - {response.text}"
+            print(f"✗ {error_msg}")
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error en QR dinámico: {str(e)}")
+        return JsonResponse({
+            'error': f'Error al generar QR dinámico: {str(e)}'
+        }, status=500)
+
+def procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago):
+    """
+    Procesa pago para clientes usando API normal (preferencias)
+    """
+    try:
+        # Usar credenciales normales para clientes
+        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+        
+        # Preparar external_reference con los datos del alquiler
+        external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
+        
+        # Configurar URL base
+        base_url = request.build_absolute_uri('/').rstrip('/')
+        if 'ngrok-free.app' in base_url:
+            base_url = base_url.replace('http://', 'https://')
+        
+        webhook_url = f"{base_url}/maquinas/webhook-mercadopago/"
+        
+        preference_data = {
+            "items": [{
+                "title": f"Alquiler de {maquina.nombre}",
+                "quantity": 1,
+                "currency_id": "ARS",
+                "unit_price": float(total)
+            }],
+            "back_urls": {
+                "success": f"{base_url}/persona/pago-exitoso/",
+                "failure": f"{base_url}/persona/pago-fallido/",
+                "pending": f"{base_url}/persona/pago-pendiente/"
+            },
+            "external_reference": external_reference,
+            "notification_url": webhook_url,
+            "binary_mode": True,
+            "payer": {
+                "email": request.user.email
+            },
+            "payment_methods": {
+                "excluded_payment_types": [
+                    {"id": "ticket"}
+                ],
+                "installments": 1
+            }
+        }
+        
+        print(f"=== CREANDO PREFERENCIA NORMAL ===")
+        print(f"External reference: {external_reference}")
+        
+        # Crear preferencia
+        preference_response = sdk.preference().create(preference_data)
+        
+        if preference_response["status"] == 201:
+            preference = preference_response["response"]
+            print(f"✓ Preferencia creada: {preference['id']}")
+            
+            return JsonResponse({
+                'init_point': preference["init_point"]
+            })
+        else:
+            error_msg = f"Error al crear preferencia: {preference_response.get('message', 'Error desconocido')}"
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error en pago normal: {str(e)}")
+        return JsonResponse({
+            'error': f'Error al procesar el pago: {str(e)}'
+        }, status=500)
+
 @login_required
 def alquilar_maquina(request, maquina_id):
     print(f"=== FUNCIÓN ALQUILAR_MAQUINA EJECUTADA ===")
@@ -462,15 +630,18 @@ def alquilar_maquina(request, maquina_id):
             fecha_fin = fecha_inicio + timedelta(days=dias-1)
             
             # Obtener la persona asociada al usuario
-            try:
-                persona = Persona.objects.get(email=request.user.email)
-            except Persona.DoesNotExist:
-                return JsonResponse({
-                    'error': 'No se encontró tu perfil de persona. Por favor, regístrate primero.'
-                }, status=400)
+            if request.user.persona.es_empleado:  # Si es empleado
+                cliente_id = request.POST.get('cliente_id')
+                persona = get_object_or_404(Persona, id=cliente_id)
+            else:
+                try:
+                    persona = Persona.objects.get(email=request.user.email)
+                except Persona.DoesNotExist:
+                    return JsonResponse({
+                        'error': 'No se encontró tu perfil de persona. Por favor, regístrate primero.'
+                    }, status=400)
             
             # VALIDACIÓN 1: Verificar que el cliente no tenga otro alquiler activo/reservado
-            # UN CLIENTE SOLO PUEDE TENER UN ALQUILER A LA VEZ (sin importar fechas)
             alquileres_activos = Alquiler.objects.filter(
                 persona=persona,
                 estado__in=['reservado', 'en_curso']
@@ -525,71 +696,17 @@ def alquilar_maquina(request, maquina_id):
             # Calcular total
             total = dias * maquina.precio_por_dia
             
-            # Procesar el pago con Mercado Pago SIN crear el alquiler aún
-            sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+            # Verificar si el usuario es empleado para usar QR dinámico o API normal
+            es_empleado = request.user.persona.es_empleado
             
-            # Configurar preferencia de pago
-            base_url = request.build_absolute_uri('/').rstrip('/')
-            
-            # Forzar HTTPS para ngrok
-            if 'ngrok-free.app' in base_url:
-                base_url = base_url.replace('http://', 'https://')
-            
-            # Preparar external_reference con los datos del alquiler
-            # Formato: "maquina_id|persona_id|fecha_inicio|fecha_fin|metodo_pago|total"
-            external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
-            
-            webhook_url = f"{base_url}/maquinas/webhook-mercadopago/"
-            print(f"=== CONFIGURANDO PREFERENCIA ===")
-            print(f"Base URL: {base_url}")
-            print(f"Webhook URL: {webhook_url}")
-            print(f"External reference: {external_reference}")
-            
-            preference_data = {
-                "items": [{
-                    "title": f"Alquiler de {maquina.nombre}",
-                    "quantity": 1,
-                    "currency_id": "ARS",
-                    "unit_price": float(total)
-                }],
-                "back_urls": {
-                    "success": f"{base_url}/persona/pago-exitoso/",
-                    "failure": f"{base_url}/persona/pago-fallido/",
-                    "pending": f"{base_url}/persona/pago-pendiente/"
-                },
-                "external_reference": external_reference,
-                "notification_url": webhook_url,
-                "binary_mode": True,
-                "payer": {
-                    "email": request.user.email
-                },
-                "payment_methods": {
-                    "excluded_payment_types": [
-                        {"id": "ticket"}
-                    ],
-                    "installments": 1
-                }
-            }
-            
-            # Crear preferencia
-            preference_response = sdk.preference().create(preference_data)
-            
-            if preference_response["status"] == 201:
-                preference = preference_response["response"]
-                
-                print(f"=== PREFERENCIA CREADA ===")
-                print(f"External reference: {external_reference}")
-                print(f"Preference ID: {preference['id']}")
-                
-                return JsonResponse({
-                    'init_point': preference["init_point"]
-                })
+            if es_empleado:
+                # EMPLEADOS: Usar QR dinámico con nuevas credenciales
+                return procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago)
             else:
-                error_msg = f"Error al crear preferencia: {preference_response.get('message', 'Error desconocido')}"
-                return JsonResponse({
-                    'error': error_msg
-                }, status=500)
-                
+                # CLIENTES: Usar API anterior (preferencias normales)
+                return procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago)
+
+        
         except ValueError as e:
             return JsonResponse({
                 'error': 'Datos de entrada inválidos. Por favor, verifica la información ingresada.'
@@ -614,6 +731,14 @@ def alquilar_maquina(request, maquina_id):
     except:
         tiene_alquiler_activo = False
     
+    # Obtener lista de clientes si el usuario es empleado
+    clientes = []
+    try:
+        if request.user.persona.es_empleado:
+            clientes = list(Persona.objects.all().values('id', 'nombre', 'apellido', 'email', 'dni'))
+    except:
+        pass
+    
     return JsonResponse({
         'maquina': {
             'id': maquina.id,
@@ -625,8 +750,47 @@ def alquilar_maquina(request, maquina_id):
             'unidades_totales': maquina.unidades.filter(estado='disponible', visible=True).count()
         },
         'fecha_minima': fecha_minima.strftime('%Y-%m-%d'),
-        'tiene_alquiler_activo': tiene_alquiler_activo
+        'tiene_alquiler_activo': tiene_alquiler_activo,
+        'clientes': clientes
     })
+
+@login_required
+def estado_pago_qr(request):
+    """
+    Vista para mostrar el estado del pago QR dinámico
+    """
+    external_reference = request.GET.get('external_reference')
+    if not external_reference:
+        return JsonResponse({'error': 'External reference requerido'}, status=400)
+    
+    try:
+        # Buscar el alquiler por external_reference
+        alquiler = Alquiler.objects.filter(
+            external_reference=external_reference
+        ).first()
+        
+        if alquiler:
+            return JsonResponse({
+                'success': True,
+                'alquiler': {
+                    'numero': alquiler.numero,
+                    'estado': alquiler.estado,
+                    'maquina': alquiler.maquina_base.nombre,
+                    'cliente': f"{alquiler.persona.nombre} {alquiler.persona.apellido}",
+                    'fecha_inicio': alquiler.fecha_inicio.strftime('%d/%m/%Y'),
+                    'fecha_fin': alquiler.fecha_fin.strftime('%d/%m/%Y'),
+                    'total': float(alquiler.monto_total),
+                    'codigo_retiro': alquiler.numero  # Usar el número como código de retiro
+                }
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Esperando confirmación del pago...'
+            })
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def confirmar_alquiler(request):

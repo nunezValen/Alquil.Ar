@@ -13,6 +13,7 @@ urlpatterns = [
     path('maquina/cargar/', views.cargar_maquina_base, name='cargar_maquina_base'),
     path('maquina/<int:maquina_id>/eliminar/', views.eliminar_maquina_base, name='eliminar_maquina_base'),
     path('confirmar-alquiler/', views.confirmar_alquiler, name='confirmar_alquiler'),
+    path('estado-pago-qr/', views.estado_pago_qr, name='estado_pago_qr'),
     path('error-pago/', views.error_pago, name='error_pago'),
     path('pago-pendiente/', views.pago_pendiente, name='pago_pendiente'),
     path('unidades/', views.lista_unidades, name='lista_unidades'),

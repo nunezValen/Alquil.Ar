@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 import re
 import random
 import string
+from django.contrib.auth.models import User
 
 def validar_email(email):
     """Valida que el email tenga un formato válido y un dominio real"""
@@ -36,6 +37,7 @@ class CodigoVerificacion(models.Model):
         verbose_name_plural = "Códigos de Verificación"
 
 class Persona(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='persona', null=True, blank=True)
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     dni = models.CharField(max_length=20, unique=True)
@@ -68,7 +70,6 @@ class Persona(models.Model):
 
         # Si el email existe, actualizar o crear el usuario de Django
         if self.email:
-            from django.contrib.auth.models import User
             user, created = User.objects.get_or_create(
                 username=self.email,
                 defaults={

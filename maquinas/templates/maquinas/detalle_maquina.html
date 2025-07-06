@@ -245,6 +245,20 @@
                                        required>
                             </div>
 
+                            <!-- Selección de cliente (solo para empleados) -->
+                            <div id="cliente-selection" class="mb-4" style="display: none;">
+                                <label for="cliente_id" class="form-label">Seleccionar Cliente</label>
+                                <div class="mb-2">
+                                    <input type="text" id="cliente_search" class="form-control" placeholder="Buscar por nombre, DNI o email..." autocomplete="off">
+                                </div>
+                                <select id="cliente_id" name="cliente_id" class="form-select" aria-label="Seleccionar Cliente">
+                                    <option value="">-- Seleccionar Cliente --</option>
+                                </select>
+                                <div class="form-text">
+                                    Selecciona el cliente para quien realizas el alquiler
+                                </div>
+                            </div>
+
                             <!-- Resumen del costo -->
                             <div class="card bg-light mb-4">
                                 <div class="card-body">
@@ -291,6 +305,82 @@
     </div>
 </div>
 
+<!-- Modal de QR dinámico -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrModalLabel">Código QR para Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="qr-container" class="text-center">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Escanear para pagar:</h6>
+                            <img id="qr-image" src="" alt="Código QR" class="img-fluid border" style="max-width: 250px;">
+                            <p class="mt-2 text-muted small">El cliente debe escanear este código con la app de Mercado Pago</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div id="payment-details">
+                                <h6>Detalles del Alquiler:</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p><strong>Máquina:</strong> <span id="detail-maquina">{{ maquina.nombre }}</span></p>
+                                        <p><strong>Cliente:</strong> <span id="detail-cliente">-</span></p>
+                                        <p><strong>Fechas:</strong> <span id="detail-fechas">-</span></p>
+                                        <p><strong>Total:</strong> $<span id="detail-total">-</span></p>
+                                        <hr>
+                                        <div id="payment-status">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-clock"></i> Esperando pago...
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="check-payment-btn" onclick="verificarPago()">
+                    <i class="fas fa-sync"></i> Verificar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Pago Exitoso -->
+<div class="modal fade" id="pagoExitosoModal" tabindex="-1" aria-labelledby="pagoExitosoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="pagoExitosoModalLabel">
+                    <i class="fas fa-check-circle"></i> ¡Pago Exitoso!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">¡Alquiler Confirmado!</h4>
+                    <div id="pago-detalles" class="mt-4">
+                        <!-- Los detalles se llenarán con JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="window.location.reload()">
+                    <i class="fas fa-home"></i> Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const diasInput = document.getElementById('dias');
@@ -315,6 +405,112 @@ document.addEventListener('DOMContentLoaded', function() {
         modalAlerts.style.display = 'none';
         modalAlerts.innerHTML = '';
     }
+    
+    function mostrarQRDinamico(qrBase64, datos) {
+        // Cerrar modal de alquiler
+        alquilerModal.hide();
+        
+        // Llenar datos del QR modal
+        document.getElementById('qr-image').src = `data:image/png;base64,${qrBase64}`;
+        document.getElementById('detail-cliente').textContent = datos.cliente || '-';
+        document.getElementById('detail-fechas').textContent = datos.fechas || '-';
+        document.getElementById('detail-total').textContent = datos.total || '-';
+        
+        // Guardar external_reference para verificación
+        window.currentExternalReference = datos.external_reference;
+        
+        // Mostrar modal de QR
+        const qrModal = new bootstrap.Modal(document.getElementById('qrModal'));
+        qrModal.show();
+        
+        // Iniciar verificación automática cada 5 segundos
+        window.paymentCheckInterval = setInterval(verificarPago, 5000);
+    }
+    
+    function verificarPago() {
+        if (!window.currentExternalReference) return;
+        
+        const checkBtn = document.getElementById('check-payment-btn');
+        const originalText = checkBtn.innerHTML;
+        checkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+        checkBtn.disabled = true;
+        
+        fetch(`{% url 'maquinas:estado_pago_qr' %}?external_reference=${window.currentExternalReference}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.alquiler) {
+                // Pago exitoso
+                clearInterval(window.paymentCheckInterval);
+                mostrarPagoExitoso(data.alquiler);
+            } else {
+                // Aún esperando pago
+                console.log('Esperando pago...');
+            }
+        })
+        .catch(error => {
+            console.error('Error verificando pago:', error);
+        })
+        .finally(() => {
+            checkBtn.innerHTML = originalText;
+            checkBtn.disabled = false;
+        });
+    }
+    
+    function mostrarPagoExitoso(alquiler) {
+        // Cerrar modal de QR
+        const qrModal = bootstrap.Modal.getInstance(document.getElementById('qrModal'));
+        if (qrModal) qrModal.hide();
+        
+        // Llenar detalles del pago exitoso
+        document.getElementById('pago-detalles').innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6"><strong>Código de Retiro:</strong></div>
+                        <div class="col-6"><span class="badge bg-primary fs-6">${alquiler.codigo_retiro}</span></div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Cliente:</strong></div>
+                        <div class="col-6">${alquiler.cliente}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><strong>Máquina:</strong></div>
+                        <div class="col-6">${alquiler.maquina}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><strong>Fechas:</strong></div>
+                        <div class="col-6">${alquiler.fecha_inicio} - ${alquiler.fecha_fin}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6"><strong>Total Pagado:</strong></div>
+                        <div class="col-6"><strong>$${alquiler.total}</strong></div>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Importante:</strong> Se ha enviado un email de confirmación al cliente con todos los detalles del alquiler.
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Mostrar modal de pago exitoso
+        const pagoExitosoModal = new bootstrap.Modal(document.getElementById('pagoExitosoModal'));
+        pagoExitosoModal.show();
+    }
+    
+    // Limpiar interval cuando se cierre el modal de QR
+    document.getElementById('qrModal').addEventListener('hidden.bs.modal', function () {
+        if (window.paymentCheckInterval) {
+            clearInterval(window.paymentCheckInterval);
+        }
+    });
 
     function actualizarCosto() {
         const dias = parseInt(diasInput.value);
@@ -361,6 +557,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         );
                     }, 300);
                 } else {
+                    // Poblar lista de clientes si es empleado
+                    if (data.clientes && data.clientes.length > 0) {
+                        const clienteSelect = document.getElementById('cliente_id');
+                        const clienteSection = document.getElementById('cliente-selection');
+                        const clienteSearch = document.getElementById('cliente_search');
+                        
+                        // Guardar lista completa de clientes
+                        window.clientesCompletos = data.clientes;
+                        
+                        // Función para renderizar clientes
+                        function renderizarClientes(clientes) {
+                            clienteSelect.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
+                            clientes.forEach(cliente => {
+                                const option = document.createElement('option');
+                                option.value = cliente.id;
+                                option.textContent = `${cliente.nombre} ${cliente.apellido} - DNI: ${cliente.dni} - ${cliente.email}`;
+                                clienteSelect.appendChild(option);
+                            });
+                        }
+                        
+                        // Renderizar todos los clientes inicialmente
+                        renderizarClientes(data.clientes);
+                        
+                        // Agregar funcionalidad de filtrado
+                        clienteSearch.addEventListener('input', function() {
+                            const filtro = this.value.toLowerCase();
+                            const clientesFiltrados = window.clientesCompletos.filter(cliente => {
+                                return cliente.nombre.toLowerCase().includes(filtro) ||
+                                       cliente.apellido.toLowerCase().includes(filtro) ||
+                                       cliente.email.toLowerCase().includes(filtro) ||
+                                       cliente.dni.toString().includes(filtro);
+                            });
+                            renderizarClientes(clientesFiltrados);
+                        });
+                        
+                        // Mostrar sección de clientes
+                        clienteSection.style.display = 'block';
+                    }
+                    
                     // Usuario puede alquilar, mostrar modal normalmente
                     alquilerModal.show();
                 }
@@ -420,7 +655,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Restaurar botón
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
+            } else if (data.qr_code_base64) {
+                // EMPLEADO: Mostrar QR dinámico
+                const clienteSelect = document.getElementById('cliente_id');
+                const clienteNombre = clienteSelect.options[clienteSelect.selectedIndex].text;
+                const fechaInicio = document.getElementById('fecha_inicio').value;
+                const dias = parseInt(document.getElementById('dias').value);
+                const fechaFin = new Date(fechaInicio);
+                fechaFin.setDate(fechaFin.getDate() + dias - 1);
+                
+                const datosQR = {
+                    cliente: clienteNombre,
+                    fechas: `${fechaInicio} - ${fechaFin.toISOString().split('T')[0]}`,
+                    total: document.getElementById('total-costo').textContent.replace('$', ''),
+                    external_reference: data.external_reference
+                };
+                
+                mostrarQRDinamico(data.qr_code_base64, datosQR);
+                
+                // Restaurar botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             } else if (data.init_point) {
+                // CLIENTE: Redirigir a Mercado Pago
                 window.location.href = data.init_point;
             }
         })

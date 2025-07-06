@@ -218,6 +218,7 @@ class Alquiler(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     preference_id = models.CharField(max_length=255, null=True, blank=True)
+    external_reference = models.CharField(max_length=255, null=True, blank=True, verbose_name='Referencia Externa')
     
     # Campos para cancelación y reembolso
     fecha_cancelacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de Cancelación')
