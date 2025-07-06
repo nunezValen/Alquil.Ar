@@ -735,7 +735,11 @@ def alquilar_maquina(request, maquina_id):
     clientes = []
     try:
         if request.user.persona.es_empleado:
-            clientes = list(Persona.objects.all().values('id', 'nombre', 'apellido', 'email', 'dni'))
+            # Solo incluir personas que NO sean empleados ni admins (solo clientes)
+            clientes = list(Persona.objects.filter(
+                es_empleado=False,
+                es_admin=False
+            ).values('id', 'nombre', 'apellido', 'email', 'dni'))
     except:
         pass
     
