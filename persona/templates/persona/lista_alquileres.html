@@ -440,11 +440,31 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if alquiler.estado == 'reservado' or alquiler.estado == 'en_curso' %}
-                                        <button class="btn btn-sm btn-danger" 
+                                    {% if alquiler.estado == 'reservado' %}
+                                        <div class="d-flex gap-1 flex-column">
+                                            <button type="button" 
+                                                   class="btn btn-sm btn-success" 
+                                                   onclick="iniciarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}', '{% if alquiler.codigo_retiro %}{{ alquiler.codigo_retiro }}{% endif %}')"
+                                                   title="Iniciar Alquiler - ID: {{ alquiler.id }}"
+                                                   id="btn-iniciar-{{ alquiler.id }}"
+                                                   data-alquiler-id="{{ alquiler.id }}"
+                                                   data-numero="{{ alquiler.numero }}"
+                                                   data-codigo="{{ alquiler.codigo_retiro }}">
+                                                <i class="fas fa-play"></i> Iniciar
+                                            </button>
+                                            <button type="button" 
+                                                   class="btn btn-sm btn-danger" 
+                                                   onclick="cancelarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}')"
+                                                   title="Cancelar Alquiler">
+                                                <i class="fas fa-times"></i> Cancelar
+                                            </button>
+                                        </div>
+                                    {% elif alquiler.estado == 'en_curso' %}
+                                        <button type="button" 
+                                               class="btn btn-sm btn-danger" 
                                                onclick="cancelarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}')"
                                                title="Cancelar Alquiler">
-                                            Cancelar
+                                            <i class="fas fa-times"></i> Cancelar
                                         </button>
                                     {% elif alquiler.estado == 'cancelado' %}
                                         {% if alquiler.monto_reembolso and alquiler.monto_reembolso > 0 %}
@@ -473,12 +493,256 @@
     </div>
 </div>
 
+<!-- Modal para iniciar alquiler -->
+<div class="modal fade" id="iniciarAlquilerModal" tabindex="-1" aria-labelledby="iniciarAlquilerModalLabel">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="iniciarAlquilerModalLabel">
+                    <i class="fas fa-play text-success"></i> Iniciar Alquiler
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="alquiler-info" class="mb-3">
+                    <h6>Alquiler: <span id="modal-numero-alquiler"></span></h6>
+                    <p class="text-muted">Solicita al cliente que proporcione el código de retiro que recibió por email.</p>
+                </div>
+                
+                <div id="modal-alerts" class="mb-3" style="display: none;"></div>
+                
+                <form id="iniciar-alquiler-form">
+                    {% csrf_token %}
+                    <input type="hidden" id="alquiler-id" name="alquiler_id">
+                    <div class="mb-3">
+                        <label for="codigo-cliente" class="form-label">
+                            <i class="fas fa-key"></i> Código proporcionado por el cliente:
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="codigo-cliente" 
+                               name="codigo_cliente"
+                               placeholder="Ingrese el código de retiro"
+                               required
+                               autocomplete="off">
+                        <div class="form-text">
+                            El cliente debe proporcionar el código de retiro que recibió por email.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-success" id="verificar-codigo-btn">
+                    <i class="fas fa-check"></i> Verificar e Iniciar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function cancelarAlquiler(alquilerId, numeroAlquiler) {
     if (confirm('¿Estás seguro de que deseas cancelar el alquiler ' + numeroAlquiler + '?')) {
         window.location.href = '{% url "maquinas:cancelar_alquiler" 0 %}'.replace('0', alquilerId);
     }
 }
+
+function iniciarAlquiler(alquilerId, numeroAlquiler, codigoRetiro) {
+    console.log('🚀 INICIAR ALQUILER: Función llamada');
+    console.log('   Alquiler ID:', alquilerId);
+    console.log('   Número:', numeroAlquiler);
+    console.log('   Código retiro:', codigoRetiro);
+    
+    try {
+        // Llenar datos del modal
+        const modalNumero = document.getElementById('modal-numero-alquiler');
+        const alquilerIdInput = document.getElementById('alquiler-id');
+        const codigoClienteInput = document.getElementById('codigo-cliente');
+        
+        if (!modalNumero || !alquilerIdInput || !codigoClienteInput) {
+            console.error('❌ INICIAR ALQUILER: Elementos del modal no encontrados');
+            alert('Error: No se pudo abrir el modal. Recarga la página e intenta nuevamente.');
+            return;
+        }
+        
+        modalNumero.textContent = numeroAlquiler;
+        alquilerIdInput.value = alquilerId;
+        codigoClienteInput.value = '';
+        
+        // Limpiar alertas
+        const modalAlerts = document.getElementById('modal-alerts');
+        if (modalAlerts) {
+            modalAlerts.style.display = 'none';
+            modalAlerts.innerHTML = '';
+        }
+        
+        // Mostrar modal
+        const modalElement = document.getElementById('iniciarAlquilerModal');
+        if (!modalElement) {
+            console.error('❌ INICIAR ALQUILER: Modal no encontrado');
+            alert('Error: Modal no encontrado. Recarga la página e intenta nuevamente.');
+            return;
+        }
+        
+        console.log('✅ INICIAR ALQUILER: Mostrando modal...');
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Enfocar el input
+        setTimeout(() => {
+            if (codigoClienteInput) {
+                codigoClienteInput.focus();
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ INICIAR ALQUILER: Error inesperado:', error);
+        alert('Error inesperado al abrir el modal: ' + error.message);
+    }
+}
+
+function mostrarAlertaModal(mensaje, tipo = 'danger') {
+    const modalAlerts = document.getElementById('modal-alerts');
+    modalAlerts.innerHTML = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    modalAlerts.style.display = 'block';
+    modalAlerts.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Manejar verificación de código
+document.addEventListener('DOMContentLoaded', function() {
+    const verificarBtn = document.getElementById('verificar-codigo-btn');
+    const form = document.getElementById('iniciar-alquiler-form');
+    
+    if (verificarBtn && form) {
+        verificarBtn.addEventListener('click', function() {
+            const alquilerId = document.getElementById('alquiler-id').value;
+            const codigoCliente = document.getElementById('codigo-cliente').value.trim();
+            
+            if (!codigoCliente) {
+                mostrarAlertaModal('<i class="fas fa-exclamation-triangle"></i> Por favor, ingresa el código proporcionado por el cliente.', 'warning');
+                return;
+            }
+            
+            // Deshabilitar botón y mostrar spinner
+            const originalText = verificarBtn.innerHTML;
+            verificarBtn.disabled = true;
+            verificarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+            
+            // Enviar solicitud
+            const formData = new FormData(form);
+            
+            fetch('{% url "persona:iniciar_alquiler" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Éxito - mostrar mensaje y recargar página
+                    mostrarAlertaModal(
+                        '<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> El alquiler ha sido iniciado correctamente.',
+                        'success'
+                    );
+                    
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    // Error - mostrar mensaje
+                    mostrarAlertaModal(
+                        '<i class="fas fa-times-circle"></i> <strong>Error:</strong> ' + data.error,
+                        'danger'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarAlertaModal(
+                    '<i class="fas fa-exclamation-triangle"></i> <strong>Error de conexión:</strong> No se pudo verificar el código. Intenta nuevamente.',
+                    'danger'
+                );
+            })
+            .finally(() => {
+                // Restaurar botón
+                verificarBtn.disabled = false;
+                verificarBtn.innerHTML = originalText;
+            });
+        });
+        
+        // Permitir verificar con Enter
+        document.getElementById('codigo-cliente').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verificarBtn.click();
+            }
+        });
+    }
+});
+
+// Verificar elementos del modal al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 ALQUILERES (MODAL): Verificando elementos del modal...');
+    
+    const modal = document.getElementById('iniciarAlquilerModal');
+    const modalNumero = document.getElementById('modal-numero-alquiler');
+    const alquilerIdInput = document.getElementById('alquiler-id');
+    const codigoClienteInput = document.getElementById('codigo-cliente');
+    const verificarBtn = document.getElementById('verificar-codigo-btn');
+    
+    console.log('🔍 ALQUILERES (MODAL): Estado de elementos:');
+    console.log('   Modal:', modal !== null);
+    console.log('   Modal número:', modalNumero !== null);
+    console.log('   Alquiler ID input:', alquilerIdInput !== null);
+    console.log('   Código cliente input:', codigoClienteInput !== null);
+    console.log('   Verificar botón:', verificarBtn !== null);
+    
+    if (modal && modalNumero && alquilerIdInput && codigoClienteInput && verificarBtn) {
+        console.log('✅ ALQUILERES (MODAL): Todos los elementos del modal están presentes');
+    } else {
+        console.error('❌ ALQUILERES (MODAL): Faltan elementos del modal');
+    }
+    
+    // Verificar que los botones de iniciar alquiler existan
+    const botonesIniciar = document.querySelectorAll('[id^="btn-iniciar-"]');
+    console.log('🔍 ALQUILERES (MODAL): Botones "Iniciar" encontrados:', botonesIniciar.length);
+    
+    if (botonesIniciar.length > 0) {
+        console.log('✅ ALQUILERES (MODAL): Botones "Iniciar Alquiler" encontrados');
+        botonesIniciar.forEach((btn, index) => {
+            console.log(`   Botón ${index + 1}:`, btn.id, 'onclick definido:', btn.onclick !== null);
+            
+            // Agregar event listener adicional como backup
+            btn.addEventListener('click', function(e) {
+                console.log('🎯 CLICK DETECTADO en botón:', btn.id);
+                const alquilerId = btn.getAttribute('data-alquiler-id');
+                const numero = btn.getAttribute('data-numero');
+                const codigo = btn.getAttribute('data-codigo');
+                
+                console.log('   Datos del botón:', { alquilerId, numero, codigo });
+                
+                if (alquilerId && numero) {
+                    console.log('🚀 Llamando iniciarAlquiler desde event listener...');
+                    iniciarAlquiler(alquilerId, numero, codigo || '');
+                } else {
+                    console.error('❌ Faltan datos en el botón');
+                }
+            });
+        });
+    } else {
+        console.error('❌ ALQUILERES (MODAL): No se encontraron botones "Iniciar Alquiler"');
+    }
+});
 
 // Sistema de autocompletado para clientes
 document.addEventListener('DOMContentLoaded', function() {

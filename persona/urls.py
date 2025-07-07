@@ -13,7 +13,7 @@ from .views import (
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
-    registrar_cliente_nuevo, registrar_empleado_nuevo
+    registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler
 )
 from maquinas.views import cancelar_alquiler
 
@@ -48,6 +48,7 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('modificar-datos-personales/', modificar_datos_personales, name='modificar_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
+    path('iniciar-alquiler/', iniciar_alquiler, name='iniciar_alquiler'),
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
     path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
     path('buscar-clientes-json/', buscar_clientes_json, name='buscar_clientes_json'),

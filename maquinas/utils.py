@@ -576,3 +576,137 @@ def enviar_email_alquiler_cancelado(alquiler):
         print(f"[DEBUG] Traceback completo:")
         traceback.print_exc()
         return False 
+
+
+def enviar_email_inicio_alquiler(alquiler):
+    """
+    Envía un email de notificación de inicio de alquiler
+    """
+    try:
+        print(f"[INFO] Iniciando envío de email de inicio para alquiler {alquiler.numero}")
+        print(f"[INFO] Email destino: {alquiler.persona.email}")
+        
+        # Crear el mensaje de email
+        asunto = f'Alquiler Iniciado #{alquiler.numero} - ALQUIL.AR'
+        
+        mensaje_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; background: linear-gradient(135deg, #28a745, #20c997); padding: 30px; border-radius: 10px; color: white; margin-bottom: 30px;">
+                    <h1 style="margin: 0; font-size: 28px;">🚀 ¡Alquiler Iniciado!</h1>
+                    <p style="margin: 10px 0 0; font-size: 16px;">Su alquiler ha comenzado oficialmente</p>
+                </div>
+                
+                <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                    <h2 style="color: #155724; margin-top: 0; text-align: center;">✅ Estado: EN CURSO</h2>
+                    <p style="color: #155724; margin: 0; text-align: center; font-size: 16px;">
+                        Su alquiler está ahora activo y puede comenzar a utilizar la máquina.
+                    </p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                    <h2 style="color: #28a745; margin-top: 0;">Detalles del Alquiler</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Número de Alquiler:</td>
+                            <td style="padding: 8px 0; color: #28a745; font-weight: bold;">{alquiler.numero}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Máquina:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.nombre}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Marca y Modelo:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.get_marca_display()} {alquiler.maquina_base.modelo}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Período de Alquiler:</td>
+                            <td style="padding: 8px 0;">{alquiler.fecha_inicio.strftime('%d/%m/%Y')} - {alquiler.fecha_fin.strftime('%d/%m/%Y')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Duración:</td>
+                            <td style="padding: 8px 0;">{alquiler.cantidad_dias} día{'s' if alquiler.cantidad_dias != 1 else ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Código de Retiro:</td>
+                            <td style="padding: 8px 0; color: #28a745; font-weight: bold; font-size: 16px;">{alquiler.codigo_retiro}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {f'''
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #856404; margin-top: 0; text-align: center;">📍 Información de la Unidad</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #856404;">Patente:</td>
+                            <td style="padding: 8px 0; color: #856404; font-weight: bold;">{alquiler.unidad.patente}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #856404;">Sucursal:</td>
+                            <td style="padding: 8px 0; color: #856404;">{alquiler.unidad.sucursal.direccion}</td>
+                        </tr>
+                    </table>
+                </div>
+                ''' if alquiler.unidad else ''}
+                
+                <div style="background: #e7f3ff; border: 1px solid #b3d9ff; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #0066cc; margin-top: 0; text-align: center;">📋 Instrucciones Importantes</h3>
+                    <ul style="color: #0066cc; margin: 0; padding-left: 20px;">
+                        <li>Su alquiler está ahora activo y puede utilizar la máquina</li>
+                        <li>Conserve este email como comprobante del inicio del alquiler</li>
+                        <li>Recuerde devolver la máquina en la fecha acordada: <strong>{alquiler.fecha_fin.strftime('%d/%m/%Y')}</strong></li>
+                        <li>En caso de problemas o consultas, contacte inmediatamente a nuestro equipo</li>
+                        <li>Utilice la máquina de forma responsable y siguiendo las instrucciones de seguridad</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="color: #666; margin: 0;">¿Tienes alguna consulta sobre tu alquiler?</p>
+                    <p style="margin: 5px 0;">
+                        📧 <a href="mailto:contacto.alquilar@gmail.com" style="color: #28a745;">contacto.alquilar@gmail.com</a> | 
+                        📞 <a href="tel:+541112345678" style="color: #28a745;">+54 11 1234-5678</a>
+                    </p>
+                </div>
+                
+                <div style="text-align: center; padding: 20px; background: #f1f3f4; border-radius: 10px; margin-top: 30px;">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        <strong>ALQUIL.AR</strong> - Tu socio confiable en alquiler de maquinaria<br>
+                        ¡Que tengas un excelente alquiler!<br>
+                        Este es un email automático, por favor no respondas a esta dirección.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Crear el email
+        from django.core.mail import send_mail
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
+        
+        # Enviar el email
+        print("[INFO] Enviando email de inicio...")
+        print(f"[INFO] From: {from_email}")
+        print(f"[INFO] To: {alquiler.persona.email}")
+        print(f"[INFO] Subject: {asunto}")
+        
+        send_mail(
+            subject=asunto,
+            message='',  # Mensaje en texto plano vacío
+            from_email=from_email,
+            recipient_list=[alquiler.persona.email],
+            html_message=mensaje_html,  # Mensaje HTML
+            fail_silently=False
+        )
+        
+        print(f"[SUCCESS] Email de inicio enviado exitosamente a: {alquiler.persona.email}")
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] Error al enviar email de inicio: {str(e)}")
+        import traceback
+        print(f"[DEBUG] Traceback completo:")
+        traceback.print_exc()
+        return False

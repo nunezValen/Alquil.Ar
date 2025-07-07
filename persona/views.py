@@ -1269,6 +1269,66 @@ def lista_alquileres(request):
     
     return render(request, 'persona/lista_alquileres.html', context)
 
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def iniciar_alquiler(request):
+    """Vista para iniciar un alquiler verificando el código de retiro"""
+    try:
+        alquiler_id = request.POST.get('alquiler_id')
+        codigo_cliente = request.POST.get('codigo_cliente', '').strip()
+        
+        if not alquiler_id or not codigo_cliente:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Buscar el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que el alquiler esté en estado 'reservado'
+        if alquiler.estado != 'reservado':
+            return JsonResponse({
+                'success': False,
+                'error': f'El alquiler está en estado {alquiler.get_estado_display()}. Solo se pueden iniciar alquileres reservados.'
+            })
+        
+        # Verificar el código de retiro
+        if alquiler.codigo_retiro != codigo_cliente:
+            return JsonResponse({
+                'success': False,
+                'error': 'El código ingresado no coincide con el código de retiro del alquiler. Verifica el código con el cliente.'
+            })
+        
+        # Cambiar estado a 'en_curso'
+        alquiler.estado = 'en_curso'
+        alquiler.save()
+        
+        # Opcional: Enviar email de confirmación de inicio
+        try:
+            from maquinas.utils import enviar_email_inicio_alquiler
+            enviar_email_inicio_alquiler(alquiler)
+        except Exception as e:
+            print(f"Error enviando email de inicio: {str(e)}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Alquiler {alquiler.numero} iniciado correctamente.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
+
 def exportar_alquileres_xlsx(alquileres):
     """Exportar alquileres a Excel"""
     try:
