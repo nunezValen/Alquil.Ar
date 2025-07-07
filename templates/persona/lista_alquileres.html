@@ -244,7 +244,9 @@
                             <th>Días</th>
                             <th>Estado</th>
                             <th>Monto</th>
-                            <th>Código Retiro</th>
+                            <!-- se lo saco de momento
+                            <th>Código</th>
+                            -->
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -330,6 +332,7 @@
                                     <small class="text-success">{{ alquiler.porcentaje_reembolso }}% del total</small>
                                 {% endif %}
                             </td>
+                            <!-- Se lo saco de momento
                             <td>
                                 {% if alquiler.codigo_retiro %}
                                     <span class="codigo-retiro">{{ alquiler.codigo_retiro }}</span>
@@ -337,6 +340,7 @@
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
                             </td>
+                            -->
                             <td class="action-buttons">
                                 <div class="btn-group" role="group">
                                     <button type="button" class="btn btn-sm btn-outline-info" 
