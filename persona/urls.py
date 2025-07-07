@@ -13,7 +13,8 @@ from .views import (
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
-    registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler, finalizar_alquiler
+    registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler, finalizar_alquiler,
+    obtener_datos_cliente_actual
 )
 from maquinas.views import cancelar_alquiler
 
@@ -53,6 +54,7 @@ urlpatterns = [
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
     path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
     path('buscar-clientes-json/', buscar_clientes_json, name='buscar_clientes_json'),
+    path('obtener-datos-cliente-actual/', obtener_datos_cliente_actual, name='obtener_datos_cliente_actual'),
     path('pago-exitoso/', pago_exitoso, name='pago_exitoso'),
     path('pago-fallido/', pago_fallido, name='pago_fallido'),
     path('pago-pendiente/', pago_pendiente, name='pago_pendiente'),

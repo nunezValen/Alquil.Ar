@@ -437,7 +437,7 @@ def webhook_mercadopago(request):
     
     return HttpResponse(status=405)  # Method Not Allowed
 
-def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago):
+def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago):
     """
     Procesa pago para empleados usando QR dinámico con nuevas credenciales
     """
@@ -455,6 +455,14 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
         if 'ngrok-free.app' in base_url:
             base_url = base_url.replace('http://', 'https://')
         
+        # Preparar título y descripción con información del recargo
+        if porcentaje_recargo > 0:
+            titulo = f"Alquiler de {maquina.nombre} (Recargo {porcentaje_recargo}%)"
+            descripcion = f"Alquiler de {maquina.nombre} por {dias} días. Base: ${total_base:,.0f} + Recargo {porcentaje_recargo}%: ${monto_recargo:,.0f}"
+        else:
+            titulo = f"Alquiler de {maquina.nombre}"
+            descripcion = f"Alquiler de {maquina.nombre} por {dias} días"
+        
         # Datos para crear orden QR dinámico
         url = "https://api.mercadopago.com/instore/orders/qr/seller/collectors/343205143/pos/CAJA001/qrs"
         headers = {
@@ -464,12 +472,12 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
         
         payload = {
             "external_reference": external_reference,
-            "title": f"Alquiler de {maquina.nombre}",
-            "description": f"Alquiler de {maquina.nombre} por {dias} días",
+            "title": titulo,
+            "description": descripcion,
             "total_amount": float(total),
             "items": [
                 {
-                    "title": f"Alquiler de {maquina.nombre}",
+                    "title": titulo,
                     "quantity": 1,
                     "unit_price": float(total),
                     "unit_measure": "unit",
@@ -530,7 +538,7 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
             'error': f'Error al generar QR dinámico: {str(e)}'
         }, status=500)
 
-def procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago):
+def procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago):
     """
     Procesa pago para clientes usando API normal (preferencias)
     """
@@ -548,9 +556,15 @@ def procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_
         
         webhook_url = f"{base_url}/maquinas/webhook-mercadopago/"
         
+        # Preparar título con información del recargo
+        if porcentaje_recargo > 0:
+            titulo = f"Alquiler de {maquina.nombre} (Recargo {porcentaje_recargo}%)"
+        else:
+            titulo = f"Alquiler de {maquina.nombre}"
+        
         preference_data = {
             "items": [{
-                "title": f"Alquiler de {maquina.nombre}",
+                "title": titulo,
                 "quantity": 1,
                 "currency_id": "ARS",
                 "unit_price": float(total)
@@ -693,8 +707,11 @@ def alquilar_maquina(request, maquina_id):
             print(f"Cliente: {persona.nombre} {persona.apellido}")
             print(f"Fechas: {fecha_inicio} - {fecha_fin} ({dias} días)")
             
-            # Calcular total
-            total = dias * maquina.precio_por_dia
+            # Calcular total base
+            total_base = dias * maquina.precio_por_dia
+            
+            # Aplicar recargo si corresponde
+            porcentaje_recargo, monto_recargo, total = persona.calcular_recargo(total_base)
             
             # Verificar si el usuario es empleado para usar QR dinámico o API normal
             try:
@@ -713,10 +730,10 @@ def alquilar_maquina(request, maquina_id):
             
             if es_empleado:
                 # EMPLEADOS: Usar QR dinámico con nuevas credenciales
-                return procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago)
+                return procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago)
             else:
                 # CLIENTES: Usar API anterior (preferencias normales)
-                return procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total, metodo_pago)
+                return procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago)
 
         
         except ValueError as e:
@@ -748,10 +765,25 @@ def alquilar_maquina(request, maquina_id):
     try:
         if request.user.persona.es_empleado:
             # Solo incluir personas que NO sean empleados ni admins (solo clientes)
-            clientes = list(Persona.objects.filter(
+            clientes_queryset = Persona.objects.filter(
                 es_empleado=False,
                 es_admin=False
-            ).values('id', 'nombre', 'apellido', 'email', 'dni'))
+            )
+            
+            # Agregar información de recargo para cada cliente
+            clientes = []
+            for cliente in clientes_queryset:
+                cliente_data = {
+                    'id': cliente.id,
+                    'nombre': cliente.nombre,
+                    'apellido': cliente.apellido,
+                    'email': cliente.email,
+                    'dni': cliente.dni,
+                    'calificacion_promedio': float(cliente.calificacion_promedio),
+                    'tiene_recargo': cliente.tiene_recargo(),
+                    'mensaje_recargo': cliente.get_mensaje_recargo()
+                }
+                clientes.append(cliente_data)
     except:
         # Si no tiene persona asociada, buscar por email y asociar
         try:
@@ -759,10 +791,24 @@ def alquilar_maquina(request, maquina_id):
             persona_usuario.user = request.user
             persona_usuario.save()
             if persona_usuario.es_empleado:
-                clientes = list(Persona.objects.filter(
+                clientes_queryset = Persona.objects.filter(
                     es_empleado=False,
                     es_admin=False
-                ).values('id', 'nombre', 'apellido', 'email', 'dni'))
+                )
+                
+                clientes = []
+                for cliente in clientes_queryset:
+                    cliente_data = {
+                        'id': cliente.id,
+                        'nombre': cliente.nombre,
+                        'apellido': cliente.apellido,
+                        'email': cliente.email,
+                        'dni': cliente.dni,
+                        'calificacion_promedio': float(cliente.calificacion_promedio),
+                        'tiene_recargo': cliente.tiene_recargo(),
+                        'mensaje_recargo': cliente.get_mensaje_recargo()
+                    }
+                    clientes.append(cliente_data)
         except Persona.DoesNotExist:
             pass
     
@@ -778,7 +824,8 @@ def alquilar_maquina(request, maquina_id):
         },
         'fecha_minima': fecha_minima.strftime('%Y-%m-%d'),
         'tiene_alquiler_activo': tiene_alquiler_activo,
-        'clientes': clientes
+        'clientes': clientes,
+        'usuario_email': request.user.email
     })
 
 @login_required

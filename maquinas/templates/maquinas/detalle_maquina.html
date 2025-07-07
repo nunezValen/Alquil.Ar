@@ -353,6 +353,20 @@
                                         <span>Cantidad de días:</span>
                                         <span id="cantidad-dias">1</span>
                                     </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Subtotal:</span>
+                                        <span id="subtotal-costo">${{ maquina.precio_por_dia }}</span>
+                                    </div>
+                                    <!-- Información del recargo (se muestra dinámicamente) -->
+                                    <div id="recargo-info" style="display: none;">
+                                        <div class="d-flex justify-content-between mb-2 text-warning">
+                                            <span>Recargo (<span id="porcentaje-recargo">0</span>%):</span>
+                                            <span id="monto-recargo">$0</span>
+                                        </div>
+                                        <div class="alert alert-warning py-2 mb-2" id="mensaje-recargo">
+                                            <!-- Mensaje del recargo se llenará dinámicamente -->
+                                        </div>
+                                    </div>
                                     <hr>
                                     <div class="d-flex justify-content-between">
                                         <strong>Total:</strong>
@@ -596,12 +610,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function actualizarCosto() {
         const dias = parseInt(diasInput.value);
-        const total = dias * precioPorDia;
+        const subtotal = dias * precioPorDia;
+        const clienteId = document.getElementById('cliente_id').value;
+        
+
+        
+        // Actualizar cantidad de días y subtotal
         cantidadDiasSpan.textContent = dias;
+        document.getElementById('subtotal-costo').textContent = '$' + subtotal.toFixed(2);
+        
+        // Calcular recargo si hay un cliente seleccionado o si es un cliente normal
+        let total = subtotal;
+        const recargoInfo = document.getElementById('recargo-info');
+        let cliente = null;
+        
+        // Determinar qué cliente usar para el cálculo
+        if (clienteId && window.clientesData && window.clientesData[clienteId]) {
+            // Empleado ha seleccionado un cliente
+            cliente = window.clientesData[clienteId];
+        } else if (window.clienteActual) {
+            // Cliente normal haciendo su propio alquiler
+            cliente = window.clienteActual;
+        }
+        
+        if (cliente) {
+            if (cliente.tiene_recargo) {
+                // Calcular recargo según las reglas de negocio
+                let porcentaje;
+                if (cliente.calificacion_promedio >= 4.0) {
+                    porcentaje = 0;
+                } else if (cliente.calificacion_promedio >= 3.0) {
+                    porcentaje = 10;
+                } else if (cliente.calificacion_promedio >= 2.0) {
+                    porcentaje = 20;
+                } else {
+                    porcentaje = 30;
+                }
+                const montoRecargo = (subtotal * porcentaje) / 100;
+                total = subtotal + montoRecargo;
+                
+
+                
+                // Mostrar información del recargo
+                document.getElementById('porcentaje-recargo').textContent = porcentaje;
+                document.getElementById('monto-recargo').textContent = '$' + montoRecargo.toFixed(2);
+                document.getElementById('mensaje-recargo').innerHTML = 
+                    `<i class="fas fa-exclamation-triangle me-2"></i>` +
+                    `Se aplica recargo por calificación promedio de ${cliente.calificacion_promedio} estrellas.`;
+                recargoInfo.style.display = 'block';
+            } else {
+                // Sin recargo
+                recargoInfo.style.display = 'none';
+            }
+        } else {
+            // Sin cliente, ocultar recargo
+            recargoInfo.style.display = 'none';
+        }
+        
+        // Actualizar total
         totalCostoSpan.textContent = '$' + total.toFixed(2);
     }
 
     diasInput.addEventListener('change', actualizarCosto);
+    
+    // Agregar evento para cambio de cliente
+    document.getElementById('cliente_id').addEventListener('change', actualizarCosto);
+    
     actualizarCosto();
 
     // Instancia del modal para manejo consistente
@@ -644,6 +718,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         const clienteSelect = document.getElementById('cliente_id');
                         const clienteSection = document.getElementById('cliente-selection');
                         
+                        // Almacenar datos de clientes globalmente para cálculo de recargo
+                        window.clientesData = {};
+                        
                         // Limpiar opciones existentes
                         clienteSelect.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
                         
@@ -652,7 +729,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             const option = document.createElement('option');
                             option.value = cliente.id;
                             option.textContent = `${cliente.nombre} ${cliente.apellido} - DNI: ${cliente.dni} - ${cliente.email}`;
+                            if (cliente.tiene_recargo) {
+                                option.textContent += ` ⚠️ (Recargo aplicable)`;
+                            }
                             clienteSelect.appendChild(option);
+                            
+                            // Almacenar datos del cliente para cálculo de recargo
+                            window.clientesData[cliente.id] = cliente;
                         });
                         
                         // Inicializar Select2 cuando jQuery esté disponible
@@ -674,6 +757,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                         return "Escriba para buscar...";
                                     }
                                 }
+                            });
+                            
+                            // Agregar evento para Select2
+                            $('.select2-cliente').on('select2:select', function (e) {
+                                actualizarCosto();
+                            });
+                            
+                            $('.select2-cliente').on('select2:clear', function (e) {
+                                actualizarCosto();
                             });
                         } else {
                             // Fallback: usar setTimeout para esperar a que jQuery se cargue
@@ -697,6 +789,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                             }
                                         }
                                     });
+                                    
+                                    // Agregar evento para Select2
+                                    $('.select2-cliente').on('select2:select', function (e) {
+                                        actualizarCosto();
+                                    });
+                                    
+                                    $('.select2-cliente').on('select2:clear', function (e) {
+                                        actualizarCosto();
+                                    });
                                 }
                             }, 100);
                         }
@@ -708,6 +809,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Usuario puede alquilar, mostrar modal normalmente
                     alquilerModal.show();
+                    
+                    // Si no es empleado, obtener datos del cliente actual para recargo
+                    if (!data.clientes || data.clientes.length === 0) {
+                        // Es un cliente normal, obtener sus datos para calcular recargo
+                        fetch('/persona/obtener-datos-cliente-actual/', {
+                            method: 'GET',
+                            headers: {
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(clienteData => {
+                            if (clienteData.success && clienteData.cliente) {
+                                // Almacenar datos del cliente actual
+                                window.clienteActual = clienteData.cliente;
+                                // Actualizar costo con datos del cliente
+                                actualizarCosto();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error obteniendo datos del cliente:', error);
+                        });
+                    }
                 }
             })
             .catch(error => {

@@ -63,6 +63,56 @@ class Persona(models.Model):
         help_text="Promedio de calificaciones del cliente (1.00 - 5.00)"
     )
 
+    def calcular_recargo(self, monto_base):
+        """
+        Calcula el recargo basado en la calificación promedio del cliente.
+        
+        Reglas:
+        - ≥ 4 estrellas: 0% de recargo
+        - = 3 estrellas: 10% de recargo  
+        - = 2 estrellas: 20% de recargo
+        - = 1 estrella: 30% de recargo
+        
+        Returns:
+            tuple: (porcentaje_recargo, monto_recargo, monto_total)
+        """
+        # Reglas de negocio corregidas según especificaciones
+        if self.calificacion_promedio >= 4.0:
+            porcentaje = 0
+        elif self.calificacion_promedio >= 3.0:
+            porcentaje = 10
+        elif self.calificacion_promedio >= 2.0:
+            porcentaje = 20
+        else:  # < 2.0
+            porcentaje = 30
+        
+        monto_recargo = (monto_base * porcentaje) / 100
+        monto_total = monto_base + monto_recargo
+        
+        return porcentaje, monto_recargo, monto_total
+    
+    def tiene_recargo(self):
+        """
+        Verifica si el cliente tiene recargo aplicable.
+        Returns: bool
+        """
+        return self.calificacion_promedio < 4.0
+    
+    def get_mensaje_recargo(self, monto_base=None):
+        """
+        Obtiene el mensaje explicativo del recargo.
+        Returns: str
+        """
+        if not self.tiene_recargo():
+            return "Sin recargo por historial de calificaciones."
+        
+        porcentaje, monto_recargo, monto_total = self.calcular_recargo(monto_base or 0)
+        
+        if monto_base:
+            return f"Recargo por calificación baja: {porcentaje}% (${monto_recargo:,.0f}). Total a pagar: ${monto_total:,.0f}."
+        else:
+            return f"Se aplicará un recargo de {porcentaje}% por calificación promedio de {self.calificacion_promedio} estrellas."
+
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
 

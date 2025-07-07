@@ -1811,15 +1811,40 @@ def buscar_clientes_json(request):
             
         resultados.append({
             'id': cliente.id,
+            'nombre': cliente.nombre,
+            'apellido': cliente.apellido,
             'nombre_completo': f"{cliente.nombre} {cliente.apellido}",
             'email': cliente.email,
             'dni': cliente.dni if cliente.dni else '',
-            'display_text': display_text
+            'display_text': display_text,
+            'calificacion_promedio': float(cliente.calificacion_promedio)
         })
         print(f"   📄 Cliente: {cliente.email} - DNI: {cliente.dni}")
     
     print(f"📤 Devolviendo {len(resultados)} resultados")
     return JsonResponse({'clientes': resultados})
+
+@login_required
+def obtener_datos_cliente_actual(request):
+    """Vista para obtener los datos del cliente actual para cálculo de recargo"""
+    try:
+        persona = Persona.objects.get(email=request.user.email)
+        return JsonResponse({
+            'success': True,
+            'cliente': {
+                'id': persona.id,
+                'nombre': persona.nombre,
+                'apellido': persona.apellido,
+                'email': persona.email,
+                'calificacion_promedio': float(persona.calificacion_promedio),
+                'tiene_recargo': persona.tiene_recargo()
+            }
+        })
+    except Persona.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Cliente no encontrado'
+        })
 
 def enviar_codigo_verificacion(request):
     if not request.user.is_authenticated:
