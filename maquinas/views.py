@@ -460,7 +460,7 @@ def webhook_mercadopago(request):
 
 def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago):
     """
-    Procesa pago para empleados usando QR dinámico con nuevas credenciales
+    Procesa pago para empleados usando QR dinámico con nuevas credenciales o Binance
     """
     import requests
     import qrcode
@@ -468,6 +468,28 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
     import base64
     
     try:
+        # Si el método de pago es Binance, crear alquiler pendiente y retornar información
+        if metodo_pago == 'binance':
+            # Crear alquiler pendiente para Binance
+            alquiler = Alquiler.objects.create(
+                maquina_base=maquina,
+                persona=persona,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                metodo_pago=metodo_pago,
+                estado='pendiente',
+                monto_total=total,
+                external_reference=f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
+            )
+            
+            print(f"[OK] Alquiler pendiente creado para Binance: {alquiler.id}")
+            
+            return JsonResponse({
+                'metodo_pago': 'binance',
+                'alquiler_id': alquiler.id,
+                'success': True
+            })
+        
         # Preparar external_reference con los datos del alquiler
         external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
         
@@ -1001,3 +1023,78 @@ def desocultar_maquina_base(request, maquina_id):
     except Exception as e:
         messages.error(request, f'Error al desocultar la máquina: {str(e)}')
     return redirect('maquinas:lista_maquinas')
+
+@login_required
+@csrf_protect
+@require_http_methods(["POST"])
+def confirmar_pago_binance(request):
+    """
+    Vista para confirmar el pago de Binance realizado por un empleado
+    """
+    import json
+    
+    try:
+        # Verificar que el usuario sea empleado
+        if not request.user.persona.es_empleado:
+            return JsonResponse({
+                'error': 'Solo los empleados pueden confirmar pagos de Binance'
+            }, status=403)
+        
+        # Obtener datos del request
+        data = json.loads(request.body)
+        alquiler_id = data.get('alquiler_id')
+        
+        if not alquiler_id:
+            return JsonResponse({
+                'error': 'ID de alquiler requerido'
+            }, status=400)
+        
+        # Obtener el alquiler
+        alquiler = get_object_or_404(Alquiler, id=alquiler_id)
+        
+        # Verificar que el alquiler esté pendiente y sea de Binance
+        if alquiler.estado != 'pendiente' or alquiler.metodo_pago != 'binance':
+            return JsonResponse({
+                'error': 'Este alquiler no puede ser confirmado'
+            }, status=400)
+        
+        # Confirmar el alquiler
+        alquiler.estado = 'reservado'
+        alquiler.save()
+        
+        print(f"[OK] Alquiler {alquiler.id} confirmado por empleado {request.user.email}")
+        
+        # Enviar email al cliente
+        try:
+            from .utils import enviar_email_alquiler_simple
+            resultado_email = enviar_email_alquiler_simple(alquiler)
+            if resultado_email:
+                print(f"[SUCCESS] Email enviado correctamente al cliente {alquiler.persona.email}")
+            else:
+                print(f"[ERROR] Falló el envío de email al cliente")
+        except Exception as e:
+            print(f"[ERROR] Error al enviar email de confirmación: {str(e)}")
+        
+        # Preparar datos del alquiler para la respuesta
+        alquiler_data = {
+            'id': alquiler.id,
+            'numero': alquiler.numero,
+            'maquina': alquiler.maquina_base.nombre,
+            'cliente': f"{alquiler.persona.nombre} {alquiler.persona.apellido}",
+            'fecha_inicio': alquiler.fecha_inicio.strftime('%d/%m/%Y'),
+            'fecha_fin': alquiler.fecha_fin.strftime('%d/%m/%Y'),
+            'total': float(alquiler.monto_total),
+            'estado': alquiler.get_estado_display(),
+            'codigo_retiro': alquiler.numero
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'alquiler': alquiler_data
+        })
+        
+    except Exception as e:
+        print(f"Error en confirmar_pago_binance: {str(e)}")
+        return JsonResponse({
+            'error': f'Error al confirmar el pago: {str(e)}'
+        }, status=500)

@@ -26,4 +26,5 @@ urlpatterns = [
     path('unidad/<int:pk>/toggle_mantenimiento/', views.toggle_mantenimiento_unidad, name='toggle_mantenimiento_unidad'),
     path('cancelar-alquiler/<int:alquiler_id>/', views.cancelar_alquiler, name='cancelar_alquiler'),
     path('maquina/<int:maquina_id>/desocultar/', views.desocultar_maquina_base, name='desocultar_maquina_base'),
+    path('confirmar-pago-binance/', views.confirmar_pago_binance, name='confirmar_pago_binance'),
 ] 

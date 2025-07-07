@@ -386,6 +386,16 @@
                                             Mercado Pago
                                         </label>
                                     </div>
+                                    
+                                    {% if usuario_persona.es_empleado %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="metodo_pago" id="binance" value="binance">
+                                        <label class="form-check-label" for="binance">
+                                            <img src="{% static 'img/logo_Binance.png' %}" alt="Binance" style="height: 30px; margin-right: 10px;">
+                                            Binance
+                                        </label>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
 
@@ -443,6 +453,58 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-primary" id="check-payment-btn" onclick="verificarPago()">
                     <i class="fas fa-sync"></i> Verificar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de QR Binance -->
+<div class="modal fade" id="binanceModal" tabindex="-1" aria-labelledby="binanceModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="binanceModalLabel">
+                    <img src="{% static 'img/logo_Binance.png' %}" alt="Binance" style="height: 30px; margin-right: 10px;">
+                    Pago con Binance
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Escanea el código QR para pagar:</h6>
+                        <div class="text-center">
+                            <img src="{% static 'img/qr_binance.jpg' %}" alt="QR Binance" class="img-fluid border rounded" style="max-width: 280px;">
+                        </div>
+                        <p class="mt-2 text-muted small text-center">
+                            Escanea este código QR con tu app de Binance para realizar el pago
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="binance-payment-details">
+                            <h6>Detalles del Alquiler:</h6>
+                            <div class="card">
+                                <div class="card-body">
+                                    <p><strong>Máquina:</strong> <span id="binance-detail-maquina">{{ maquina.nombre }}</span></p>
+                                    <p><strong>Cliente:</strong> <span id="binance-detail-cliente">-</span></p>
+                                    <p><strong>Fechas:</strong> <span id="binance-detail-fechas">-</span></p>
+                                    <p><strong>Total:</strong> $<span id="binance-detail-total">-</span></p>
+                                    <hr>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i> 
+                                        Una vez que el cliente realice el pago, confirma la transacción usando los botones de abajo.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmar-pago-binance">
+                    <i class="fas fa-check"></i> Confirmar Pago
                 </button>
             </div>
         </div>
@@ -523,6 +585,23 @@ document.addEventListener('DOMContentLoaded', function() {
         window.paymentCheckInterval = setInterval(verificarPago, 5000);
     }
     
+    function mostrarQRBinance(datos) {
+        // Cerrar modal de alquiler
+        alquilerModal.hide();
+        
+        // Llenar datos del modal de Binance
+        document.getElementById('binance-detail-cliente').textContent = datos.cliente || '-';
+        document.getElementById('binance-detail-fechas').textContent = datos.fechas || '-';
+        document.getElementById('binance-detail-total').textContent = datos.total || '-';
+        
+        // Guardar ID del alquiler para confirmación
+        window.currentAlquilerId = datos.alquiler_id;
+        
+        // Mostrar modal de Binance
+        const binanceModal = new bootstrap.Modal(document.getElementById('binanceModal'));
+        binanceModal.show();
+    }
+    
     function verificarPago() {
         if (!window.currentExternalReference) return;
         
@@ -561,6 +640,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Cerrar modal de QR
         const qrModal = bootstrap.Modal.getInstance(document.getElementById('qrModal'));
         if (qrModal) qrModal.hide();
+        
+        // Cerrar modal de Binance
+        const binanceModal = bootstrap.Modal.getInstance(document.getElementById('binanceModal'));
+        if (binanceModal) binanceModal.hide();
         
         // Llenar detalles del pago exitoso
         document.getElementById('pago-detalles').innerHTML = `
@@ -884,6 +967,61 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('pagoExitosoModal').addEventListener('hidden.bs.modal', function () {
         this.setAttribute('aria-hidden', 'true');
     });
+    
+    // Manejar aria-hidden para el modal de Binance
+    document.getElementById('binanceModal').addEventListener('shown.bs.modal', function () {
+        this.removeAttribute('aria-hidden');
+    });
+    
+    document.getElementById('binanceModal').addEventListener('hidden.bs.modal', function () {
+        this.setAttribute('aria-hidden', 'true');
+    });
+    
+    // Manejar confirmación de pago de Binance
+    document.getElementById('confirmar-pago-binance').addEventListener('click', function() {
+        if (!window.currentAlquilerId) {
+            alert('Error: No se encontró el ID del alquiler');
+            return;
+        }
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Confirmando...';
+        
+        // Enviar confirmación al servidor
+        fetch('{% url "maquinas:confirmar_pago_binance" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                alquiler_id: window.currentAlquilerId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Cerrar modal de Binance
+                const binanceModal = bootstrap.Modal.getInstance(document.getElementById('binanceModal'));
+                binanceModal.hide();
+                
+                // Mostrar modal de éxito
+                mostrarPagoExitoso(data.alquiler);
+            } else {
+                alert('Error al confirmar el pago: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión al confirmar el pago');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    });
 
     alquilerForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -951,6 +1089,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 
                 mostrarQRDinamico(data.qr_code_base64, datosQR);
+                
+                // Restaurar botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            } else if (data.metodo_pago === 'binance') {
+                // EMPLEADO: Mostrar QR estático de Binance
+                const clienteSelect = document.getElementById('cliente_id');
+                const clienteNombre = clienteSelect.options[clienteSelect.selectedIndex].text;
+                const fechaInicio = document.getElementById('fecha_inicio').value;
+                const dias = parseInt(document.getElementById('dias').value);
+                const fechaFin = new Date(fechaInicio);
+                fechaFin.setDate(fechaFin.getDate() + dias - 1);
+                
+                mostrarQRBinance({
+                    cliente: clienteNombre,
+                    fechas: `${fechaInicio} - ${fechaFin.toISOString().split('T')[0]}`,
+                    total: document.getElementById('total-costo').textContent.replace('$', ''),
+                    alquiler_id: data.alquiler_id
+                });
                 
                 // Restaurar botón
                 submitBtn.disabled = false;
