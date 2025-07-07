@@ -194,25 +194,7 @@ def toggle_visibilidad_unidad(request, pk):
     maquina_base.save()
     return redirect('maquinas:lista_unidades')
 
-@login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
-def toggle_mantenimiento_unidad(request, pk):
-    unidad = get_object_or_404(Unidad, pk=pk)
-    
-    # Solo permitir cambiar entre disponible y mantenimiento
-    if unidad.estado == 'disponible':
-        unidad.estado = 'mantenimiento'
-        mensaje = f'La unidad {unidad.patente} ha sido puesta en mantenimiento.'
-    elif unidad.estado == 'mantenimiento':
-        unidad.estado = 'disponible'
-        mensaje = f'La unidad {unidad.patente} ha sido marcada como disponible.'
-    else:
-        messages.error(request, 'Solo se puede cambiar el estado de unidades disponibles o en mantenimiento.')
-        return redirect('maquinas:lista_unidades')
-    
-    unidad.save()
-    messages.success(request, mensaje)
-    return redirect('maquinas:lista_unidades')
+
 
 @login_required
 @user_passes_test(es_empleado_o_admin)
@@ -294,7 +276,12 @@ def eliminar_unidad(request, unidad_id):
 
 def catalogo_publico(request):
     query = request.GET.get('q', '')
-    maquinas = MaquinaBase.objects.filter(stock__gt=0).order_by('nombre')
+    # Filtrar solo máquinas que tengan unidades realmente disponibles (no en mantenimiento)
+    maquinas = MaquinaBase.objects.filter(
+        visible=True,
+        unidades__estado='disponible',
+        unidades__visible=True
+    ).distinct().order_by('nombre')
     
     if query:
         maquinas = maquinas.filter(
@@ -338,11 +325,16 @@ def webhook_mercadopago(request):
                     sdk = mercadopago.SDK(settings.MERCADOPAGO_EMPLOYEE_ACCESS_TOKEN)
                     payment_info = sdk.payment().get(payment_id)
                     print(f"Payment info (empleado): {payment_info}")
-                except:
+                except Exception as e:
                     # Si falla, usar credenciales normales
-                    sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
-                    payment_info = sdk.payment().get(payment_id)
-                    print(f"Payment info (normal): {payment_info}")
+                    print(f"[WEBHOOK] Error con credenciales de empleado: {str(e)}")
+                    try:
+                        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+                        payment_info = sdk.payment().get(payment_id)
+                        print(f"[WEBHOOK] Payment info (normal): {payment_info}")
+                    except Exception as e2:
+                        print(f"[WEBHOOK] Error con credenciales normales: {str(e2)}")
+                        return HttpResponse(status=400)
                 
                 if payment_info['status'] == 200:
                     payment_data = payment_info['response']
@@ -366,6 +358,32 @@ def webhook_mercadopago(request):
                                 maquina = MaquinaBase.objects.get(id=maquina_id)
                                 persona = Persona.objects.get(id=persona_id)
                                 
+                                # IDEMPOTENCIA: Verificar que no existe ya un alquiler ACTIVO para esta referencia
+                                alquiler_existente = Alquiler.objects.filter(
+                                    external_reference=external_reference,
+                                    estado__in=['reservado', 'en_curso']  # Solo alquileres realmente activos
+                                ).first()
+                                
+                                if alquiler_existente:
+                                    print(f"[WEBHOOK] Alquiler ya existe: {alquiler_existente.numero}")
+                                    return HttpResponse(status=200)
+                                
+                                # Verificar que no existe un alquiler ACTIVO duplicado por datos
+                                alquiler_duplicado = Alquiler.objects.filter(
+                                    maquina_base=maquina,
+                                    persona=persona,
+                                    fecha_inicio=fecha_inicio,
+                                    fecha_fin=fecha_fin,
+                                    estado__in=['reservado', 'en_curso']  # Solo alquileres realmente activos
+                                ).first()
+                                
+                                if alquiler_duplicado:
+                                    print(f"[WEBHOOK] Alquiler duplicado encontrado: {alquiler_duplicado.numero}")
+                                    # Actualizar la referencia externa del existente
+                                    alquiler_duplicado.external_reference = external_reference
+                                    alquiler_duplicado.save()
+                                    return HttpResponse(status=200)
+                                
                                 # Buscar una unidad disponible
                                 unidad = Unidad.objects.filter(
                                     maquina_base=maquina,
@@ -386,21 +404,19 @@ def webhook_mercadopago(request):
                                         external_reference=external_reference
                                     )
                                     
-                                    # NO marcar la unidad como alquilada hasta que comience el alquiler
-                                    # El sistema manejará automáticamente las unidades disponibles por fechas
-                                    
-                                    print(f"Alquiler creado: {alquiler.numero}")
+                                    print(f"[WEBHOOK] Alquiler creado: {alquiler.numero}")
                                     
                                     # Enviar mail al cliente
                                     try:
                                         enviar_email_alquiler_simple(alquiler)
+                                        print(f"[WEBHOOK] Email enviado correctamente")
                                     except Exception as e:
-                                        print(f"Error al enviar email: {str(e)}")
+                                        print(f"[WEBHOOK] Error al enviar email: {str(e)}")
                                 else:
-                                    print("No hay unidades disponibles")
+                                    print("[WEBHOOK] No hay unidades disponibles")
                                     
                             except Exception as e:
-                                print(f"Error procesando pago aprobado: {str(e)}")
+                                print(f"[WEBHOOK] Error procesando pago aprobado: {str(e)}")
                     else:
                         # Formato antiguo - buscar alquiler existente
                         try:
@@ -425,7 +441,12 @@ def webhook_mercadopago(request):
                     
                     return HttpResponse(status=200)
                 else:
-                    print(f"Error en payment info: {payment_info}")
+                    print(f"[WEBHOOK] Error en payment info: {payment_info}")
+                    # Si el pago no se encuentra, podría ser porque aún no está disponible
+                    # Retornamos 200 para que MercadoPago no reintente
+                    if payment_info.get('status') == 404:
+                        print(f"[WEBHOOK] Payment not found - MercadoPago aún no lo tiene disponible")
+                        return HttpResponse(status=200)
                     return HttpResponse(status=400)
             else:
                 print(f"Tipo de notificación no manejado: {data.get('type')}")
@@ -512,7 +533,7 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
                 img.save(buffer, format="PNG")
                 img_b64 = base64.b64encode(buffer.getvalue()).decode()
                 
-                print(f"✓ QR dinámico creado exitosamente")
+                print(f"[OK] QR dinámico creado exitosamente")
                 
                 return JsonResponse({
                     'qr_code_base64': img_b64,
@@ -527,7 +548,7 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
                 }, status=500)
         else:
             error_msg = f"Error al crear orden QR: {response.status_code} - {response.text}"
-            print(f"✗ {error_msg}")
+            print(f"[ERROR] {error_msg}")
             return JsonResponse({
                 'error': error_msg
             }, status=500)
@@ -596,7 +617,7 @@ def procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_
         
         if preference_response["status"] == 201:
             preference = preference_response["response"]
-            print(f"✓ Preferencia creada: {preference['id']}")
+            print(f"[OK] Preferencia creada: {preference['id']}")
             
             return JsonResponse({
                 'init_point': preference["init_point"]

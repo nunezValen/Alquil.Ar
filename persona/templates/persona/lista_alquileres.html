@@ -1215,6 +1215,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Enviar solicitud
             const formData = new FormData(formFinalizar);
             
+            // Asegurar que el checkbox se envíe correctamente
+            formData.set('maquina_danada', maquinaDanada);
+            
+            // Debug logs removidos para producción
+            
             fetch('{% url "persona:finalizar_alquiler" %}', {
                 method: 'POST',
                 body: formData,

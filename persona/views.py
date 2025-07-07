@@ -192,7 +192,14 @@ def inicio(request):
 
 @login_required
 def catalogo_maquinas(request):
-    maquinas = Maquina.objects.filter(estado='disponible')
+    # Usar el sistema nuevo de MaquinaBase con unidades
+    from maquinas.models import MaquinaBase
+    # Filtrar solo máquinas que tengan unidades realmente disponibles (no en mantenimiento)
+    maquinas = MaquinaBase.objects.filter(
+        visible=True,
+        unidades__estado='disponible',
+        unidades__visible=True
+    ).distinct().order_by('nombre')
     return render(request, 'persona/catalogo_maquinas.html', {'maquinas': maquinas})
 
 @login_required
@@ -1342,7 +1349,11 @@ def finalizar_alquiler(request):
         codigo_cliente = request.POST.get('codigo_cliente', '').strip()
         calificacion = request.POST.get('calificacion')
         observaciones = request.POST.get('observaciones', '').strip()
-        maquina_danada = request.POST.get('maquina_danada') == 'true'
+        # Interpretar el checkbox de máquina dañada
+        maquina_danada_raw = request.POST.get('maquina_danada')
+        maquina_danada = maquina_danada_raw in ['true', 'on', '1', True]
+        
+        # Debug logs removidos para producción
         
         # Validar datos requeridos
         if not alquiler_id or not codigo_cliente or not calificacion:
@@ -1587,61 +1598,72 @@ def pago_exitoso(request):
                     messages.error(request, "Usuario no encontrado.")
                     return redirect('persona:inicio')
                 
-                # Verificar que no existe ya un alquiler para estos datos
-                alquiler_existente = Alquiler.objects.filter(
-                    persona=persona,
-                    maquina_base=maquina_base,
-                    fecha_inicio=fecha_inicio,
-                    fecha_fin=fecha_fin
+                # IDEMPOTENCIA: Verificar que no existe ya un alquiler ACTIVO para esta referencia externa
+                alquiler_por_referencia = Alquiler.objects.filter(
+                    external_reference=external_reference,
+                    estado__in=['reservado', 'en_curso']  # Solo alquileres realmente activos
                 ).first()
                 
-                if not alquiler_existente:
-                    # Verificar disponibilidad nuevamente
-                    if Alquiler.verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin):
-                        # Verificar que el cliente no tenga otro alquiler activo
-                        alquileres_activos = Alquiler.objects.filter(
-                            persona=persona,
-                            estado__in=['reservado', 'en_curso']
-                        )
-                        
-                        if not alquileres_activos.exists():
-                            # Crear el alquiler
-                            alquiler = Alquiler.objects.create(
-                                maquina_base=maquina_base,
+                if alquiler_por_referencia:
+                    print(f"[PAGO_EXITOSO] Alquiler ya existe por referencia: {alquiler_por_referencia.numero}")
+                    alquiler = alquiler_por_referencia
+                else:
+                    # Verificar que no existe ya un alquiler ACTIVO para estos datos
+                    alquiler_existente = Alquiler.objects.filter(
+                        persona=persona,
+                        maquina_base=maquina_base,
+                        fecha_inicio=fecha_inicio,
+                        fecha_fin=fecha_fin,
+                        estado__in=['reservado', 'en_curso']  # Solo alquileres realmente activos
+                    ).first()
+                    
+                    if alquiler_existente:
+                        print(f"[PAGO_EXITOSO] Alquiler ya existe por datos: {alquiler_existente.numero}")
+                        # Actualizar la referencia externa si no la tiene
+                        if not alquiler_existente.external_reference:
+                            alquiler_existente.external_reference = external_reference
+                            alquiler_existente.save()
+                        alquiler = alquiler_existente
+                    else:
+                        # Verificar disponibilidad nuevamente
+                        if Alquiler.verificar_disponibilidad(maquina_base, fecha_inicio, fecha_fin):
+                            # Verificar que el cliente no tenga otro alquiler activo
+                            alquileres_activos = Alquiler.objects.filter(
                                 persona=persona,
-                                fecha_inicio=fecha_inicio,
-                                fecha_fin=fecha_fin,
-                                metodo_pago=metodo_pago,
-                                estado='reservado',
-                                monto_total=float(total)
+                                estado__in=['reservado', 'en_curso']
                             )
                             
-                            print(f"=== ALQUILER CREADO VIA FALLBACK ===")
-                            print(f"ID: {alquiler.id}")
-                            print(f"Número: {alquiler.numero}")
-                            print(f"Código de retiro: {alquiler.codigo_retiro}")
-                            
-                            # Enviar email con PDF al cliente
-                            try:
-                                print(f"[INFO] Intentando enviar email desde fallback...")
-                                resultado_email = enviar_email_alquiler_simple(alquiler)
-                                if resultado_email:
-                                    print(f"[SUCCESS] Email enviado correctamente desde fallback")
-                                else:
-                                    print(f"[ERROR] Falló el envío de email desde fallback")
-                            except Exception as e:
-                                print(f"[ERROR] Error al enviar email desde fallback: {str(e)}")
-                                import traceback
-                                traceback.print_exc()
+                            if not alquileres_activos.exists():
+                                # Crear el alquiler
+                                alquiler = Alquiler.objects.create(
+                                    maquina_base=maquina_base,
+                                    persona=persona,
+                                    fecha_inicio=fecha_inicio,
+                                    fecha_fin=fecha_fin,
+                                    metodo_pago=metodo_pago,
+                                    estado='reservado',
+                                    monto_total=float(total),
+                                    external_reference=external_reference
+                                )
+                                
+                                print(f"[PAGO_EXITOSO] Alquiler creado via fallback: {alquiler.numero}")
+                                
+                                # Enviar email con PDF al cliente
+                                try:
+                                    print(f"[PAGO_EXITOSO] Intentando enviar email...")
+                                    resultado_email = enviar_email_alquiler_simple(alquiler)
+                                    if resultado_email:
+                                        print(f"[PAGO_EXITOSO] Email enviado correctamente")
+                                    else:
+                                        print(f"[PAGO_EXITOSO] Falló el envío de email")
+                                except Exception as e:
+                                    print(f"[PAGO_EXITOSO] Error al enviar email: {str(e)}")
+                            else:
+                                print(f"[PAGO_EXITOSO] Cliente ya tiene alquiler activo")
+                                messages.warning(request, 'Ya tienes un alquiler activo.')
                         else:
-                            print(f"Cliente ya tiene alquiler activo")
-                            messages.warning(request, 'Ya tienes un alquiler activo.')
-                    else:
-                        print(f"No hay disponibilidad")
-                        messages.error(request, 'No hay unidades disponibles para las fechas seleccionadas.')
-                else:
-                    print(f"Alquiler ya existe: {alquiler_existente.numero}")
-                    alquiler = alquiler_existente
+                            print(f"[PAGO_EXITOSO] No hay disponibilidad")
+                            messages.error(request, 'No hay unidades disponibles para las fechas seleccionadas.')
                     
         except Exception as e:
             print(f"Error al procesar retorno de pago: {str(e)}")
@@ -1790,7 +1812,7 @@ def buscar_clientes_json(request):
     print(f"📊 Usuario: {request.user} - Autenticado: {request.user.is_authenticated}")
     
     if len(query) < 2:  # Mínimo 2 caracteres para buscar
-        print("❌ Búsqueda muy corta, devolviendo lista vacía")
+        print("[INFO] Búsqueda muy corta, devolviendo lista vacía")
         return JsonResponse({'clientes': []})
     
     # Buscar SOLO por email y DNI en todas las personas (excluir empleados)
