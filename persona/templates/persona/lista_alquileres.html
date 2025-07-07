@@ -460,12 +460,19 @@
                                             </button>
                                         </div>
                                     {% elif alquiler.estado == 'en_curso' %}
-                                        <button type="button" 
-                                               class="btn btn-sm btn-danger" 
-                                               onclick="cancelarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}')"
-                                               title="Cancelar Alquiler">
-                                            <i class="fas fa-times"></i> Cancelar
-                                        </button>
+                                        <div class="d-flex gap-1 flex-column">
+                                            <button type="button" 
+                                                   class="btn btn-sm btn-warning" 
+                                                   onclick="finalizarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}', '{% if alquiler.codigo_retiro %}{{ alquiler.codigo_retiro }}{% endif %}')"
+                                                   title="Finalizar Alquiler - ID: {{ alquiler.id }}"
+                                                   id="btn-finalizar-{{ alquiler.id }}"
+                                                   data-alquiler-id="{{ alquiler.id }}"
+                                                   data-numero="{{ alquiler.numero }}"
+                                                   data-codigo="{{ alquiler.codigo_retiro }}">
+                                                <i class="fas fa-stop"></i> Finalizar
+                                            </button>
+                                            <small class="text-muted">No se puede cancelar</small>
+                                        </div>
                                     {% elif alquiler.estado == 'cancelado' %}
                                         {% if alquiler.monto_reembolso and alquiler.monto_reembolso > 0 %}
                                             <small class="text-success">
@@ -542,6 +549,140 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para finalizar alquiler -->
+<div class="modal fade" id="finalizarAlquilerModal" tabindex="-1" aria-labelledby="finalizarAlquilerModalLabel">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="finalizarAlquilerModalLabel">
+                    <i class="fas fa-stop text-warning"></i> Finalizar Alquiler
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="alquiler-info-finalizar" class="mb-3">
+                    <h6>Alquiler: <span id="modal-numero-alquiler-finalizar"></span></h6>
+                    <p class="text-muted">Solicita al cliente que proporcione el código de retiro para confirmar la devolución.</p>
+                </div>
+                
+                <div id="modal-alerts-finalizar" class="mb-3" style="display: none;"></div>
+                
+                <form id="finalizar-alquiler-form">
+                    {% csrf_token %}
+                    <input type="hidden" id="alquiler-id-finalizar" name="alquiler_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="codigo-cliente-finalizar" class="form-label">
+                                    <i class="fas fa-key"></i> Código proporcionado por el cliente:
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="codigo-cliente-finalizar" 
+                                       name="codigo_cliente"
+                                       placeholder="Ingrese el código de retiro"
+                                       required
+                                       autocomplete="off">
+                                <div class="form-text">
+                                    El cliente debe proporcionar el mismo código de retiro.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="calificacion" class="form-label">
+                                    <i class="fas fa-star"></i> Calificación del cliente (1-5 estrellas):
+                                </label>
+                                <div class="rating-container">
+                                    <div class="rating-stars">
+                                        <span class="star" data-rating="1"><i class="fas fa-star"></i></span>
+                                        <span class="star" data-rating="2"><i class="fas fa-star"></i></span>
+                                        <span class="star" data-rating="3"><i class="fas fa-star"></i></span>
+                                        <span class="star" data-rating="4"><i class="fas fa-star"></i></span>
+                                        <span class="star" data-rating="5"><i class="fas fa-star"></i></span>
+                                    </div>
+                                    <input type="hidden" id="calificacion" name="calificacion" value="" required>
+                                </div>
+                                <div class="form-text">
+                                    Califica la puntualidad y estado de devolución.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="maquina-danada" name="maquina_danada">
+                                    <label class="form-check-label" for="maquina-danada">
+                                        <i class="fas fa-exclamation-triangle text-warning"></i> La máquina presenta daños
+                                    </label>
+                                </div>
+                                <div class="form-text">
+                                    Marcar si la máquina necesita mantenimiento.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="observaciones-finalizar" class="form-label">
+                                    <i class="fas fa-comment"></i> Observaciones (opcional):
+                                </label>
+                                <textarea class="form-control" 
+                                          id="observaciones-finalizar" 
+                                          name="observaciones"
+                                          rows="3"
+                                          placeholder="Comentarios adicionales sobre la devolución..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" id="finalizar-alquiler-btn">
+                    <i class="fas fa-check"></i> Finalizar Alquiler
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-container {
+    text-align: center;
+}
+
+.rating-stars {
+    font-size: 2rem;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.star {
+    color: #ddd !important;
+    transition: color 0.2s;
+    margin: 0 2px;
+    cursor: pointer;
+}
+
+.star i {
+    color: inherit;
+}
+
+.star:hover {
+    color: #ffc107 !important;
+}
+
+.star.active {
+    color: #ffc107 !important;
+}
+</style>
 
 <script>
 function cancelarAlquiler(alquilerId, numeroAlquiler) {
@@ -904,6 +1045,214 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSelection(options) {
         options.forEach((option, index) => {
             option.classList.toggle('active', index === selectedIndex);
+        });
+    }
+});
+
+// Función para finalizar alquiler
+function finalizarAlquiler(alquilerId, numeroAlquiler, codigoRetiro) {
+    console.log('🏁 FINALIZAR ALQUILER: Función llamada');
+    console.log('   Alquiler ID:', alquilerId);
+    console.log('   Número:', numeroAlquiler);
+    console.log('   Código retiro:', codigoRetiro);
+    
+    try {
+        // Llenar datos del modal
+        const modalNumero = document.getElementById('modal-numero-alquiler-finalizar');
+        const alquilerIdInput = document.getElementById('alquiler-id-finalizar');
+        const codigoClienteInput = document.getElementById('codigo-cliente-finalizar');
+        const calificacionInput = document.getElementById('calificacion');
+        const observacionesInput = document.getElementById('observaciones-finalizar');
+        const maquinaDanadaInput = document.getElementById('maquina-danada');
+        
+        if (!modalNumero || !alquilerIdInput || !codigoClienteInput || !calificacionInput) {
+            console.error('❌ FINALIZAR ALQUILER: Elementos del modal no encontrados');
+            alert('Error: No se pudo abrir el modal. Recarga la página e intenta nuevamente.');
+            return;
+        }
+        
+        modalNumero.textContent = numeroAlquiler;
+        alquilerIdInput.value = alquilerId;
+        codigoClienteInput.value = '';
+        calificacionInput.value = '';
+        observacionesInput.value = '';
+        maquinaDanadaInput.checked = false;
+        
+        // Resetear estrellas
+        const stars = document.querySelectorAll('.star');
+        stars.forEach(star => {
+            star.classList.remove('active');
+            star.style.setProperty('color', '#ddd', 'important');
+        });
+        
+        // Limpiar alertas
+        const modalAlerts = document.getElementById('modal-alerts-finalizar');
+        if (modalAlerts) {
+            modalAlerts.style.display = 'none';
+            modalAlerts.innerHTML = '';
+        }
+        
+        // Mostrar modal
+        const modalElement = document.getElementById('finalizarAlquilerModal');
+        if (!modalElement) {
+            console.error('❌ FINALIZAR ALQUILER: Modal no encontrado');
+            alert('Error: Modal no encontrado. Recarga la página e intenta nuevamente.');
+            return;
+        }
+        
+        console.log('✅ FINALIZAR ALQUILER: Mostrando modal...');
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Enfocar el input
+        setTimeout(() => {
+            if (codigoClienteInput) {
+                codigoClienteInput.focus();
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ FINALIZAR ALQUILER: Error inesperado:', error);
+        alert('Error inesperado al abrir el modal: ' + error.message);
+    }
+}
+
+function mostrarAlertaModalFinalizar(mensaje, tipo = 'danger') {
+    const modalAlerts = document.getElementById('modal-alerts-finalizar');
+    modalAlerts.innerHTML = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    modalAlerts.style.display = 'block';
+    modalAlerts.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Manejar sistema de estrellas y finalización
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star');
+    const calificacionInput = document.getElementById('calificacion');
+    
+    if (stars.length > 0 && calificacionInput) {
+        stars.forEach((star, index) => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                calificacionInput.value = rating;
+                
+                console.log(`[ESTRELLAS] Calificación seleccionada: ${rating}`);
+                
+                // Actualizar estrellas visuales - solo las seleccionadas deben estar activas
+                stars.forEach((s, i) => {
+                    s.classList.remove('active');
+                    if (i < rating) {
+                        s.classList.add('active');
+                        s.style.setProperty('color', '#ffc107', 'important');
+                    } else {
+                        s.style.setProperty('color', '#ddd', 'important');
+                    }
+                });
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.rating);
+                stars.forEach((s, i) => {
+                    if (i < rating) {
+                        s.style.setProperty('color', '#ffc107', 'important');
+                    } else {
+                        s.style.setProperty('color', '#ddd', 'important');
+                    }
+                });
+            });
+        });
+        
+        // Restaurar color al salir del mouse
+        const ratingContainer = document.querySelector('.rating-stars');
+        if (ratingContainer) {
+            ratingContainer.addEventListener('mouseleave', function() {
+                const currentRating = parseInt(calificacionInput.value) || 0;
+                stars.forEach((s, i) => {
+                    if (i < currentRating) {
+                        s.style.setProperty('color', '#ffc107', 'important');
+                        s.classList.add('active');
+                    } else {
+                        s.style.setProperty('color', '#ddd', 'important');
+                        s.classList.remove('active');
+                    }
+                });
+            });
+        }
+    }
+    
+    // Manejar finalización de alquiler
+    const finalizarBtn = document.getElementById('finalizar-alquiler-btn');
+    const formFinalizar = document.getElementById('finalizar-alquiler-form');
+    
+    if (finalizarBtn && formFinalizar) {
+        finalizarBtn.addEventListener('click', function() {
+            const alquilerId = document.getElementById('alquiler-id-finalizar').value;
+            const codigoCliente = document.getElementById('codigo-cliente-finalizar').value.trim();
+            const calificacion = document.getElementById('calificacion').value;
+            const observaciones = document.getElementById('observaciones-finalizar').value.trim();
+            const maquinaDanada = document.getElementById('maquina-danada').checked;
+            
+            // Validaciones
+            if (!codigoCliente) {
+                mostrarAlertaModalFinalizar('<i class="fas fa-exclamation-triangle"></i> Por favor, ingresa el código proporcionado por el cliente.', 'warning');
+                return;
+            }
+            
+            if (!calificacion) {
+                mostrarAlertaModalFinalizar('<i class="fas fa-star"></i> Por favor, selecciona una calificación para el cliente.', 'warning');
+                return;
+            }
+            
+            // Deshabilitar botón y mostrar spinner
+            const originalText = finalizarBtn.innerHTML;
+            finalizarBtn.disabled = true;
+            finalizarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Finalizando...';
+            
+            // Enviar solicitud
+            const formData = new FormData(formFinalizar);
+            
+            fetch('{% url "persona:finalizar_alquiler" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarAlertaModalFinalizar(
+                        `<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> ${data.message}`,
+                        'success'
+                    );
+                    
+                    // Recargar página después de 2 segundos
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    mostrarAlertaModalFinalizar(
+                        `<i class="fas fa-times-circle"></i> <strong>Error:</strong> ${data.error}`,
+                        'danger'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarAlertaModalFinalizar(
+                    '<i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> Ocurrió un error al procesar la solicitud.',
+                    'danger'
+                );
+            })
+            .finally(() => {
+                // Restaurar botón
+                finalizarBtn.disabled = false;
+                finalizarBtn.innerHTML = originalText;
+            });
         });
     }
 });

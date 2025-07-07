@@ -710,3 +710,150 @@ def enviar_email_inicio_alquiler(alquiler):
         print(f"[DEBUG] Traceback completo:")
         traceback.print_exc()
         return False
+
+
+def enviar_email_finalizacion_alquiler(alquiler):
+    """
+    Envía un email de notificación de finalización de alquiler
+    """
+    try:
+        print(f"[INFO] Iniciando envío de email de finalización para alquiler {alquiler.numero}")
+        print(f"[INFO] Email destino: {alquiler.persona.email}")
+        
+        # Obtener la calificación si existe
+        calificacion_info = ""
+        try:
+            from .models import CalificacionCliente
+            calificacion = CalificacionCliente.objects.get(alquiler=alquiler)
+            estrellas = "⭐" * calificacion.calificacion
+            calificacion_info = f"""
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                <h3 style="color: #856404; margin-top: 0; text-align: center;">⭐ Calificación Recibida</h3>
+                <p style="text-align: center; color: #856404; font-size: 18px; margin: 10px 0;">
+                    {estrellas} ({calificacion.calificacion}/5)
+                </p>
+                {f'<p style="text-align: center; color: #856404; margin: 0;"><em>"{calificacion.observaciones}"</em></p>' if calificacion.observaciones else ''}
+            </div>
+            """
+        except:
+            pass
+        
+        # Crear el mensaje de email
+        asunto = f'Alquiler Finalizado #{alquiler.numero} - ALQUIL.AR'
+        
+        mensaje_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; background: linear-gradient(135deg, #17a2b8, #138496); padding: 30px; border-radius: 10px; color: white; margin-bottom: 30px;">
+                    <h1 style="margin: 0; font-size: 28px;">🏁 ¡Alquiler Finalizado!</h1>
+                    <p style="margin: 10px 0 0; font-size: 16px;">Su alquiler ha sido completado exitosamente</p>
+                </div>
+                
+                <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                    <h2 style="color: #0c5460; margin-top: 0; text-align: center;">✅ Estado: FINALIZADO</h2>
+                    <p style="color: #0c5460; margin: 0; text-align: center; font-size: 16px;">
+                        Su alquiler ha sido completado y la máquina ha sido devuelta correctamente.
+                    </p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                    <h2 style="color: #17a2b8; margin-top: 0;">Resumen del Alquiler</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Número de Alquiler:</td>
+                            <td style="padding: 8px 0; color: #17a2b8; font-weight: bold;">{alquiler.numero}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Máquina:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.nombre}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Marca y Modelo:</td>
+                            <td style="padding: 8px 0;">{alquiler.maquina_base.get_marca_display()} {alquiler.maquina_base.modelo}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Período de Alquiler:</td>
+                            <td style="padding: 8px 0;">{alquiler.fecha_inicio.strftime('%d/%m/%Y')} - {alquiler.fecha_fin.strftime('%d/%m/%Y')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Duración:</td>
+                            <td style="padding: 8px 0;">{alquiler.cantidad_dias} día{'s' if alquiler.cantidad_dias != 1 else ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold; color: #555;">Monto Total:</td>
+                            <td style="padding: 8px 0; color: #17a2b8; font-weight: bold; font-size: 16px;">${float(alquiler.monto_total) if alquiler.monto_total else 0:.2f}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {calificacion_info}
+                
+                <div style="background: #e7f3ff; border: 1px solid #b3d9ff; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #0066cc; margin-top: 0; text-align: center;">🎉 ¡Gracias por elegirnos!</h3>
+                    <p style="color: #0066cc; text-align: center; margin: 10px 0;">
+                        Esperamos que haya tenido una excelente experiencia con nuestro servicio.
+                    </p>
+                    <p style="color: #0066cc; text-align: center; margin: 10px 0;">
+                        Su opinión es muy importante para nosotros y nos ayuda a mejorar continuamente.
+                    </p>
+                </div>
+                
+                <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h3 style="color: #155724; margin-top: 0; text-align: center;">🔄 ¿Necesita alquilar otra máquina?</h3>
+                    <p style="color: #155724; text-align: center; margin: 10px 0;">
+                        Visite nuestro catálogo en línea para ver todas las máquinas disponibles.
+                    </p>
+                    <p style="color: #155724; text-align: center; margin: 10px 0;">
+                        Como cliente recurrente, puede acceder a ofertas especiales y descuentos.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="color: #666; margin: 0;">¿Tienes alguna consulta o comentario?</p>
+                    <p style="margin: 5px 0;">
+                        📧 <a href="mailto:contacto.alquilar@gmail.com" style="color: #17a2b8;">contacto.alquilar@gmail.com</a> | 
+                        📞 <a href="tel:+541112345678" style="color: #17a2b8;">+54 11 1234-5678</a>
+                    </p>
+                </div>
+                
+                <div style="text-align: center; padding: 20px; background: #f1f3f4; border-radius: 10px; margin-top: 30px;">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        <strong>ALQUIL.AR</strong> - Tu socio confiable en alquiler de maquinaria<br>
+                        ¡Gracias por confiar en nosotros!<br>
+                        Este es un email automático, por favor no respondas a esta dirección.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Crear el email
+        from django.core.mail import send_mail
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', settings.EMAIL_HOST_USER)
+        
+        # Enviar el email
+        print("[INFO] Enviando email de finalización...")
+        print(f"[INFO] From: {from_email}")
+        print(f"[INFO] To: {alquiler.persona.email}")
+        print(f"[INFO] Subject: {asunto}")
+        
+        send_mail(
+            subject=asunto,
+            message='',  # Mensaje en texto plano vacío
+            from_email=from_email,
+            recipient_list=[alquiler.persona.email],
+            html_message=mensaje_html,  # Mensaje HTML
+            fail_silently=False
+        )
+        
+        print(f"[SUCCESS] Email de finalización enviado exitosamente a: {alquiler.persona.email}")
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] Error al enviar email de finalización: {str(e)}")
+        import traceback
+        print(f"[DEBUG] Traceback completo:")
+        traceback.print_exc()
+        return False

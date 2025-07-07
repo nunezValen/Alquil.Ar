@@ -53,6 +53,15 @@ class Persona(models.Model):
     es_admin = models.BooleanField(default=False)
     bloqueado_cliente = models.BooleanField(default=False, help_text="Si el usuario está bloqueado para actuar como cliente")
     bloqueado_empleado = models.BooleanField(default=False, help_text="Si el usuario está bloqueado para actuar como empleado")
+    
+    # Campo para el promedio de calificaciones
+    calificacion_promedio = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=5.00,
+        validators=[MinValueValidator(1.0), MaxValueValidator(5.0)],
+        help_text="Promedio de calificaciones del cliente (1.00 - 5.00)"
+    )
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"

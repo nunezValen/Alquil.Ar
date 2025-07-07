@@ -120,7 +120,7 @@
                             <td>{{ cliente.fecha_nacimiento|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ cliente.fecha_registro|date:"d/m/Y H:i" }}</td>
                             <td class="text-center">
-                                {{ cliente.promedio_calificacion|floatformat:2 }} ★
+                                {{ cliente.calificacion_promedio|floatformat:2 }} ★
                             </td>
                             <td class="text-center">
                                 <div class="form-check form-switch d-flex justify-content-center align-items-center">

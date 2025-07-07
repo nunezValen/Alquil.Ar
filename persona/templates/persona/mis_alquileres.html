@@ -162,14 +162,10 @@
                                                 </a>
                                             {% endif %}
                                         </div>
-                                    {% elif alquiler.estado == 'en_curso' and alquiler.puede_ser_cancelado %}
-                                        <div class="btn-group-sm">
-                                            <a href="{% url 'persona:cancelar_mi_alquiler' alquiler.id %}" 
-                                               class="btn btn-sm btn-outline-danger"
-                                               title="Cancelar este alquiler">
-                                                <i class="fas fa-ban me-1"></i>Cancelar
-                                            </a>
-                                        </div>
+                                    {% elif alquiler.estado == 'en_curso' %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-play-circle me-1"></i>En progreso
+                                        </small>
                                     {% endif %}
                                 </div>
                             </div>

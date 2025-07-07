@@ -1329,6 +1329,107 @@ def iniciar_alquiler(request):
             'error': f'Error interno: {str(e)}'
         })
 
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def finalizar_alquiler(request):
+    """Vista para finalizar un alquiler con verificación de código y calificación del cliente"""
+    try:
+        from maquinas.models import CalificacionCliente
+        from maquinas.utils import enviar_email_finalizacion_alquiler
+        
+        alquiler_id = request.POST.get('alquiler_id')
+        codigo_cliente = request.POST.get('codigo_cliente', '').strip()
+        calificacion = request.POST.get('calificacion')
+        observaciones = request.POST.get('observaciones', '').strip()
+        maquina_danada = request.POST.get('maquina_danada') == 'true'
+        
+        # Validar datos requeridos
+        if not alquiler_id or not codigo_cliente or not calificacion:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Validar calificación
+        try:
+            calificacion = int(calificacion)
+            if calificacion < 1 or calificacion > 5:
+                raise ValueError("Calificación fuera de rango")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'La calificación debe ser un número entre 1 y 5.'
+            })
+        
+        # Buscar el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que el alquiler esté en estado 'en_curso'
+        if alquiler.estado != 'en_curso':
+            return JsonResponse({
+                'success': False,
+                'error': f'No es posible devolver en este estado. El alquiler está en estado {alquiler.get_estado_display()}.'
+            })
+        
+        # Verificar el código de retiro
+        if alquiler.codigo_retiro != codigo_cliente:
+            return JsonResponse({
+                'success': False,
+                'error': 'DNI o código de reserva inválido.'
+            })
+        
+        # Cambiar estado del alquiler a 'finalizado'
+        alquiler.estado = 'finalizado'
+        alquiler.save()
+        
+        # Actualizar estado de la máquina/unidad
+        if alquiler.unidad:
+            if maquina_danada:
+                alquiler.unidad.estado = 'mantenimiento'
+                mensaje_maquina = "Máquina marcada en mantenimiento."
+            else:
+                alquiler.unidad.estado = 'disponible'
+                mensaje_maquina = "Máquina marcada como disponible."
+            alquiler.unidad.save()
+        else:
+            mensaje_maquina = "Sin unidad asignada."
+        
+        # Crear calificación del cliente
+        CalificacionCliente.objects.create(
+            alquiler=alquiler,
+            cliente=alquiler.persona,
+            empleado=request.user,
+            calificacion=calificacion,
+            observaciones=observaciones
+        )
+        
+        # Enviar email de finalización (opcional)
+        try:
+            enviar_email_finalizacion_alquiler(alquiler)
+        except Exception as e:
+            print(f"Error enviando email de finalización: {str(e)}")
+        
+        # Mensaje de éxito
+        mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        
+        return JsonResponse({
+            'success': True,
+            'message': mensaje
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
+
 def exportar_alquileres_xlsx(alquileres):
     """Exportar alquileres a Excel"""
     try:
@@ -1814,11 +1915,7 @@ def verificar_codigo(request):
 
 @empleado_requerido
 def lista_clientes(request):
-    queryset = Persona.objects.filter(es_cliente=True, es_admin=False).annotate(
-        promedio_calificacion_raw=Avg('alquileres_maquinas__calificacion')
-    ).annotate(
-        promedio_calificacion=Coalesce('promedio_calificacion_raw', Value(5.0))
-    ).order_by('-fecha_registro')
+    queryset = Persona.objects.filter(es_cliente=True, es_admin=False).order_by('-fecha_registro')
 
     filtros = {
         'nombre': request.GET.get('nombre', ''),
@@ -1852,11 +1949,11 @@ def lista_clientes(request):
         fecha_hasta_dt = datetime.strptime(filtros['fecha_hasta'], '%Y-%m-%d') + timedelta(days=1)
         queryset = queryset.filter(fecha_registro__lt=fecha_hasta_dt)
     
-    # El filtrado por calificación se hace después de la anotación
+    # El filtrado por calificación se hace usando el campo del modelo Persona
     if filtros['calificacion_desde']:
-        queryset = queryset.filter(promedio_calificacion__gte=filtros['calificacion_desde'])
+        queryset = queryset.filter(calificacion_promedio__gte=filtros['calificacion_desde'])
     if filtros['calificacion_hasta']:
-        queryset = queryset.filter(promedio_calificacion__lte=filtros['calificacion_hasta'])
+        queryset = queryset.filter(calificacion_promedio__lte=filtros['calificacion_hasta'])
 
     # Comprobar si se ha aplicado algún filtro
     filtros_aplicados = any(filtros.values())
@@ -1887,7 +1984,7 @@ def lista_clientes(request):
         # Datos
         for cliente in queryset:
             estado = "Bloqueado" if cliente.bloqueado_cliente else "Activo"
-            calificacion = cliente.promedio_calificacion if cliente.promedio_calificacion is not None else 5.0
+            calificacion = cliente.calificacion_promedio if cliente.calificacion_promedio is not None else 5.0
             
             # Formatear fecha de nacimiento si existe
             fecha_nacimiento_str = cliente.fecha_nacimiento.strftime('%d/%m/%Y') if cliente.fecha_nacimiento else 'N/A'

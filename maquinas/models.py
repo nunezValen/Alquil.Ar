@@ -394,8 +394,10 @@ class Alquiler(models.Model):
     def puede_ser_cancelado(self):
         """
         Verifica si el alquiler puede ser cancelado
+        Solo se pueden cancelar alquileres en estado 'reservado'
+        Los alquileres 'en_curso' NO pueden ser cancelados
         """
-        return self.estado in ['reservado', 'en_curso']
+        return self.estado == 'reservado'
     
     def __str__(self):
         return f"Alquiler {self.numero} - {self.maquina_base.nombre}"
@@ -541,3 +543,89 @@ def crear_reembolso_automatico(sender, instance, created, **kwargs):
             monto=instance.monto_reembolso,
             porcentaje=instance.porcentaje_reembolso or 0
         )
+
+class CalificacionCliente(models.Model):
+    """
+    Modelo para el historial de calificaciones de clientes
+    """
+    CALIFICACIONES = [
+        (1, '1 Estrella'),
+        (2, '2 Estrellas'),
+        (3, '3 Estrellas'),
+        (4, '4 Estrellas'),
+        (5, '5 Estrellas'),
+    ]
+    
+    alquiler = models.OneToOneField(
+        Alquiler,
+        on_delete=models.CASCADE,
+        verbose_name='Alquiler',
+        related_name='calificacion_cliente'
+    )
+    cliente = models.ForeignKey(
+        'persona.Persona',
+        on_delete=models.CASCADE,
+        verbose_name='Cliente',
+        related_name='calificaciones_recibidas'
+    )
+    empleado = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Empleado que Calificó',
+        related_name='calificaciones_otorgadas'
+    )
+    calificacion = models.PositiveIntegerField(
+        choices=CALIFICACIONES,
+        verbose_name='Calificación'
+    )
+    fecha_calificacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Calificación'
+    )
+    observaciones = models.TextField(
+        blank=True,
+        verbose_name='Observaciones'
+    )
+    
+    def __str__(self):
+        return f"Calificación {self.cliente.nombre} {self.cliente.apellido} - {self.calificacion} estrellas"
+    
+    class Meta:
+        verbose_name = "Calificación de Cliente"
+        verbose_name_plural = "Calificaciones de Clientes"
+        ordering = ['-fecha_calificacion']
+
+@receiver(post_save, sender=CalificacionCliente)
+def actualizar_promedio_cliente(sender, instance, created, **kwargs):
+    """
+    Actualiza el promedio de calificaciones del cliente cuando se crea una nueva calificación.
+    Incluye la calificación inicial de 5.0 en el cálculo del promedio.
+    """
+    if created:
+        cliente = instance.cliente
+        calificaciones = CalificacionCliente.objects.filter(cliente=cliente)
+        
+        print(f"[DEBUG] Actualizando promedio para cliente {cliente.nombre} {cliente.apellido}")
+        print(f"[DEBUG] Calificaciones de alquileres: {calificaciones.count()}")
+        
+        if calificaciones.exists():
+            # Calcular promedio incluyendo la calificación inicial de 5.0
+            suma_calificaciones = sum(cal.calificacion for cal in calificaciones)
+            # Agregar la calificación inicial de 5.0
+            suma_total = suma_calificaciones + 5.0
+            total_calificaciones = calificaciones.count() + 1  # +1 por la calificación inicial
+            
+            promedio = suma_total / total_calificaciones
+            
+            print(f"[DEBUG] Suma calificaciones alquileres: {suma_calificaciones}")
+            print(f"[DEBUG] Suma total (con inicial 5.0): {suma_total}")
+            print(f"[DEBUG] Total calificaciones: {total_calificaciones}")
+            print(f"[DEBUG] Promedio calculado: {promedio}")
+            
+            cliente.calificacion_promedio = round(promedio, 2)
+            cliente.save(update_fields=['calificacion_promedio'])
+            print(f"[DEBUG] Nuevo promedio guardado: {cliente.calificacion_promedio}")
+        else:
+            print(f"[DEBUG] No se encontraron calificaciones")
