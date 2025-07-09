@@ -42,16 +42,26 @@
                             <th>Teléfono</th>
                             <th>Email</th>
                             <th>Horario</th>
+                            {% if mostrar_columna_visible %}<th>Visible</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for sucursal in sucursales %}
+                        {% if mostrar_columna_visible or sucursal.es_visible %}
                         <tr>
                             <td>{{ sucursal.direccion }}</td>
                             <td>{{ sucursal.telefono }}</td>
                             <td>{{ sucursal.email }}</td>
                             <td>{{ sucursal.horario }}</td>
+                            {% if mostrar_columna_visible %}
+                            <td class="text-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input toggle-visible" data-id="{{ sucursal.id_sucursal }}" type="checkbox" {% if sucursal.es_visible %}checked{% endif %}>
+                                </div>
+                            </td>
+                            {% endif %}
                         </tr>
+                        {% endif %}
                         {% empty %}
                         <tr>
                             <td colspan="5" class="text-center py-4">
@@ -63,6 +73,26 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if mostrar_columna_visible %}
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.toggle-visible').forEach(function(sw) {
+                    sw.addEventListener('change', function() {
+                        const sucursalId = this.dataset.id;
+                        const csrftoken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                        fetch(`{% url 'persona:toggle_visibilidad_sucursal' 0 %}`.replace('0', sucursalId), {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrftoken,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                    });
+                });
+            });
+            </script>
+            {% endif %}
 
             {% if is_paginated %}
             <nav aria-label="Paginación">

@@ -1369,7 +1369,7 @@ def recuperar_password(request):
 
 def mapa_sucursales(request):
     try:
-        sucursales = Sucursal.objects.all()
+        sucursales = Sucursal.objects.filter(es_visible=True)
         
         # Validar que las coordenadas sean válidas
         for sucursal in sucursales:
@@ -2266,6 +2266,7 @@ def lista_sucursales(request):
         'is_paginated': page_obj.has_other_pages(),
         'filtros': filtros,
         'mensaje_sin_resultados': mensaje_sin_resultados,
+        'mostrar_columna_visible': request.user.is_superuser or (hasattr(request.user, 'persona') and request.user.persona.es_admin),
     })
 
 @login_required
@@ -2284,5 +2285,15 @@ def cargar_sucursal(request):
     else:
         form = SucursalForm()
     return render(request, 'persona/cargar_sucursal.html', {'form': form})
+
+# Endpoint para alternar visibilidad de sucursal
+@login_required
+@user_passes_test(es_admin)
+@require_http_methods(["POST"])
+def toggle_visibilidad_sucursal(request, sucursal_id):
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    sucursal.es_visible = not sucursal.es_visible
+    sucursal.save()
+    return JsonResponse({'status': 'success', 'visible': sucursal.es_visible})
 
 # Create your views here.

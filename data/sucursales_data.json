@@ -9,7 +9,8 @@
     "longitud": -57.92772200395548,
     "telefono": "555 1234 567",
     "email": "mario_emp@alquilar.com",
-    "horario": "Lunes a viernes: 9:00 a 20:00.\r\nSábados: 13:00 a 17:00."
+    "horario": "Lunes a viernes: 9:00 a 20:00.\r\nSábados: 13:00 a 17:00.",
+    "es_visible": true
 }
 },
 {
@@ -22,7 +23,8 @@
     "longitud": -57.96727854628321,
     "telefono": "555 123 4507",
     "email": "ejemplo@ejemplo.com",
-    "horario": "Lunes, miércoles y viernes: 7:00 - 19:00\r\nMartes y jueves: 10:00 - 21:00\r\nSábado: 9:00 - 14:00"
+    "horario": "Lunes, miércoles y viernes: 7:00 - 19:00\r\nMartes y jueves: 10:00 - 21:00\r\nSábado: 9:00 - 14:00",
+    "es_visible": true
 }
 }
 ]
