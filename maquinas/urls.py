@@ -27,4 +27,5 @@ urlpatterns = [
     path('cancelar-alquiler/<int:alquiler_id>/', views.cancelar_alquiler, name='cancelar_alquiler'),
     path('maquina/<int:maquina_id>/desocultar/', views.desocultar_maquina_base, name='desocultar_maquina_base'),
     path('confirmar-pago-binance/', views.confirmar_pago_binance, name='confirmar_pago_binance'),
+    path('nombres_maquinas_base/', views.nombres_maquinas_base, name='nombres_maquinas_base'),
 ] 

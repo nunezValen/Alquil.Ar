@@ -6,61 +6,85 @@
 {% block content %}
 <div class="container py-5">
     <h1 class="mb-4">Estadísticas del Sistema</h1>
-    
-    <div class="row">
-        <!-- Tarjeta de Alquileres -->
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Alquileres</h5>
-                    <div class="stats-number">0</div>
-                    <p class="card-text">Total de alquileres activos</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tarjeta de Máquinas -->
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Máquinas</h5>
-                    <div class="stats-number">0</div>
-                    <p class="card-text">Máquinas disponibles</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tarjeta de Usuarios -->
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Usuarios</h5>
-                    <div class="stats-number">0</div>
-                    <p class="card-text">Usuarios registrados</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gráficos (se implementarán más adelante) -->
-    <div class="row mt-4">
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Alquileres por Mes</h5>
-                    <div class="chart-placeholder">
-                        <p class="text-muted text-center my-5">Gráfico de alquileres por mes</p>
+    <div class="mx-auto mb-4">
+        <div class="card" style="border-radius: 12px;">
+            <div class="card-body p-0">
+                <ul class="nav nav-tabs custom-tabs mb-0" id="estadisticasTabs" role="tablist" style="border-bottom: 2px solid #dee2e6;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="facturacion-tab" data-bs-toggle="tab" data-bs-target="#facturacion" type="button" role="tab" aria-controls="facturacion" aria-selected="true">Facturación</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="maquinas-tab" data-bs-toggle="tab" data-bs-target="#maquinas" type="button" role="tab" aria-controls="maquinas" aria-selected="false">Máquinas</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button" role="tab" aria-controls="clientes" aria-selected="false">Clientes</button>
+                    </li>
+                </ul>
+                <div class="tab-content p-4" id="estadisticasTabsContent">
+                    <!-- Facturación -->
+                    <div class="tab-pane fade show active" id="facturacion" role="tabpanel" aria-labelledby="facturacion-tab">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <form id="form-facturacion" class="mb-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Inicio</label>
+                                        <input type="date" class="form-control" name="fecha_inicio" max="{{ today|default:'' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Fin</label>
+                                        <input type="date" class="form-control" name="fecha_fin" max="{{ today|default:'' }}">
+                                    </div>
+                                    <button type="button" class="btn btn-primary w-100" id="btn-consultar-facturacion">Consultar</button>
+                                </form>
+                            </div>
+                            <div class="col-md-7 d-flex flex-column align-items-center justify-content-center">
+                                <div id="facturacion-grafico" style="width:100%; min-height:220px;"></div>
+                                <div id="facturacion-total" class="fs-5 mt-4"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Máquinas más Alquiladas</h5>
-                    <div class="chart-placeholder">
-                        <p class="text-muted text-center my-5">Gráfico de máquinas más alquiladas</p>
+                    <!-- Máquinas -->
+                    <div class="tab-pane fade" id="maquinas" role="tabpanel" aria-labelledby="maquinas-tab">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <form id="form-maquinas" class="mb-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Inicio</label>
+                                        <input type="date" class="form-control" name="fecha_inicio" max="{{ today|default:'' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Fin</label>
+                                        <input type="date" class="form-control" name="fecha_fin" max="{{ today|default:'' }}">
+                                    </div>
+                                    <button type="button" class="btn btn-primary w-100" id="btn-consultar-maquinas">Consultar</button>
+                                </form>
+                            </div>
+                            <div class="col-md-7 d-flex flex-column align-items-center justify-content-center">
+                                <div id="maquinas-grafico-torta" style="width:100%; min-height:220px;"></div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div id="maquinas-listado" class="table-responsive p-0 bg-transparent border-0">
+                                    <table class="table table-hover table-sm align-middle mb-0" id="tabla-maquinas-alquiladas">
+                                        <thead>
+                                            <tr>
+                                                <th style="background-color: #f8f9fa; width: 75%;">Máquina Base</th>
+                                                <th style="background-color: #f8f9fa; width: 25%; text-align: right;">Cantidad de alquileres</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="maquinas-lista-resultados">
+                                            <!-- Resultados aquí -->
+                                        </tbody>
+                                    </table>
+                                    <button class="btn btn-primary btn-sm mt-3 ms-auto d-block" id="btn-descargar-maquinas">Descargar Resultados</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Clientes (placeholder) -->
+                    <div class="tab-pane fade" id="clientes" role="tabpanel" aria-labelledby="clientes-tab">
+                        <div class="alert alert-info">Próximamente: estadísticas de clientes.</div>
                     </div>
                 </div>
             </div>
@@ -69,20 +93,88 @@
 </div>
 
 <style>
-.stats-number {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #2176d2;
-    margin: 1rem 0;
+.custom-tabs .nav-link {
+    color: #7a7a7a !important;
+    background: #fff;
+    border-right: 2px solid #dee2e6;
+    border-radius: 0;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
 }
-
-.chart-placeholder {
-    min-height: 200px;
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
+.custom-tabs .nav-link.active {
+    background-color: #2176d2;
+    color: #fff !important;
+}
+.custom-tabs .nav-link:hover {
+    background-color: #2176d2;
+    color: #fff !important;
+}
+.card {
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: none;
+}
+#facturacion-grafico, #maquinas-grafico-torta {
+    background: #fff;
+    border: none;
     display: flex;
-    align-items: center;
+    align-items: right;
     justify-content: center;
+    min-height: 120px;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+}
+#maquinas-grafico-torta {
+    background: #fff;
+    border: none;
+    display: flex;
+    align-items: right;
+    justify-content: center;
+    min-height: 120px;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    margin-right: 40px;
+}
+#tabla-maquinas-alquiladas {
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-size: 1rem;
+}
+#tabla-maquinas-alquiladas th, #tabla-maquinas-alquiladas td {
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #212529 !important;
+    font-weight: 400 !important;
+    padding: 0.75rem !important;
+    vertical-align: middle !important;
+}
+#tabla-maquinas-alquiladas th {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #dee2e6 !important;
+}
+#tabla-maquinas-alquiladas tr {
+    border-color: #dee2e6 !important;
+}
+#tabla-maquinas-alquiladas tbody tr:hover {
+    background-color: transparent !important;
+}
+#tabla-maquinas-alquiladas td.text-end {
+    text-align: right !important;
+}
+#maquinas-listado {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    min-height: 0;
+    border: none;
 }
 </style>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/estadisticas.js"></script>
 {% endblock %} 

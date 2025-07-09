@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET
 from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
@@ -30,6 +30,7 @@ from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_c
 from django.db.models.functions import Coalesce
 from django.db.models import Value
 from functools import wraps
+from django.utils.dateparse import parse_date
 
 def empleado_requerido(view_func):
     """
@@ -2427,5 +2428,24 @@ def registrar_empleado_nuevo(request):
     else:
         form = EmpleadoForm()
     return render(request, 'persona/registrar_empleado_nuevo.html', {'form': form})
+
+@require_GET
+def estadisticas_maquinas(request):
+    fecha_inicio = parse_date(request.GET.get('fecha_inicio'))
+    fecha_fin = parse_date(request.GET.get('fecha_fin'))
+    if not fecha_inicio or not fecha_fin or fecha_fin < fecha_inicio:
+        return JsonResponse({'error': 'Fechas inválidas'}, status=400)
+    # Filtrar alquileres por fecha de inicio en el rango
+    alquileres = Alquiler.objects.filter(fecha_inicio__gte=fecha_inicio, fecha_inicio__lte=fecha_fin)
+    # Agrupar por máquina base y contar
+    ranking = (
+        alquileres.values('maquina_base__nombre')
+        .annotate(cantidad=Count('id'))
+        .order_by('-cantidad')[:5]
+    )
+    labels = [item['maquina_base__nombre'] for item in ranking]
+    cantidades = [item['cantidad'] for item in ranking]
+    listado = [{'nombre': item['maquina_base__nombre'], 'cantidad': item['cantidad']} for item in ranking]
+    return JsonResponse({'labels': labels, 'cantidades': cantidades, 'listado': listado})
 
 # Create your views here.

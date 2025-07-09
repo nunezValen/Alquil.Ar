@@ -17,6 +17,7 @@ from .views import (
     obtener_datos_cliente_actual
 )
 from maquinas.views import cancelar_alquiler
+from persona import views
 
 app_name = 'persona'
 
@@ -46,6 +47,7 @@ urlpatterns = [
     path('switch-back-to-employee/', switch_back_to_employee, name='switch_back_to_employee'),
     path('gestion/', gestion, name='gestion'),
     path('estadisticas/', estadisticas, name='estadisticas'),
+    path('estadisticas/maquinas/', views.estadisticas_maquinas, name='estadisticas_maquinas'),
     path('logout/', logout_view, name='logout'),
     path('modificar-datos-personales/', modificar_datos_personales, name='modificar_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),

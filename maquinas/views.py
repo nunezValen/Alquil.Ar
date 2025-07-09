@@ -17,6 +17,8 @@ from persona.models import Persona
 from django.db.models import Q
 from django.core.mail import send_mail
 from .utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
+from django.http import JsonResponse
+from .models import MaquinaBase
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -1098,3 +1100,7 @@ def confirmar_pago_binance(request):
         return JsonResponse({
             'error': f'Error al confirmar el pago: {str(e)}'
         }, status=500)
+
+def nombres_maquinas_base(request):
+    nombres = list(MaquinaBase.objects.values_list('nombre', flat=True))
+    return JsonResponse({'nombres': nombres})

@@ -159,6 +159,17 @@ class MaquinaBaseForm(forms.ModelForm):
         
         return cleaned_data
 
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            return nombre
+        qs = MaquinaBase.objects.filter(nombre__iexact=nombre)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('Ya existe una máquina con ese nombre.')
+        return nombre
+
 
 class UnidadForm(forms.ModelForm):
     patente_original = forms.CharField(widget=forms.HiddenInput())
