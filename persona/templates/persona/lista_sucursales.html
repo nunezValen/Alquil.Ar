@@ -42,7 +42,10 @@
                             <th>Teléfono</th>
                             <th>Email</th>
                             <th>Horario</th>
-                            {% if mostrar_columna_visible %}<th>Visible</th>{% endif %}
+                            {% if mostrar_columna_visible %}
+                            <th>Visible</th>
+                            <th>Modificar</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -58,6 +61,11 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input toggle-visible" data-id="{{ sucursal.id_sucursal }}" type="checkbox" {% if sucursal.es_visible %}checked{% endif %}>
                                 </div>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'persona:modificar_sucursal' sucursal.id_sucursal %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                             </td>
                             {% endif %}
                         </tr>

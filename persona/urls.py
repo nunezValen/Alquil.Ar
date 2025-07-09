@@ -14,7 +14,7 @@ from .views import (
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
     registrar_cliente_nuevo, registrar_empleado_nuevo, lista_sucursales, cargar_sucursal,
-    toggle_visibilidad_sucursal
+    toggle_visibilidad_sucursal, modificar_sucursal
 )
 from maquinas.views import cancelar_alquiler
 
@@ -71,6 +71,7 @@ urlpatterns = [
     path('gestion/sucursales/', lista_sucursales, name='lista_sucursales'),
     path('sucursales/cargar/', cargar_sucursal, name='cargar_sucursal'),
     path('sucursales/<int:sucursal_id>/toggle-visible/', toggle_visibilidad_sucursal, name='toggle_visibilidad_sucursal'),
+    path('sucursales/<int:sucursal_id>/modificar/', modificar_sucursal, name='modificar_sucursal'),
 ]
 
 

@@ -2325,4 +2325,26 @@ def toggle_visibilidad_sucursal(request, sucursal_id):
 
     return JsonResponse({'status': 'success', 'visible': sucursal.es_visible, 'message': mensaje})
 
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_sucursal(request, sucursal_id):
+    """Formulario para modificar una sucursal existente (solo admins)"""
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    if request.method == 'POST':
+        form = SucursalForm(request.POST, instance=sucursal)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal actualizada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = SucursalForm(instance=sucursal)
+
+    return render(request, 'persona/modificar_sucursal.html', {
+        'form': form,
+        'sucursal': sucursal
+    })
+
 # Create your views here.
