@@ -188,7 +188,7 @@ def toggle_visibilidad_unidad(request, pk):
     else:
         unidad.visible = True
         maquina_base.stock += 1
-        messages.success(request, f'La unidad {unidad.patente} ha sido desoculta.')
+        messages.success(request, f'La unidad {unidad.patente} ha sido desocultada.')
     
     unidad.save()
     maquina_base.save()
