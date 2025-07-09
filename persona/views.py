@@ -2230,11 +2230,8 @@ def registrar_empleado_nuevo(request):
 def lista_sucursales(request):
     from django.db.models.functions import Replace
     """Gestionar listado de sucursales con filtros y paginación"""
-    queryset = Sucursal.objects.all().order_by('direccion')
-
-    # Si el usuario NO es superusuario ni administrador, mostrar sólo sucursales visibles
-    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
-        queryset = queryset.filter(es_visible=True)
+    # Ahora, nadie puede ver las sucursales ocultas en esta tabla.
+    queryset = Sucursal.objects.filter(es_visible=True).order_by('direccion')
 
     # Filtros
     filtros = {

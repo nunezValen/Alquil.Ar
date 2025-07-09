@@ -50,7 +50,6 @@
                     </thead>
                     <tbody>
                         {% for sucursal in sucursales %}
-                        {% if mostrar_columna_visible or sucursal.es_visible %}
                         <tr>
                             <td>{{ sucursal.direccion }}</td>
                             <td>{{ sucursal.telefono }}</td>
@@ -69,10 +68,9 @@
                             </td>
                             {% endif %}
                         </tr>
-                        {% endif %}
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-4">
+                            <td colspan="8" class="text-center py-4">
                                 <i class="fas fa-building fa-3x text-muted mb-3"></i>
                                 <p class="text-muted">No se encontraron sucursales que coincidan con la búsqueda.</p>
                             </td>
@@ -110,6 +108,12 @@
             document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.toggle-visible').forEach(function(sw) {
                     sw.addEventListener('change', function() {
+                        if (!this.checked) { // Si se está ocultando
+                            if (!confirm('¿Estás seguro de que deseas ocultar esta sucursal? Este cambio no se puede deshacer.')) {
+                                this.checked = true; // Revertir si se cancela
+                                return;
+                            }
+                        }
                         const sucursalId = this.dataset.id;
                         const csrftoken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
                         fetch(`{% url 'persona:toggle_visibilidad_sucursal' 0 %}`.replace('0', sucursalId), {
@@ -127,6 +131,10 @@
                                 this.checked = !this.checked;
                             } else {
                                 showToast(data.message, 'success');
+                                // Si la sucursal se ocultó, quitar la fila de la tabla
+                                if (!data.visible) {
+                                    this.closest('tr').remove();
+                                }
                             }
                         })
                         .catch(() => { this.checked = !this.checked; });
