@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load widget_tweaks %}
 
 {% block title %}Cargar Sucursal - ALQUIL.AR{% endblock %}
 
@@ -15,12 +16,33 @@
                     <form method="post">
                         {% csrf_token %}
                         {% for field in form %}
+                        {% if field.name != 'latitud' and field.name != 'longitud' %}
                         <div class="form-group mb-3">
                             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                            {{ field.errors }}
-                            {{ field }}
+                            {% if field.errors %}
+                                {% render_field field class="form-control is-invalid" %}
+                            {% else %}
+                                {% render_field field class="form-control" %}
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
                         </div>
+                        {% endif %}
                         {% endfor %}
+                        {{ form.latitud.as_hidden }}
+                        {{ form.longitud.as_hidden }}
+                        <div class="mb-3">
+                            <label class="form-label">Selecciona la ubicación en el mapa</label>
+                            <div id="map" style="height: 400px; width: 100%;"></div>
+                            <small class="form-text text-muted">Haz clic en el mapa para establecer las coordenadas de la sucursal.</small>
+                            {% if form.latitud.errors or form.longitud.errors %}
+                                <div class="invalid-feedback d-block mt-2">
+                                    {% if form.latitud.errors %}{{ form.latitud.errors.0 }}{% endif %}
+                                    {% if form.longitud.errors and not form.latitud.errors %}{{ form.longitud.errors.0 }}{% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Guardar</button>
                             <a href="{% url 'persona:lista_sucursales' %}" class="btn btn-secondary">Cancelar</a>
@@ -31,4 +53,61 @@
         </div>
     </div>
 </div>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const latInput = document.getElementById('id_latitud');
+        const lngInput = document.getElementById('id_longitud');
+
+        const defaultLat = latInput.value ? parseFloat(latInput.value) : -34.92015;
+        const defaultLng = lngInput.value ? parseFloat(lngInput.value) : -57.95249;
+
+        const map = L.map('map').setView([defaultLat, defaultLng], 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        const customIcon = L.icon({
+            iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        let marker = null;
+        if (latInput.value && lngInput.value) {
+            marker = L.marker([defaultLat, defaultLng], {icon: customIcon}).addTo(map);
+        }
+
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng], {icon: customIcon}).addTo(map);
+            }
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+        });
+    });
+
+    // Asegurar que al hacer clic en "Guardar" se dispare la validación nativa del navegador
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.addEventListener('click', function(e) {
+            // Si la validación HTML5 falla, evitar el envío
+            if (!form.reportValidity()) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
 {% endblock %} 

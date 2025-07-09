@@ -494,3 +494,68 @@ class SucursalForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
             'horario': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Horario de atención', 'rows': 3}),
         }
+        error_messages = {
+            'direccion': {
+                'required': 'La dirección es obligatoria.',
+                'max_length': 'La dirección no puede tener más de 200 caracteres.',
+            },
+            'telefono': {
+                'required': 'El teléfono es obligatorio.',
+                'max_length': 'El teléfono no puede tener más de 20 caracteres.',
+            },
+            'latitud': {
+                'required': 'Debe seleccionar una ubicación en el mapa.',
+            },
+            'longitud': {
+                'required': 'Debe seleccionar una ubicación en el mapa.',
+            },
+            'horario': {
+                'required': 'El horario es obligatorio.',
+            },
+            'email': {
+                'required': 'El email es obligatorio.',
+                'invalid': 'Por favor, ingresa una dirección de email válida.',
+            }
+        }
+
+    def clean_direccion(self):
+        """Valida que la dirección ingresada no exista en otra sucursal y respete longitud."""
+        direccion = self.cleaned_data.get('direccion', '').strip()
+        if not direccion:
+            raise forms.ValidationError('La dirección es obligatoria.')
+
+        if len(direccion) > 200:
+            raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
+
+        # Búsqueda case-insensitive de direcciones duplicadas
+        qs = Sucursal.objects.filter(direccion__iexact=direccion)
+        # Excluir la instancia actual si estamos editando
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError('Ya existe una sucursal registrada con esta dirección.')
+        return direccion
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono', '').strip()
+        if not telefono:
+            raise forms.ValidationError('El teléfono es obligatorio.')
+        if len(telefono) > 20:
+            raise forms.ValidationError('El teléfono no puede tener más de 20 caracteres.')
+        return telefono
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validar que los demás campos no queden vacíos
+        campos_requeridos = ['latitud', 'longitud', 'telefono', 'email', 'horario']
+        for campo in campos_requeridos:
+            valor = cleaned_data.get(campo)
+            # Para los float, 0 puede ser un valor válido; por eso sólo se verifica None o cadena vacía
+            if valor is None or valor == '':
+                # Mensaje específico para ubicación
+                if campo in ['latitud', 'longitud']:
+                    self.add_error(campo, 'Debe seleccionar una ubicación en el mapa.')
+                else:
+                    self.add_error(campo, 'Este campo es obligatorio.')
+        return cleaned_data
