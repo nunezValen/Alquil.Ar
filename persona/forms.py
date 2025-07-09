@@ -527,8 +527,8 @@ class SucursalForm(forms.ModelForm):
         if len(direccion) > 200:
             raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
 
-        # Búsqueda case-insensitive de direcciones duplicadas
-        qs = Sucursal.objects.filter(direccion__iexact=direccion)
+        # Búsqueda case-insensitive de direcciones duplicadas sólo entre sucursales visibles
+        qs = Sucursal.objects.filter(direccion__iexact=direccion, es_visible=True)
         # Excluir la instancia actual si estamos editando
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)

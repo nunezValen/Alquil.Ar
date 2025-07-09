@@ -31,6 +31,7 @@ from maquinas.utils import enviar_email_alquiler_simple, enviar_email_alquiler_c
 from django.db.models.functions import Coalesce
 from django.db.models import Value
 from functools import wraps
+from maquinas.models import Unidad
 
 def empleado_requerido(view_func):
     """
@@ -2295,9 +2296,33 @@ def cargar_sucursal(request):
 @user_passes_test(es_admin)
 @require_http_methods(["POST"])
 def toggle_visibilidad_sucursal(request, sucursal_id):
+    from maquinas.models import Unidad
+
     sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
-    sucursal.es_visible = not sucursal.es_visible
+    nueva_visibilidad = not sucursal.es_visible
+
+    # Si se intenta ocultar
+    if not nueva_visibilidad:
+        # Verificar que no existan unidades visibles asociadas
+        if Unidad.objects.filter(sucursal=sucursal, visible=True).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No se puede ocultar la sucursal porque existen unidades visibles asociadas.'
+            })
+    else:
+        # Se intenta volver visible: verificar duplicado de dirección entre visibles
+        if Sucursal.objects.filter(es_visible=True, direccion__iexact=sucursal.direccion).exclude(pk=sucursal.pk).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Ya existe otra sucursal visible con la misma dirección.'
+            })
+
+    sucursal.es_visible = nueva_visibilidad
     sucursal.save()
-    return JsonResponse({'status': 'success', 'visible': sucursal.es_visible})
+
+    mensaje = (f'La sucursal "{sucursal.direccion}" ahora es visible.' if sucursal.es_visible 
+               else f'La sucursal "{sucursal.direccion}" ha sido ocultada.')
+
+    return JsonResponse({'status': 'success', 'visible': sucursal.es_visible, 'message': mensaje})
 
 # Create your views here.
