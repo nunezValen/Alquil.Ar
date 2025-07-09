@@ -30,6 +30,10 @@
         background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
     }
     
+    .stats-card.adeudado {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+    
     .filter-section {
         background: #f8f9fa;
         padding: 20px;
@@ -96,6 +100,18 @@
     .row-cancelado {
         background-color: #f8d7da !important;
         border-left: 4px solid #dc3545;
+    }
+    
+    .row-adeudado {
+        background-color: #f5c6cb !important;
+        border-left: 4px solid #dc3545;
+        animation: pulse-red 2s infinite;
+    }
+    
+    @keyframes pulse-red {
+        0% { background-color: #f5c6cb; }
+        50% { background-color: #f1b0b7; }
+        100% { background-color: #f5c6cb; }
     }
     
     .table-striped tbody tr:nth-of-type(odd) td {
@@ -168,6 +184,32 @@
                 </div>
             </div>
             
+            <!-- Segunda fila de estadísticas para adeudados -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card adeudado">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>{{ stats.adeudados }}</h4>
+                                <p class="mb-0">Adeudados</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    {% if stats.adeudados > 0 %}
+                        <div class="alert alert-danger">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Atención:</strong> 
+                            Hay {{ stats.adeudados }} alquiler{{ stats.adeudados|pluralize:"es" }} vencido{{ stats.adeudados|pluralize }} que no ha{{ stats.adeudados|pluralize:"n" }} sido devuelto{{ stats.adeudados|pluralize }}. 
+                            Las máquinas están en mantenimiento y no disponibles para nuevos alquileres.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
             <!-- Filtros -->
             <div class="filter-section">
                 <h5><i class="fas fa-filter"></i> Filtros</h5>
@@ -180,6 +222,7 @@
                             <option value="en_curso" {% if filtros.estado == 'en_curso' %}selected{% endif %}>En Curso</option>
                             <option value="finalizado" {% if filtros.estado == 'finalizado' %}selected{% endif %}>Finalizado</option>
                             <option value="cancelado" {% if filtros.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                            <option value="adeudado" {% if filtros.estado == 'adeudado' %}selected{% endif %}>Adeudado</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -300,6 +343,7 @@
                                     {% elif estado == 'en_curso' %}bg-success
                                     {% elif estado == 'finalizado' %}bg-secondary
                                     {% elif estado == 'cancelado' %}bg-danger
+                                    {% elif estado == 'adeudado' %}bg-danger
                                     {% elif estado == 'pendiente' %}bg-warning
                                     {% elif estado == 'rechazado' %}bg-dark
                                     {% else %}bg-light text-dark
@@ -386,7 +430,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="11" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                 <p class="text-muted">No hay alquileres registrados</p>
                             </td>
@@ -500,18 +544,28 @@
                             </p>
                             <p><strong>Porcentaje de Reembolso:</strong> {{ alquiler.porcentaje_reembolso }}%</p>
                             <p><strong>Monto a Reembolsar:</strong> <span class="text-success"><strong>${{ alquiler.monto_reembolso|floatformat:2 }}</strong></span></p>
-                            {% if alquiler.observaciones_cancelacion %}
-                                <p><strong>Motivo:</strong> {{ alquiler.observaciones_cancelacion }}</p>
+                                                            {% if alquiler.observaciones_cancelacion %}
+                                    <p><strong>Motivo:</strong> {{ alquiler.observaciones_cancelacion }}</p>
+                                {% endif %}
+                            {% elif alquiler.estado == 'adeudado' %}
+                                <hr>
+                                <h6 class="text-danger">Información de Alquiler Adeudado</h6>
+                                <p><strong>Fecha de Vencimiento:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}</p>
+                                <p><strong>Días Vencido:</strong> <span class="text-danger">{{ alquiler.fecha_fin|timesince }} de retraso</span></p>
+                                <p><strong>Estado de la Máquina:</strong> <span class="badge bg-warning">En Mantenimiento</span></p>
+                                <p><small class="text-muted">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    El cliente debe devolver la máquina urgentemente. La máquina no está disponible para nuevos alquileres.
+                                </small></p>
+                            {% else %}
+                                <hr>
+                                <h6 class="text-info">Información de Reembolso Potencial</h6>
+                                <p><small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Si se cancela hoy (empleado): <strong>100% - ${{ alquiler.monto_total|floatformat:2 }}</strong><br>
+                                    Si cancela el cliente: Depende de la política de la máquina y días de anticipación
+                                </small></p>
                             {% endif %}
-                        {% else %}
-                            <hr>
-                            <h6 class="text-info">Información de Reembolso Potencial</h6>
-                            <p><small class="text-muted">
-                                <i class="fas fa-info-circle"></i> 
-                                Si se cancela hoy (empleado): <strong>100% - ${{ alquiler.monto_total|floatformat:2 }}</strong><br>
-                                Si cancela el cliente: Depende de la política de la máquina y días de anticipación
-                            </small></p>
-                        {% endif %}
                     </div>
                 </div>
             </div>

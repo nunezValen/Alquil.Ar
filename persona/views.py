@@ -1185,9 +1185,48 @@ def checkout(request, alquiler_id):
     
     return redirect('persona:mis_alquileres')
 
+def procesar_alquileres_vencidos_automatico():
+    """Función para procesar automáticamente alquileres vencidos"""
+    from datetime import date
+    
+    # Obtener la fecha actual
+    fecha_actual = date.today()
+    
+    # Buscar alquileres vencidos que no han sido devueltos
+    alquileres_vencidos = Alquiler.objects.filter(
+        estado='en_curso',  # Solo alquileres en curso
+        fecha_fin__lt=fecha_actual  # Fecha de fin menor a la fecha actual
+    )
+    
+    procesados = 0
+    
+    for alquiler in alquileres_vencidos:
+        try:
+            # Cambiar estado del alquiler a "adeudado"
+            alquiler.estado = 'adeudado'
+            alquiler.save()
+            
+            # Poner la máquina en mantenimiento
+            if alquiler.unidad:
+                alquiler.unidad.estado = 'mantenimiento'
+                alquiler.unidad.save()
+            
+            procesados += 1
+            
+        except Exception as e:
+            # Log del error silencioso para no interrumpir la vista
+            print(f"Error procesando alquiler vencido {alquiler.numero}: {str(e)}")
+    
+    return procesados
+
 @empleado_requerido
 def lista_alquileres(request):
     """Vista completa de gestión de alquileres para empleados y admins"""
+    # Procesar automáticamente alquileres vencidos
+    alquileres_procesados = procesar_alquileres_vencidos_automatico()
+    if alquileres_procesados > 0:
+        print(f"Se procesaron automáticamente {alquileres_procesados} alquileres vencidos")
+    
     # Obtener todos los alquileres inicialmente
     alquileres = Alquiler.objects.select_related(
         'maquina_base', 'unidad', 'persona', 'unidad__sucursal'
@@ -1241,7 +1280,8 @@ def lista_alquileres(request):
         reservados=Count('id', filter=Q(estado='reservado')),
         en_curso=Count('id', filter=Q(estado='en_curso')),
         finalizados=Count('id', filter=Q(estado='finalizado')),
-        cancelados=Count('id', filter=Q(estado='cancelado'))
+        cancelados=Count('id', filter=Q(estado='cancelado')),
+        adeudados=Count('id', filter=Q(estado='adeudado'))
     )
     
     # Obtener sucursales para el filtro
@@ -1314,6 +1354,21 @@ def iniciar_alquiler(request):
                 'success': False,
                 'error': 'El código ingresado no coincide con el código de retiro del alquiler. Verifica el código con el cliente.'
             })
+        
+        # Validar que la fecha de inicio sea igual a la fecha actual
+        from datetime import date
+        fecha_actual = date.today()
+        if alquiler.fecha_inicio != fecha_actual:
+            if alquiler.fecha_inicio > fecha_actual:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'No se puede retirar el alquiler aún. La fecha de inicio es {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}.'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'El alquiler venció. La fecha de inicio era {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}. Contacta con un administrador.'
+                })
         
         # Cambiar estado a 'en_curso'
         alquiler.estado = 'en_curso'

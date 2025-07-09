@@ -197,6 +197,7 @@ class Alquiler(models.Model):
         ('finalizado', 'Finalizado'),
         ('cancelado', 'Cancelado'),
         ('rechazado', 'Rechazado'),
+        ('adeudado', 'Adeudado'),
     ]
     
     METODOS_PAGO = [
