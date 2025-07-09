@@ -2307,7 +2307,7 @@ def toggle_visibilidad_sucursal(request, sucursal_id):
         if Unidad.objects.filter(sucursal=sucursal, visible=True).exists():
             return JsonResponse({
                 'status': 'error',
-                'message': 'No se puede ocultar la sucursal porque existen unidades visibles asociadas.'
+                'message': 'Para ocultar esta sucursal, es necesario ocultar sus unidades de máquina primero.'
             })
     else:
         # Se intenta volver visible: verificar duplicado de dirección entre visibles
