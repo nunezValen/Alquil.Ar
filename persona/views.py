@@ -2231,6 +2231,10 @@ def lista_sucursales(request):
     """Gestionar listado de sucursales con filtros y paginación"""
     queryset = Sucursal.objects.all().order_by('direccion')
 
+    # Si el usuario NO es superusuario ni administrador, mostrar sólo sucursales visibles
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        queryset = queryset.filter(es_visible=True)
+
     # Filtros
     filtros = {
         'direccion': request.GET.get('direccion', ''),
