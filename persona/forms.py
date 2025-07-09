@@ -559,3 +559,17 @@ class SucursalForm(forms.ModelForm):
                 else:
                     self.add_error(campo, 'Este campo es obligatorio.')
         return cleaned_data
+
+class ModificarSucursalForm(SucursalForm):
+    class Meta(SucursalForm.Meta):
+        exclude = ['direccion', 'latitud', 'longitud']
+
+    def clean(self):
+        # Llama al método clean() de la clase base para obtener los datos limpios
+        cleaned_data = super(SucursalForm, self).clean()
+        
+        # Como latitud y longitud no son parte de este formulario,
+        # no se necesita la validación que está en SucursalForm.clean().
+        # Aquí solo se realizan las validaciones de los campos que sí están presentes.
+        
+        return cleaned_data

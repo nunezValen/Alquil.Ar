@@ -14,7 +14,7 @@ from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
     PersonaForm, ClienteForm, EmpleadoForm, EditarPersonaForm,
     CambiarPasswordForm, ModificarDatosPersonalesForm,
-    SucursalForm
+    SucursalForm, ModificarSucursalForm
 )
 from datetime import date
 import random
@@ -2331,13 +2331,13 @@ def modificar_sucursal(request, sucursal_id):
     """Formulario para modificar una sucursal existente (solo admins)"""
     sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
     if request.method == 'POST':
-        form = SucursalForm(request.POST, instance=sucursal)
+        form = ModificarSucursalForm(request.POST, instance=sucursal)
         if form.is_valid():
             form.save()
             messages.success(request, 'Sucursal actualizada correctamente.')
             return redirect('persona:lista_sucursales')
     else:
-        form = SucursalForm(instance=sucursal)
+        form = ModificarSucursalForm(instance=sucursal)
 
     return render(request, 'persona/modificar_sucursal.html', {
         'form': form,
