@@ -1379,20 +1379,23 @@ def iniciar_alquiler(request):
                 'error': 'El código ingresado no coincide con el código de retiro del alquiler. Verifica el código con el cliente.'
             })
         
-        # Validar que la fecha de inicio sea igual a la fecha actual
+        # Validar que la fecha actual esté dentro del período válido para retirar
         from datetime import date
         fecha_actual = date.today()
-        if alquiler.fecha_inicio != fecha_actual:
-            if alquiler.fecha_inicio > fecha_actual:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'No se puede retirar el alquiler aún. La fecha de inicio es {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}.'
-                })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'El alquiler venció. La fecha de inicio era {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}. Contacta con un administrador.'
-                })
+        
+        # No permitir retirar antes de la fecha de inicio
+        if fecha_actual < alquiler.fecha_inicio:
+            return JsonResponse({
+                'success': False,
+                'error': f'No se puede retirar el alquiler aún. La fecha de inicio es {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}.'
+            })
+        
+        # No permitir retirar después de la fecha de fin
+        if fecha_actual > alquiler.fecha_fin:
+            return JsonResponse({
+                'success': False,
+                'error': f'El período de alquiler ha terminado. El alquiler finalizó el {alquiler.fecha_fin.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}. Contacta con un administrador.'
+            })
         
         # Cambiar estado a 'en_curso'
         alquiler.estado = 'en_curso'
