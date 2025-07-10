@@ -1198,8 +1198,15 @@ def procesar_alquileres_vencidos_automatico():
         fecha_fin__lt=fecha_actual  # Fecha de fin menor a la fecha actual
     )
     
+    # También revisar alquileres reservados vencidos (que nunca se retiraron)
+    alquileres_reservados_vencidos = Alquiler.objects.filter(
+        estado='reservado',  # Alquileres reservados
+        fecha_inicio__lt=fecha_actual  # Fecha de inicio menor a la fecha actual
+    )
+    
     procesados = 0
     
+    # Procesar alquileres en curso vencidos
     for alquiler in alquileres_vencidos:
         try:
             # Cambiar estado del alquiler a "adeudado"
@@ -1216,6 +1223,23 @@ def procesar_alquileres_vencidos_automatico():
         except Exception as e:
             # Log del error silencioso para no interrumpir la vista
             print(f"Error procesando alquiler vencido {alquiler.numero}: {str(e)}")
+    
+    # Procesar alquileres reservados que nunca se retiraron (cancelar automáticamente)
+    for alquiler in alquileres_reservados_vencidos:
+        try:
+            # Cambiar estado a cancelado en lugar de adeudado
+            alquiler.estado = 'cancelado'
+            alquiler.fecha_cancelacion = fecha_actual
+            alquiler.cancelado_por_empleado = True
+            alquiler.observaciones_cancelacion = "Cancelado automáticamente por no retirar en fecha de inicio"
+            alquiler.porcentaje_reembolso = 0  # Sin reembolso por no retirar
+            alquiler.monto_reembolso = 0
+            alquiler.save()
+            
+            procesados += 1
+            
+        except Exception as e:
+            print(f"Error procesando alquiler reservado vencido {alquiler.numero}: {str(e)}")
     
     return procesados
 
@@ -1438,8 +1462,8 @@ def finalizar_alquiler(request):
                 'error': 'Alquiler no encontrado.'
             })
         
-        # Verificar que el alquiler esté en estado 'en_curso'
-        if alquiler.estado != 'en_curso':
+        # Verificar que el alquiler esté en estado 'en_curso' o 'adeudado'
+        if alquiler.estado not in ['en_curso', 'adeudado']:
             return JsonResponse({
                 'success': False,
                 'error': f'No es posible devolver en este estado. El alquiler está en estado {alquiler.get_estado_display()}.'
@@ -1484,7 +1508,10 @@ def finalizar_alquiler(request):
             print(f"Error enviando email de finalización: {str(e)}")
         
         # Mensaje de éxito
-        mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        if alquiler.estado == 'adeudado':
+            mensaje = f"Devolución tardía registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        else:
+            mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
         
         return JsonResponse({
             'success': True,

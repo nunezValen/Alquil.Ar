@@ -408,13 +408,25 @@
                                     {% if alquiler.estado == 'en_curso' %}
                                         <button type="button" 
                                                class="btn btn-sm btn-outline-warning" 
-                                               onclick="finalizarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}', '{% if alquiler.codigo_retiro %}{{ alquiler.codigo_retiro }}{% endif %}')"
+                                               onclick="finalizarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}', '{% if alquiler.codigo_retiro %}{{ alquiler.codigo_retiro }}{% endif %}', '{{ alquiler.estado }}')"
                                                title="Finalizar Alquiler - ID: {{ alquiler.id }}"
                                                id="btn-finalizar-{{ alquiler.id }}"
                                                data-alquiler-id="{{ alquiler.id }}"
                                                data-numero="{{ alquiler.numero }}"
                                                data-codigo="{{ alquiler.codigo_retiro }}">
                                             <i class="fas fa-stop"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if alquiler.estado == 'adeudado' %}
+                                        <button type="button" 
+                                               class="btn btn-sm btn-outline-danger" 
+                                               onclick="finalizarAlquiler('{{ alquiler.id }}', '{{ alquiler.numero }}', '{% if alquiler.codigo_retiro %}{{ alquiler.codigo_retiro }}{% endif %}', '{{ alquiler.estado }}')"
+                                               title="Devolver Alquiler Adeudado - ID: {{ alquiler.id }}"
+                                               id="btn-devolver-{{ alquiler.id }}"
+                                               data-alquiler-id="{{ alquiler.id }}"
+                                               data-numero="{{ alquiler.numero }}"
+                                               data-codigo="{{ alquiler.codigo_retiro }}">
+                                            <i class="fas fa-undo"></i>
                                         </button>
                                     {% endif %}
                                     {% if alquiler.estado == 'reservado' %}
@@ -633,14 +645,14 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="finalizarAlquilerModalLabel">
-                    <i class="fas fa-stop text-warning"></i> Finalizar Alquiler
+                    <i class="fas fa-stop text-warning"></i> <span id="modal-titulo-accion">Finalizar Alquiler</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="alquiler-info-finalizar" class="mb-3">
-                    <h6>Alquiler: <span id="modal-numero-alquiler-finalizar"></span></h6>
-                    <p class="text-muted">Solicita al cliente que proporcione el código de retiro para confirmar la devolución.</p>
+                    <h6>Alquiler: <span id="modal-numero-alquiler-finalizar"></span> - <span id="modal-estado-alquiler"></span></h6>
+                    <p class="text-muted" id="modal-descripcion-accion">Solicita al cliente que proporcione el código de retiro para confirmar la devolución.</p>
                 </div>
                 
                 <div id="modal-alerts-finalizar" class="mb-3" style="display: none;"></div>
@@ -723,7 +735,7 @@
                     <i class="fas fa-times"></i> Cancelar
                 </button>
                 <button type="button" class="btn btn-warning" id="finalizar-alquiler-btn">
-                    <i class="fas fa-check"></i> Finalizar Alquiler
+                    <i class="fas fa-check"></i> <span id="modal-boton-texto">Finalizar Alquiler</span>
                 </button>
             </div>
         </div>
@@ -896,15 +908,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Función para finalizar alquiler
-function finalizarAlquiler(alquilerId, numeroAlquiler, codigoRetiro) {
+function finalizarAlquiler(alquilerId, numeroAlquiler, codigoRetiro, estado) {
     console.log('🏁 FINALIZAR ALQUILER: Función llamada');
     console.log('   Alquiler ID:', alquilerId);
     console.log('   Número:', numeroAlquiler);
     console.log('   Código retiro:', codigoRetiro);
+    console.log('   Estado:', estado);
     
     try {
         // Llenar datos del modal
         const modalNumero = document.getElementById('modal-numero-alquiler-finalizar');
+        const modalEstado = document.getElementById('modal-estado-alquiler');
+        const modalTitulo = document.getElementById('modal-titulo-accion');
+        const modalDescripcion = document.getElementById('modal-descripcion-accion');
         const alquilerIdInput = document.getElementById('alquiler-id-finalizar');
         const codigoClienteInput = document.getElementById('codigo-cliente-finalizar');
         const calificacionInput = document.getElementById('calificacion');
@@ -915,6 +931,28 @@ function finalizarAlquiler(alquilerId, numeroAlquiler, codigoRetiro) {
             console.error('❌ FINALIZAR ALQUILER: Elementos del modal no encontrados');
             alert('Error: No se pudo abrir el modal. Recarga la página e intenta nuevamente.');
             return;
+        }
+        
+        // Configurar el modal según el estado
+        const finalizarBtn = document.getElementById('finalizar-alquiler-btn');
+        const botonTexto = document.getElementById('modal-boton-texto');
+        
+        if (estado === 'adeudado') {
+            modalTitulo.innerHTML = '<i class="fas fa-undo text-danger"></i> Devolver Alquiler Adeudado';
+            modalEstado.innerHTML = '<span class="badge bg-danger">ADEUDADO</span>';
+            modalDescripcion.innerHTML = '<strong class="text-danger">Este alquiler está vencido.</strong> Solicita al cliente que proporcione el código de retiro para confirmar la devolución tardía.';
+            if (finalizarBtn) {
+                finalizarBtn.className = 'btn btn-danger';
+                finalizarBtn.innerHTML = '<i class="fas fa-undo"></i> <span id="modal-boton-texto">Devolver Alquiler</span>';
+            }
+        } else {
+            modalTitulo.innerHTML = '<i class="fas fa-stop text-warning"></i> Finalizar Alquiler';
+            modalEstado.innerHTML = '<span class="badge bg-success">EN CURSO</span>';
+            modalDescripcion.innerHTML = 'Solicita al cliente que proporcione el código de retiro para confirmar la devolución.';
+            if (finalizarBtn) {
+                finalizarBtn.className = 'btn btn-warning';
+                finalizarBtn.innerHTML = '<i class="fas fa-check"></i> <span id="modal-boton-texto">Finalizar Alquiler</span>';
+            }
         }
         
         modalNumero.textContent = numeroAlquiler;
