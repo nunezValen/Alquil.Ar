@@ -1215,7 +1215,7 @@ def procesar_alquileres_vencidos_automatico():
             
             # Poner la máquina en mantenimiento
             if alquiler.unidad:
-                alquiler.unidad.estado = 'mantenimiento'
+                alquiler.unidad.estado = 'adeudado'
                 alquiler.unidad.save()
             
             procesados += 1

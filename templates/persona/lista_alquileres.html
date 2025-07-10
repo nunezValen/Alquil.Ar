@@ -564,7 +564,7 @@
                                 <h6 class="text-danger">Información de Alquiler Adeudado</h6>
                                 <p><strong>Fecha de Vencimiento:</strong> {{ alquiler.fecha_fin|date:"d/m/Y" }}</p>
                                 <p><strong>Días Vencido:</strong> <span class="text-danger">{{ alquiler.fecha_fin|timesince }} de retraso</span></p>
-                                <p><strong>Estado de la Máquina:</strong> <span class="badge bg-warning">En Mantenimiento</span></p>
+                                <p><strong>Estado de la Máquina:</strong> <span class="badge bg-danger">Adeudado</span></p>
                                 <p><small class="text-muted">
                                     <i class="fas fa-exclamation-triangle"></i> 
                                     El cliente debe devolver la máquina urgentemente. La máquina no está disponible para nuevos alquileres.
