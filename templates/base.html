@@ -301,6 +301,62 @@
                 transform: translateY(-10px);
             }
         }
+
+        /* Estilos para la cajita decorativa en el menú */
+        .dropdown-item[href*="ver_datos_personales"] {
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            border-radius: 8px;
+            margin: 2px 8px;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-item[href*="ver_datos_personales"]:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .dropdown-item[href*="ver_datos_personales"]::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: pulse-menu 2s infinite;
+        }
+
+        @keyframes pulse-menu {
+            0%, 100% { 
+                transform: translateY(-50%) scale(1);
+                opacity: 0.8;
+            }
+            50% { 
+                transform: translateY(-50%) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        .dropdown-item[href*="ver_datos_personales"]::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: float-menu 3s ease-in-out infinite;
+        }
+
+        @keyframes float-menu {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
     </style>
 </head>
 <body>
@@ -354,6 +410,9 @@
                                 <li><a class="dropdown-item" href="{% url 'persona:mis_alquileres' %}">
                                     <i class="fas fa-history me-2"></i>Mis Alquileres
                                 </a></li>
+                                <li><a class="dropdown-item" href="{% url 'persona:ver_datos_personales' %}">
+                                    <i class="fas fa-user-circle me-2"></i>Ver Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:modificar_datos_personales' %}">
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales
                                 </a></li>
@@ -361,17 +420,26 @@
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:switch_back_to_employee' %}">Volver a Cuenta Empleado</a></li>
                             {% elif user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'persona:ver_datos_personales' %}">
+                                    <i class="fas fa-user-circle me-2"></i>Ver Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:modificar_datos_personales' %}">
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
                             {% elif user.email in empleados_emails %}
+                                <li><a class="dropdown-item" href="{% url 'persona:ver_datos_personales' %}">
+                                    <i class="fas fa-user-circle me-2"></i>Ver Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:modificar_datos_personales' %}">
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:cambiar_password_2' %}">Cambiar Contraseña</a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:login_as_persona' %}"><i class="fas fa-user-switch me-2"></i>Actuar como cliente</a></li>
                             {% else %}
+                                <li><a class="dropdown-item" href="{% url 'persona:ver_datos_personales' %}">
+                                    <i class="fas fa-user-circle me-2"></i>Ver Datos Personales
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'persona:modificar_datos_personales' %}">
                                     <i class="fas fa-user-edit me-2"></i>Modificar Datos Personales
                                 </a></li>

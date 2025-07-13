@@ -26,6 +26,14 @@
         right: 20px;
         z-index: 1090;
     }
+    .form-check-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .form-check-input:disabled + .form-check-label {
+        opacity: 0.7;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -85,6 +93,10 @@
                             <th>Fecha Nacimiento</th>
                             <th>Fecha Registro</th>
                             <th class="text-center">Estado (Empleado)</th>
+                            <th class="text-center">Estado (Cliente)</th>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <th class="text-center">Acciones</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -115,10 +127,35 @@
                                     </form>
                                 </div>
                             </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    <form id="form-cliente-{{ empleado.id }}" class="toggle-form"
+                                          data-confirm-marcar="¿Estás seguro de que deseas marcar a este empleado como CLIENTE? Esta acción no se puede deshacer."
+                                          data-confirm-desmarcar="¿Estás seguro de que deseas desmarcar a este empleado como CLIENTE?">
+                                        {% csrf_token %}
+                                        <input class="form-check-input" type="checkbox" role="switch" 
+                                               id="switch-cliente-{{ empleado.id }}" 
+                                               onchange="toggleCliente(this, '{{ empleado.id }}')"
+                                               {% if empleado.es_cliente %}checked disabled{% endif %}
+                                               data-url-marcar="{% url 'persona:marcar_como_cliente' empleado.id %}"
+                                               data-url-desmarcar="{% url 'persona:desmarcar_como_cliente' empleado.id %}">
+                                        <label class="form-check-label ms-2" for="switch-cliente-{{ empleado.id }}" id="label-cliente-{{ empleado.id }}">
+                                            {% if empleado.es_cliente %}Cliente (Permanente){% else %}No Cliente{% endif %}
+                                        </label>
+                                    </form>
+                                </div>
+                            </td>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <td class="text-center">
+                                <a href="{% url 'persona:modificar_datos_empleado' empleado.id %}" class="btn btn-sm btn-warning" title="Modificar Datos">
+                                    <i class="fas fa-edit"></i> Modificar
+                                </a>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center py-4">
+                            <td colspan="{% if user.is_superuser or usuario_persona.es_admin %}9{% else %}8{% endif %}" class="text-center py-4">
                                 <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
                                 <p class="text-muted">No se encontraron empleados que coincidan con la búsqueda.</p>
                             </td>
@@ -178,6 +215,77 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => {
             showToast(error.message, 'error');
             switchElement.checked = !isChecked;
+            switchElement.disabled = false;
+        });
+    }
+
+    window.toggleCliente = function(switchElement, personaId) {
+        const isChecked = switchElement.checked;
+        const form = switchElement.closest('.toggle-form');
+        const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Solo permitir marcar como cliente, no desmarcar
+        if (!isChecked) {
+            // Si se está intentando desmarcar, revertir y mostrar mensaje
+            switchElement.checked = true;
+            showToast('No se puede desmarcar un empleado como cliente. Esta acción es permanente.', 'error');
+            return;
+        }
+        
+        const url = switchElement.dataset.urlMarcar;
+        const confirmationMessage = form.dataset.confirmMarcar;
+
+        console.log('Toggle Cliente:', {
+            isChecked: isChecked,
+            url: url,
+            personaId: personaId,
+            confirmationMessage: confirmationMessage
+        });
+
+        if (!confirm(confirmationMessage)) {
+            switchElement.checked = false;
+            return;
+        }
+        switchElement.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': csrfToken, 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(err => { 
+                    throw new Error(err.message || 'Error en servidor') 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Success data:', data);
+            showToast(data.message, 'success');
+            
+            // Actualizar el label
+            const label = document.getElementById(`label-cliente-${personaId}`);
+            label.textContent = 'Cliente (Permanente)';
+            
+            // Deshabilitar permanentemente el switch
+            switchElement.checked = true;
+            switchElement.disabled = true;
+            
+            // Agregar estilo visual para indicar que está deshabilitado
+            switchElement.style.opacity = '0.6';
+            switchElement.style.cursor = 'not-allowed';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast(error.message, 'error');
+            // Revertir el switch al estado anterior en caso de error
+            switchElement.checked = false;
             switchElement.disabled = false;
         });
     }

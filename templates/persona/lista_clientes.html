@@ -33,6 +33,14 @@
     .toast {
         min-width: 250px;
     }
+    .form-check-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .form-check-input:disabled + .form-check-label {
+        opacity: 0.7;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -108,6 +116,12 @@
                             <th>Fecha Registro</th>
                             <th class="text-center">Calificación Promedio</th>
                             <th class="text-center">Estado</th>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <th class="text-center">Estado (Empleado)</th>
+                            {% endif %}
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <th class="text-center">Acciones</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -140,10 +154,37 @@
                                     </form>
                                 </div>
                             </td>
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                    <form id="form-empleado-{{ cliente.id }}" class="toggle-form"
+                                          data-confirm-marcar="¿Estás seguro de que deseas marcar a este cliente como EMPLEADO? Esta acción no se puede deshacer."
+                                          data-confirm-desmarcar="¿Estás seguro de que deseas desmarcar a este cliente como EMPLEADO?">
+                                        {% csrf_token %}
+                                        <input class="form-check-input" type="checkbox" role="switch" 
+                                               id="switch-empleado-{{ cliente.id }}" 
+                                               onchange="toggleEmpleado(this, '{{ cliente.id }}')"
+                                               {% if cliente.es_empleado %}checked disabled{% endif %}
+                                               data-url-marcar="{% url 'persona:marcar_como_empleado' cliente.id %}"
+                                               data-url-desmarcar="{% url 'persona:desmarcar_como_empleado' cliente.id %}">
+                                        <label class="form-check-label ms-2" for="switch-empleado-{{ cliente.id }}" id="label-empleado-{{ cliente.id }}">
+                                            {% if cliente.es_empleado %}Empleado (Permanente){% else %}No Empleado{% endif %}
+                                        </label>
+                                    </form>
+                                </div>
+                            </td>
+                            {% endif %}
+                            {% if user.is_superuser or usuario_persona.es_admin %}
+                            <td class="text-center">
+                                <a href="{% url 'persona:modificar_datos_cliente' cliente.id %}" class="btn btn-sm btn-warning" title="Modificar Datos">
+                                    <i class="fas fa-edit"></i> Modificar
+                                </a>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center py-4">
+                            <td colspan="{% if user.is_superuser or usuario_persona.es_admin %}10{% else %}8{% endif %}" class="text-center py-4">
                                 <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
                                 <p class="text-muted">No se encontraron clientes que coincidan con la búsqueda.</p>
                             </td>
@@ -180,27 +221,21 @@
 
 {% block extra_js %}
 <script>
-function showToast(message, type = 'success') {
+function showToast(message, type) {
+    if (!type) type = 'success';
     const toastContainer = document.querySelector('.toast-container');
     const toastId = 'toast-' + Date.now();
     const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
 
-    const toastHTML = `
-        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>
-    `;
+    const toastHTML = '<div id="' + toastId + '" class="toast align-items-center text-white ' + bgClass + ' border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body">' + message + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>';
     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
 
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
     toast.show();
-    toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
 }
 
 function toggleBloqueo(switchElement, personaId) {
@@ -211,7 +246,7 @@ function toggleBloqueo(switchElement, personaId) {
     const confirmationMessage = isChecked ? form.dataset.confirmDesbloquear : form.dataset.confirmBloquear;
 
     if (!confirm(confirmationMessage)) {
-        switchElement.checked = !isChecked; // Revertir el cambio visual si se cancela
+        switchElement.checked = !isChecked;
         return;
     }
 
@@ -221,31 +256,88 @@ function toggleBloqueo(switchElement, personaId) {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, data })))
-    .then(({ ok, status, data }) => {
-        if (ok) {
-            showToast(data.message, 'success');
-            const label = document.getElementById(`label-${personaId}`);
-            const row = document.getElementById(`row-${personaId}`);
-            if (isChecked) { // Si está 'checked', el estado final es Activo.
+    .then(function(response) {
+        return response.json().then(function(data) {
+            return { ok: response.ok, status: response.status, data: data };
+        });
+    })
+    .then(function(result) {
+        if (result.ok) {
+            showToast(result.data.message, 'success');
+            const label = document.getElementById('label-' + personaId);
+            const row = document.getElementById('row-' + personaId);
+            if (isChecked) {
                 label.textContent = 'Activo';
                 row.classList.remove('row-cancelado');
-            } else { // Si no está 'checked', el estado final es Bloqueado.
+            } else {
                 label.textContent = 'Bloqueado';
                 row.classList.add('row-cancelado');
             }
         } else {
-            throw new Error(data.message || `Error ${status}`);
+            throw new Error(result.data.message || 'Error ' + result.status);
         }
     })
     .catch(error => {
         showToast(error.message, 'error');
-        switchElement.checked = !isChecked; // Revertir en caso de error
+        switchElement.checked = !isChecked;
     })
     .finally(() => {
+        switchElement.disabled = false;
+    });
+}
+
+function toggleEmpleado(switchElement, personaId) {
+    const isChecked = switchElement.checked;
+    const form = switchElement.closest('.toggle-form');
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    if (!isChecked) {
+        switchElement.checked = true;
+        showToast('No se puede desmarcar un cliente como empleado. Esta acción es permanente.', 'error');
+        return;
+    }
+    
+    const url = switchElement.dataset.urlMarcar;
+    const confirmationMessage = form.dataset.confirmMarcar;
+
+    if (!confirm(confirmationMessage)) {
+        switchElement.checked = false;
+        return;
+    }
+    switchElement.disabled = true;
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 
+            'X-CSRFToken': csrfToken, 
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.json().then(function(err) { 
+                throw new Error(err.message || 'Error en servidor'); 
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        showToast(data.message, 'success');
+        
+        const label = document.getElementById('label-empleado-' + personaId);
+        label.textContent = 'Empleado (Permanente)';
+        
+        switchElement.checked = true;
+        switchElement.disabled = true;
+        switchElement.style.opacity = '0.6';
+        switchElement.style.cursor = 'not-allowed';
+    })
+    .catch(function(error) {
+        showToast(error.message, 'error');
+        switchElement.checked = false;
         switchElement.disabled = false;
     });
 }
