@@ -13,7 +13,7 @@ from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
     PersonaForm, ClienteForm, EmpleadoForm, EditarPersonaForm,
-    CambiarPasswordForm, ModificarDatosPersonalesForm
+    CambiarPasswordForm, ModificarDatosPersonalesForm, ModificarDatosUsuarioForm
 )
 from datetime import date
 import random
@@ -2389,6 +2389,68 @@ def desbloquear_empleado(request, persona_id):
     empleado.save()
     return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ha sido desbloqueado.'})
 
+@require_http_methods(["POST"])
+def marcar_como_cliente(request, persona_id):
+    print(f"DEBUG: marcar_como_cliente llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    empleado = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Empleado encontrado: {empleado.email}, es_cliente actual: {empleado.es_cliente}")
+    empleado.es_cliente = True
+    empleado.save()
+    print(f"DEBUG: Empleado marcado como cliente: {empleado.email}, es_cliente nuevo: {empleado.es_cliente}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ahora también es cliente.'})
+
+
+@require_http_methods(["POST"])
+def desmarcar_como_cliente(request, persona_id):
+    print(f"DEBUG: desmarcar_como_cliente llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    empleado = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Empleado encontrado: {empleado.email}, es_cliente actual: {empleado.es_cliente}")
+    empleado.es_cliente = False
+    empleado.save()
+    print(f"DEBUG: Empleado desmarcado como cliente: {empleado.email}, es_cliente nuevo: {empleado.es_cliente}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ya no es cliente.'})
+
+@require_http_methods(["POST"])
+def marcar_como_empleado(request, persona_id):
+    print(f"DEBUG: marcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = True
+    cliente.save()
+    print(f"DEBUG: Cliente marcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ahora también es empleado.'})
+
+
+@require_http_methods(["POST"])
+def desmarcar_como_empleado(request, persona_id):
+    print(f"DEBUG: desmarcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = False
+    cliente.save()
+    print(f"DEBUG: Cliente desmarcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ya no es empleado.'})
+
 @empleado_requerido
 @csrf_protect
 @ensure_csrf_cookie
@@ -2532,5 +2594,134 @@ def estadisticas_maquinas(request):
     cantidades = [item['cantidad'] for item in ranking]
     listado = [{'nombre': item['maquina_base__nombre'], 'cantidad': item['cantidad']} for item in ranking]
     return JsonResponse({'labels': labels, 'cantidades': cantidades, 'listado': listado})
+
+@require_http_methods(["POST"])
+def desmarcar_como_empleado(request, persona_id):
+    print(f"DEBUG: desmarcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = False
+    cliente.save()
+    print(f"DEBUG: Cliente desmarcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ya no es empleado.'})
+
+
+@empleado_requerido
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_datos_cliente(request, persona_id):
+    """
+    Vista para que los administradores modifiquen los datos de un cliente específico.
+    """
+    from .forms import ModificarDatosUsuarioForm
+    
+    # Verificar que el usuario actual es admin
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+    
+    # Obtener el cliente
+    try:
+        cliente = Persona.objects.get(id=persona_id, es_cliente=True)
+    except Persona.DoesNotExist:
+        messages.error(request, "Cliente no encontrado.")
+        return redirect('persona:lista_clientes')
+    
+    if request.method == 'POST':
+        form = ModificarDatosUsuarioForm(request.POST, instance=cliente)
+        if form.is_valid():
+            cliente = form.save()
+            
+            # Actualizar también el usuario de Django si existe
+            try:
+                user = User.objects.get(email=cliente.email)
+                user.first_name = cliente.nombre
+                user.last_name = cliente.apellido
+                user.save()
+            except User.DoesNotExist:
+                pass  # El usuario de Django puede no existir
+            
+            messages.success(request, f'Datos del cliente {cliente.nombre} {cliente.apellido} actualizados correctamente.')
+            return redirect('persona:lista_clientes')
+    else:
+        form = ModificarDatosUsuarioForm(instance=cliente)
+    
+    return render(request, 'persona/modificar_datos_usuario.html', {
+        'form': form,
+        'usuario': cliente,
+        'tipo_usuario': 'Cliente'
+    })
+
+
+@empleado_requerido
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_datos_empleado(request, persona_id):
+    """
+    Vista para que los administradores modifiquen los datos de un empleado específico.
+    """
+    from .forms import ModificarDatosUsuarioForm
+    
+    # Verificar que el usuario actual es admin
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+    
+    # Obtener el empleado
+    try:
+        empleado = Persona.objects.get(id=persona_id, es_empleado=True)
+    except Persona.DoesNotExist:
+        messages.error(request, "Empleado no encontrado.")
+        return redirect('persona:lista_empleados_gestion')
+    
+    if request.method == 'POST':
+        form = ModificarDatosUsuarioForm(request.POST, instance=empleado)
+        if form.is_valid():
+            empleado = form.save()
+            
+            # Actualizar también el usuario de Django si existe
+            try:
+                user = User.objects.get(email=empleado.email)
+                user.first_name = empleado.nombre
+                user.last_name = empleado.apellido
+                user.save()
+            except User.DoesNotExist:
+                pass  # El usuario de Django puede no existir
+            
+            messages.success(request, f'Datos del empleado {empleado.nombre} {empleado.apellido} actualizados correctamente.')
+            return redirect('persona:lista_empleados_gestion')
+    else:
+        form = ModificarDatosUsuarioForm(instance=empleado)
+    
+    return render(request, 'persona/modificar_datos_usuario.html', {
+        'form': form,
+        'usuario': empleado,
+        'tipo_usuario': 'Empleado'
+    })
+
+@login_required
+def ver_datos_personales(request):
+    """
+    Vista para que los usuarios vean todos sus datos personales de forma de solo lectura
+    """
+    try:
+        # Buscar el perfil por email del usuario
+        persona = Persona.objects.get(email=request.user.email)
+    except Persona.DoesNotExist:
+        messages.error(request, "No se encontró el perfil asociado a tu email.")
+        return redirect('persona:inicio')
+    
+    return render(request, 'persona/ver_datos_personales.html', {
+        'persona': persona
+    })
 
 # Create your views here.

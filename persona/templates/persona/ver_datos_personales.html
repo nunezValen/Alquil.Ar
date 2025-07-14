@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ver Datos Personales - ALQUIL.AR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .datos-container {
+        max-width: 600px;
+        margin: 60px auto;
+        padding: 40px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .datos-container h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 35px;
+        font-size: 28px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        position: relative;
+    }
+
+    .datos-container h2::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 2px;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+        position: relative;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 10px;
+        color: #495057;
+        font-weight: 600;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .form-control[readonly] {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        color: #495057;
+        cursor: not-allowed;
+        border-color: #dee2e6;
+        position: relative;
+    }
+
+    .form-control[readonly]:hover {
+        border-color: #adb5bd;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .datos-info {
+        padding: 25px;
+        margin-bottom: 30px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        border: 1px solid rgba(255,255,255,0.8);
+    }
+
+    .datos-info h3 {
+        color: #495057;
+        font-size: 20px;
+        margin-bottom: 25px;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 12px;
+        font-weight: 600;
+        position: relative;
+    }
+
+    .datos-info h3::before {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 50px;
+        height: 2px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1px;
+    }
+
+    .btn-back {
+        text-align: center;
+        margin-top: 35px;
+    }
+
+    .btn-back .btn {
+        padding: 12px 30px;
+        font-size: 16px;
+        margin: 0 10px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-back .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .btn-back .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn-back .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        border: none;
+        color: white;
+    }
+
+    /* Efectos adicionales */
+    .form-group::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 2px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .form-group:hover::before {
+        opacity: 1;
+    }
+
+    /* Animación de entrada */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .datos-container {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .datos-container {
+            margin: 20px;
+            padding: 25px;
+        }
+        
+        .btn-back .btn {
+            display: block;
+            margin: 10px auto;
+            width: 100%;
+            max-width: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="datos-container">
+    <h2><i class="fas fa-user-circle"></i> Ver Datos Personales</h2>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Sección de datos de solo lectura -->
+    <div class="datos-info">
+        <h3><i class="fas fa-info-circle"></i> Información Personal</h3>
+        
+        <div class="form-group">
+            <label><i class="fas fa-user"></i> Nombre</label>
+            <input type="text" class="form-control" value="{{ persona.nombre|title }}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-user"></i> Apellido</label>
+            <input type="text" class="form-control" value="{{ persona.apellido|title }}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-id-card"></i> DNI</label>
+            <input type="text" class="form-control" value="{{ persona.dni|default:'No registrado' }}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Email</label>
+            <input type="email" class="form-control" value="{{ persona.email }}" readonly>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-calendar"></i> Fecha de Nacimiento</label>
+            <input type="text" class="form-control" value="{{ persona.fecha_nacimiento|date:'d/m/Y'|default:'No registrada' }}" readonly>
+        </div>
+    </div>
+
+    <!-- Botones de navegación -->
+    <div class="btn-back">
+        <a href="{% url 'persona:inicio' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Inicio
+        </a>
+        <a href="{% url 'persona:modificar_datos_personales' %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Modificar Datos
+        </a>
+    </div>
+</div>
+{% endblock %} 
