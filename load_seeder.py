@@ -13,10 +13,11 @@ def load_seeder():
 
     # Orden específico para cargar los datos
     load_order = [
-        'auth_data.json',      # Primero usuarios y grupos
-        'persona_data.json',   # Luego datos de personas
-        'sucursales_data.json', # Luego sucursales
-        'sessions_data.json'   # Y sesiones al final
+        'auth_data.json',
+        'persona_data.json',
+        'sucursales_data.json', 
+        'sessions_data.json',
+        'maquinas_data.json'
     ]
 
     # Cargar datos en el orden especificado
