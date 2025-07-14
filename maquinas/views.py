@@ -177,11 +177,15 @@ def toggle_visibilidad_unidad(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     maquina_base = unidad.maquina_base
     
-    # Si se intenta desocultar una unidad, verificar que su máquina base esté visible
-    if not unidad.visible and not maquina_base.visible:
-        messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su máquina base está oculta.')
-        return redirect('maquinas:lista_unidades')
-    
+    # Si se intenta desocultar una unidad, verificar que su máquina base y sucursal estén visibles
+    if not unidad.visible:
+        if not maquina_base.visible:
+            messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su máquina base está oculta.')
+            return redirect('maquinas:lista_unidades')
+        if not unidad.sucursal.es_visible:
+            messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su sucursal está oculta.')
+            return redirect('maquinas:lista_unidades')
+
     # Cambiar visibilidad y actualizar stock
     if unidad.visible:
         unidad.visible = False
@@ -190,7 +194,7 @@ def toggle_visibilidad_unidad(request, pk):
     else:
         unidad.visible = True
         maquina_base.stock += 1
-        messages.success(request, f'La unidad {unidad.patente} ha sido desoculta.')
+        messages.success(request, f'La unidad {unidad.patente} ha sido desocultada.')
     
     unidad.save()
     maquina_base.save()

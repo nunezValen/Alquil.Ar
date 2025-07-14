@@ -13,7 +13,8 @@ from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
     PersonaForm, ClienteForm, EmpleadoForm, EditarPersonaForm,
-    CambiarPasswordForm, ModificarDatosPersonalesForm, ModificarDatosUsuarioForm
+    CambiarPasswordForm, ModificarDatosPersonalesForm, ModificarDatosUsuarioForm,
+    SucursalForm, ModificarSucursalForm
 )
 from datetime import date
 import random
@@ -31,6 +32,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value
 from functools import wraps
 from django.utils.dateparse import parse_date
+from maquinas.models import Unidad
 
 def empleado_requerido(view_func):
     """
@@ -1626,7 +1628,7 @@ def recuperar_password(request):
 
 def mapa_sucursales(request):
     try:
-        sucursales = Sucursal.objects.all()
+        sucursales = Sucursal.objects.filter(es_visible=True)
         
         # Validar que las coordenadas sean válidas
         for sucursal in sucursales:
@@ -2722,6 +2724,124 @@ def ver_datos_personales(request):
     
     return render(request, 'persona/ver_datos_personales.html', {
         'persona': persona
+    })
+
+@empleado_requerido
+def lista_sucursales(request):
+    from django.db.models.functions import Replace
+    """Gestionar listado de sucursales con filtros y paginación"""
+    # Ahora, nadie puede ver las sucursales ocultas en esta tabla.
+    queryset = Sucursal.objects.filter(es_visible=True).order_by('direccion')
+
+    # Filtros
+    filtros = {
+        'direccion': request.GET.get('direccion', ''),
+        'telefono': request.GET.get('telefono', '').replace(' ',''),
+        'email': request.GET.get('email', ''),
+    }
+
+    if filtros['direccion']:
+        queryset = queryset.filter(direccion__icontains=filtros['direccion'])
+    if filtros['telefono']:
+        queryset = queryset.annotate(
+    telefono_sin_espacios=Replace(F('telefono'), Value(' '), Value(''))
+).filter(
+    telefono_sin_espacios__icontains=filtros['telefono']
+)
+    if filtros['email']:
+        queryset = queryset.filter(email__icontains=filtros['email'])
+
+    filtros_aplicados = any(filtros.values())
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(queryset, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    mensaje_sin_resultados = None
+    if not page_obj.object_list and filtros_aplicados:
+        mensaje_sin_resultados = "No se encontraron sucursales con los filtros aplicados."
+
+    return render(request, 'persona/lista_sucursales.html', {
+        'sucursales': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'filtros': filtros,
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+        'mostrar_columna_visible': request.user.is_superuser or (hasattr(request.user, 'persona') and request.user.persona.es_admin),
+    })
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def cargar_sucursal(request):
+    """Formulario para cargar una nueva sucursal (solo admins)"""
+    if request.method == 'POST':
+        form = SucursalForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal creada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = SucursalForm()
+    return render(request, 'persona/cargar_sucursal.html', {'form': form})
+
+# Endpoint para alternar visibilidad de sucursal
+@login_required
+@user_passes_test(es_admin)
+@require_http_methods(["POST"])
+def toggle_visibilidad_sucursal(request, sucursal_id):
+    from maquinas.models import Unidad
+
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    nueva_visibilidad = not sucursal.es_visible
+
+    # Si se intenta ocultar
+    if not nueva_visibilidad:
+        # Verificar que no existan unidades visibles asociadas
+        if Unidad.objects.filter(sucursal=sucursal, visible=True).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Para ocultar esta sucursal, es necesario ocultar sus unidades de máquina primero.'
+            })
+    else:
+        # Se intenta volver visible: verificar duplicado de dirección entre visibles
+        if Sucursal.objects.filter(es_visible=True, direccion__iexact=sucursal.direccion).exclude(pk=sucursal.pk).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Ya existe otra sucursal visible con la misma dirección.'
+            })
+
+    sucursal.es_visible = nueva_visibilidad
+    sucursal.save()
+
+    mensaje = (f'La sucursal "{sucursal.direccion}" ahora es visible.' if sucursal.es_visible 
+               else f'La sucursal "{sucursal.direccion}" ha sido ocultada.')
+
+    return JsonResponse({'status': 'success', 'visible': sucursal.es_visible, 'message': mensaje})
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_sucursal(request, sucursal_id):
+    """Formulario para modificar una sucursal existente (solo admins)"""
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    if request.method == 'POST':
+        form = ModificarSucursalForm(request.POST, instance=sucursal)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal actualizada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = ModificarSucursalForm(instance=sucursal)
+
+    return render(request, 'persona/modificar_sucursal.html', {
+        'form': form,
+        'sucursal': sucursal
     })
 
 # Create your views here.

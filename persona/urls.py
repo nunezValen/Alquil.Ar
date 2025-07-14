@@ -17,7 +17,8 @@ from .views import (
     marcar_como_empleado, desmarcar_como_empleado,
     modificar_datos_cliente, modificar_datos_empleado,
     registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler, finalizar_alquiler,
-    obtener_datos_cliente_actual, ver_datos_personales
+    obtener_datos_cliente_actual, ver_datos_personales, lista_sucursales, cargar_sucursal,
+    toggle_visibilidad_sucursal, modificar_sucursal
 )
 from maquinas.views import cancelar_alquiler
 from persona import views
@@ -86,6 +87,10 @@ urlpatterns = [
     # Rutas para modificar datos de usuarios (solo admin)
     path('clientes/<int:persona_id>/modificar-datos/', modificar_datos_cliente, name='modificar_datos_cliente'),
     path('empleados/<int:persona_id>/modificar-datos/', modificar_datos_empleado, name='modificar_datos_empleado'),
+    path('gestion/sucursales/', lista_sucursales, name='lista_sucursales'),
+    path('sucursales/cargar/', cargar_sucursal, name='cargar_sucursal'),
+    path('sucursales/<int:sucursal_id>/toggle-visible/', toggle_visibilidad_sucursal, name='toggle_visibilidad_sucursal'),
+    path('sucursales/<int:sucursal_id>/modificar/', modificar_sucursal, name='modificar_sucursal'),
 ]
 
 
