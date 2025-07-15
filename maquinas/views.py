@@ -135,11 +135,10 @@ def cargar_maquina_base(request):
     })
 
 @login_required
-@user_passes_test(es_admin)
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["GET", "POST"])
 def eliminar_maquina_base(request, maquina_id):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
 
     if request.method == 'POST':
@@ -159,7 +158,7 @@ def eliminar_maquina_base(request, maquina_id):
     return render(request, 'maquinas/eliminar_maquina_base.html', {'maquina': maquina})
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_empleado_o_admin)
 def lista_maquinas(request):
     maquinas = MaquinaBase.objects.all().order_by('nombre')
     return render(request, 'maquinas/lista_maquinas.html', {'maquinas': maquinas})
@@ -174,8 +173,10 @@ def lista_unidades(request):
     })
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def toggle_visibilidad_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
     maquina_base = unidad.maquina_base
     
@@ -1012,11 +1013,13 @@ def pago_pendiente(request):
     return redirect('maquinas:catalogo_publico')
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def editar_maquina_base(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, pk=pk)
     if request.method == 'POST':
-        form = MaquinaBaseForm(request.POST, instance=maquina)
+        form = MaquinaBaseForm(request.POST, request.FILES, instance=maquina)
         if form.is_valid():
             maquina = form.save(commit=False)
             # Mantener la imagen original
@@ -1036,8 +1039,10 @@ def editar_maquina_base(request, pk):
     })
 
 @login_required
-@user_passes_test(es_admin)
 def editar_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
     if request.method == 'POST':
         form = UnidadForm(request.POST, instance=unidad, initial={'patente_original': unidad.patente})
@@ -1054,10 +1059,19 @@ def editar_unidad(request, pk):
     })
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def toggle_mantenimiento_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
-    
+
+    # Verificar si la unidad está en un alquiler en curso
+    from maquinas.models import Alquiler
+    alquiler_en_curso = Alquiler.objects.filter(unidad=unidad, estado='en_curso').exists()
+    if alquiler_en_curso:
+        messages.error(request, "No se puede poner en mantenimiento una unidad que está en un alquiler en curso.")
+        return redirect('maquinas:lista_unidades')
+
     # Solo permitir cambiar entre disponible y mantenimiento
     if unidad.estado == 'disponible':
         unidad.estado = 'mantenimiento'
@@ -1068,17 +1082,16 @@ def toggle_mantenimiento_unidad(request, pk):
     else:
         messages.error(request, 'Solo se puede cambiar el estado de mantenimiento en unidades disponibles.')
         return redirect('maquinas:lista_unidades')
-    
+
     unidad.save()
     messages.success(request, mensaje)
     return redirect('maquinas:lista_unidades')
 
 @login_required
-@user_passes_test(es_admin)
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["POST"])
 def desocultar_maquina_base(request, maquina_id):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
     nombre_maquina = maquina.nombre
     try:

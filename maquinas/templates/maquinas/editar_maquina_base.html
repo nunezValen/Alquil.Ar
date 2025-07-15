@@ -64,7 +64,7 @@
         {# Campo nombre fuera del for #}
         <div class="mb-3">
             <label for="{{ form.nombre.id_for_label }}" class="form-label">{{ form.nombre.label }}</label>
-            {{ form.nombre }}
+            <input type="text" name="nombre" value="{{ maquina.nombre }}" class="form-control" data-nombre-original="{{ maquina.nombre }}" id="{{ form.nombre.id_for_label }}" maxlength="100" required>
             {% if form.nombre.errors %}
                 <div class="error-text">
                     {% for error in form.nombre.errors %}
