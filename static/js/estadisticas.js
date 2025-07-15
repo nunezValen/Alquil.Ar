@@ -47,22 +47,15 @@ document.addEventListener('DOMContentLoaded', function() {
         let valido = true;
         const fechaInicio = getFecha(inputInicio);
         const fechaFin = getFecha(inputFin);
-        const hoy = new Date(hoyISO());
         limpiarErrorFecha(inputInicio, errorIdPrefix+'-inicio');
         limpiarErrorFecha(inputFin, errorIdPrefix+'-fin');
         // Validaciones
         if (!fechaInicio) {
             mostrarErrorFecha(inputInicio, 'Este campo es obligatorio.', errorIdPrefix+'-inicio');
             valido = false;
-        } else if (fechaInicio > hoy) {
-            mostrarErrorFecha(inputInicio, 'La fecha no puede ser futura.', errorIdPrefix+'-inicio');
-            valido = false;
         }
         if (!fechaFin) {
             mostrarErrorFecha(inputFin, 'Este campo es obligatorio.', errorIdPrefix+'-fin');
-            valido = false;
-        } else if (fechaFin > hoy) {
-            mostrarErrorFecha(inputFin, 'La fecha no puede ser futura.', errorIdPrefix+'-fin');
             valido = false;
         }
         if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
