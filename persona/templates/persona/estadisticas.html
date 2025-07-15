@@ -82,9 +82,45 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Clientes (placeholder) -->
+                    <!-- Clientes -->
                     <div class="tab-pane fade" id="clientes" role="tabpanel" aria-labelledby="clientes-tab">
-                        <div class="alert alert-info">Próximamente: estadísticas de clientes.</div>
+                        <div class="row">
+                            <div class="col-md-5">
+                                <form id="form-clientes" class="mb-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Inicio</label>
+                                        <input type="date" class="form-control" name="fecha_inicio">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Fecha de Fin</label>
+                                        <input type="date" class="form-control" name="fecha_fin">
+                                    </div>
+                                    <button type="button" class="btn btn-primary w-100" id="btn-consultar-clientes">Consultar</button>
+                                </form>
+                            </div>
+                            <div class="col-md-7 d-flex flex-column align-items-center justify-content-center">
+                                <div id="clientes-grafico" style="width:100%; min-height:220px; overflow-x:auto;"></div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div id="clientes-listado" class="table-responsive p-0 bg-transparent border-0">
+                                    <table class="table table-hover table-sm align-middle mb-0" id="tabla-clientes">
+                                        <thead>
+                                            <tr>
+                                                <th style="background-color: #f8f9fa; width: 50%;">Cliente</th>
+                                                <th style="background-color: #f8f9fa; width: 30%;">Email</th>
+                                                <th style="background-color: #f8f9fa; width: 20%; text-align: right;">Cantidad de alquileres</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="clientes-lista-resultados">
+                                            <!-- Resultados aquí -->
+                                        </tbody>
+                                    </table>
+                                    <button class="btn btn-primary btn-sm mt-3 ms-auto d-block" id="btn-descargar-clientes">Descargar Resultados</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,6 +202,53 @@
     text-align: right !important;
 }
 #maquinas-listado {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    min-height: 0;
+    border: none;
+}
+#clientes-grafico {
+    background: #fff;
+    border: none;
+    display: flex;
+    align-items: right;
+    justify-content: flex-start;
+    min-height: 120px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0 auto;
+}
+#tabla-clientes {
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-size: 1rem;
+}
+#tabla-clientes th, #tabla-clientes td {
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #212529 !important;
+    font-weight: 400 !important;
+    padding: 0.75rem !important;
+    vertical-align: middle !important;
+}
+#tabla-clientes th {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #dee2e6 !important;
+}
+#tabla-clientes tr {
+    border-color: #dee2e6 !important;
+}
+#tabla-clientes tbody tr:hover {
+    background-color: transparent !important;
+}
+#tabla-clientes td.text-end {
+    text-align: right !important;
+}
+#clientes-listado {
     background: transparent;
     border-radius: 0;
     padding: 0;

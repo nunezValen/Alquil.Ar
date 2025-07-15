@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-descargar-maquinas').addEventListener('click', function() {
         const fechaInicio = inputInicioMaq.value;
         const fechaFin = inputFinMaq.value;
-        const nombreArchivo = `Máquinas más alquiladas - ${fechaInicio} - ${fechaFin}.xlsx`;
+        const nombreArchivo = `Maquinas_mas_alquiladas_${fechaInicio || 'inicio'}_${fechaFin || 'hoy'}.csv`;
         // Obtener datos de la tabla
         const filas = Array.from(document.querySelectorAll('#tabla-maquinas-alquiladas tbody tr'));
         if (filas.length === 0) {
@@ -161,13 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         // Construir datos para Excel
-        let csv = 'Máquina Base\tCantidad de alquileres\n';
+        let csv = 'Maquina Base,Cantidad de alquileres\r\n';
         filas.forEach(tr => {
             const tds = tr.querySelectorAll('td');
-            csv += `${tds[0].innerText}\t${tds[1].innerText}\n`;
+            csv += `"${tds[0].innerText.replace(/"/g,'""')}",${tds[1].innerText}\r\n`;
         });
-        // Convertir a Blob y descargar como .xlsx (en realidad es TSV, pero Excel lo abre bien)
-        const blob = new Blob([csv], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -178,5 +177,116 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
+    });
+
+    // -----------------------------
+    // --- CLIENTES ---------------
+    // -----------------------------
+
+    const formCli = document.getElementById('form-clientes');
+    const btnCli = document.getElementById('btn-consultar-clientes');
+    const inputInicioCli = formCli.querySelector('input[name="fecha_inicio"]');
+    const inputFinCli = formCli.querySelector('input[name="fecha_fin"]');
+    const graficoCli = document.getElementById('clientes-grafico');
+    const listaCli = document.getElementById('clientes-lista-resultados');
+
+    // Validación opcional de fechas
+    function validarFechasOpcionales(inputInicio, inputFin, btn, prefix) {
+        let valido = true;
+        const fechaInicio = getFecha(inputInicio);
+        const fechaFin = getFecha(inputFin);
+        const hoy = new Date(hoyISO());
+        limpiarErrorFecha(inputInicio, prefix + '-inicio');
+        limpiarErrorFecha(inputFin, prefix + '-fin');
+        
+        if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+            mostrarErrorFecha(inputFin, 'La fecha de fin debe ser igual o posterior a la de inicio.', prefix + '-fin');
+            valido = false;
+        }
+        btn.disabled = !valido;
+        return valido;
+    }
+
+    [inputInicioCli, inputFinCli].forEach(inp => {
+        inp.addEventListener('input', () => {
+            validarFechasOpcionales(inputInicioCli, inputFinCli, btnCli, 'clientes');
+        });
+    });
+
+    let chartCli = null;
+    btnCli.addEventListener('click', function() {
+        if (!validarFechasOpcionales(inputInicioCli, inputFinCli, btnCli, 'clientes')) return;
+
+        const fecha_inicio = inputInicioCli.value;
+        const fecha_fin = inputFinCli.value;
+
+        graficoCli.innerHTML = '';
+        listaCli.innerHTML = '';
+
+        const params = new URLSearchParams();
+        if (fecha_inicio) params.append('fecha_inicio', fecha_inicio);
+        if (fecha_fin) params.append('fecha_fin', fecha_fin);
+
+        fetch(`/persona/estadisticas/clientes/?${params.toString()}`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    graficoCli.innerHTML = `<div class='text-danger'>${data.error}</div>`;
+                    return;
+                }
+                if (!data.labels || data.labels.length === 0) {
+                    graficoCli.innerHTML = `<div class='text-muted'>No hay datos para el período seleccionado.</div>`;
+                    return;
+                }
+
+                // Crear contenedor deslizante
+                graficoCli.innerHTML = '<div style="overflow-x:auto; width:100%;"><canvas id="chart-clientes" height="260"></canvas></div>';
+                const canvas = document.getElementById('chart-clientes');
+                const ctx = canvas.getContext('2d');
+                const width = Math.max(400, data.labels.length * 60);
+                canvas.width = width;
+
+                if (chartCli) chartCli.destroy();
+                chartCli = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.cantidades,
+                            backgroundColor: '#2176d2'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+
+                // Render tabla
+                data.listado.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${item.nombre}</td><td>${item.email}</td><td class='text-end'>${item.cantidad}</td>`;
+                    listaCli.appendChild(tr);
+                });
+            })
+            .catch(() => {
+                graficoCli.innerHTML = `<div class='text-danger'>Error al consultar los datos.</div>`;
+            });
+    });
+
+    // Descargar clientes
+    document.getElementById('btn-descargar-clientes').addEventListener('click', function() {
+        const params = new URLSearchParams();
+        if (inputInicioCli.value) params.append('fecha_inicio', inputInicioCli.value);
+        if (inputFinCli.value)   params.append('fecha_fin', inputFinCli.value);
+        params.append('export', 'xlsx');
+        // Redirigir para que el navegador descargue el archivo generado por el backend
+        window.location.href = `/persona/estadisticas/clientes/?${params.toString()}`;
     });
 }); 

@@ -2851,4 +2851,84 @@ def modificar_sucursal(request, sucursal_id):
         'sucursal': sucursal
     })
 
+@require_GET
+def estadisticas_clientes(request):
+    """Devuelve ranking de clientes con más alquileres en el periodo"""
+    fecha_inicio_recibida=request.GET.get('fecha_inicio')
+    fecha_fin_recibida=request.GET.get('fecha_fin')
+    if fecha_inicio_recibida:
+        fecha_inicio = parse_date(fecha_inicio_recibida)
+    else:
+        fecha_inicio = None
+    if fecha_fin_recibida:
+        fecha_fin = parse_date(fecha_fin_recibida)
+    else:
+        fecha_fin = None
+
+    # Validar rango de fechas (si ambos presentes)
+    if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+        return JsonResponse({'error': 'Fechas inválidas'}, status=400)
+
+    # Filtrar alquileres por fecha de inicio
+    alquileres = Alquiler.objects.select_related('persona').all()
+    if fecha_inicio:
+        alquileres = alquileres.filter(fecha_inicio__gte=fecha_inicio)
+    if fecha_fin:
+        alquileres = alquileres.filter(fecha_inicio__lte=fecha_fin)
+
+    # Excluir registros sin persona asociada
+    alquileres = alquileres.filter(persona__isnull=False)
+
+    ranking = (
+        alquileres.values('persona__nombre', 'persona__apellido', 'persona__email')
+        .annotate(cantidad=Count('id'))
+        .order_by('-cantidad')
+    )
+
+    labels = [f"{item['persona__nombre']} {item['persona__apellido']}" for item in ranking]
+    cantidades = [item['cantidad'] for item in ranking]
+    listado = [
+        {
+            'nombre': f"{item['persona__nombre']} {item['persona__apellido']}",
+            'email': item['persona__email'],
+            'cantidad': item['cantidad']
+        }
+        for item in ranking
+    ]
+
+    # Si se solicita exportar a Excel
+    if request.GET.get('export') == 'xlsx':
+        import openpyxl
+        from openpyxl.styles import Font, Alignment
+        from django.http import HttpResponse
+        from datetime import datetime
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Clientes más activos"
+
+        headers = ['Cliente', 'Email', 'Cantidad de alquileres']
+        ws.append(headers)
+
+        header_font = Font(bold=True)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        for item in listado:
+            ws.append([item['nombre'], item['email'], item['cantidad']])
+
+        # Ajuste de ancho de columnas
+        for column_cells in ws.columns:
+            length = max(len(str(cell.value or "")) for cell in column_cells)
+            ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+        response['Content-Disposition'] = f'attachment; filename="clientes_mas_activos_{timestamp}.xlsx"'
+        wb.save(response)
+        return response
+
+    return JsonResponse({'labels': labels, 'cantidades': cantidades, 'listado': listado})
+
 # Create your views here.

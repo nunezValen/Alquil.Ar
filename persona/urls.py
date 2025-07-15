@@ -52,6 +52,7 @@ urlpatterns = [
     path('gestion/', gestion, name='gestion'),
     path('estadisticas/', estadisticas, name='estadisticas'),
     path('estadisticas/maquinas/', views.estadisticas_maquinas, name='estadisticas_maquinas'),
+    path('estadisticas/clientes/', views.estadisticas_clientes, name='estadisticas_clientes'),
     path('logout/', logout_view, name='logout'),
     path('modificar-datos-personales/', modificar_datos_personales, name='modificar_datos_personales'),
     path('ver-datos-personales/', ver_datos_personales, name='ver_datos_personales'),
