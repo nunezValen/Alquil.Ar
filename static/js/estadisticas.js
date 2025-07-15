@@ -87,13 +87,71 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- Consulta Facturación ---
+    let chartFact = null;
     btnFact.addEventListener('click', function() {
         if (!validarFechas(inputInicioFact, inputFinFact, btnFact, 'facturacion')) return;
-        // Aquí iría la consulta AJAX real
-        // Simulación de resultado:
-        totalFact.innerHTML = 'Total facturado: $<span id="facturacion-total-valor">999999</span>';
+        const fecha_inicio = inputInicioFact.value;
+        const fecha_fin = inputFinFact.value;
+        totalFact.innerHTML = '';
         graficoFact.innerHTML = '';
-        // Aquí se podría insertar una imagen de gráfico generada por el backend
+        fetch(`/maquinas/persona/estadisticas/?fecha_inicio=${fecha_inicio}&fecha_fin=${fecha_fin}`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    graficoFact.innerHTML = `<div class='text-danger'>${data.error}</div>`;
+                    totalFact.innerHTML = '';
+                    return;
+                }
+                if (!data.labels || data.labels.length === 0) {
+                    graficoFact.innerHTML = `<div class='text-muted'>No hay datos para el período seleccionado.`;
+                    totalFact.innerHTML = '';
+                    return;
+                }
+                // Renderizar gráfico de barras
+                graficoFact.innerHTML = '<canvas id="chart-facturacion" width="400" height="220"></canvas>';
+                const ctx = document.getElementById('chart-facturacion').getContext('2d');
+                if (chartFact) chartFact.destroy();
+                chartFact = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Facturación',
+                            data: data.data,
+                            backgroundColor: '#2176d2',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `$${context.parsed.y.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-AR', {minimumFractionDigits: 2});
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                // Mostrar total
+                totalFact.innerHTML = `Total facturado: $<span id="facturacion-total-valor">${data.total.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>`;
+            })
+            .catch(() => {
+                graficoFact.innerHTML = `<div class='text-danger'>Error al consultar los datos.</div>`;
+                totalFact.innerHTML = '';
+            });
     });
 
     // --- Consulta Máquinas ---

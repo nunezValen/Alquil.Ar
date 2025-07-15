@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET
 from persona.views import es_empleado_o_admin
 from .forms import MaquinaBaseForm, AlquilerForm, CargarUnidadForm
 from .models import MaquinaBase, Unidad, Alquiler
@@ -14,11 +14,13 @@ from django.http import HttpResponse, JsonResponse
 from datetime import datetime, date, timedelta
 from django.urls import reverse
 from persona.models import Persona
-from django.db.models import Q
-from django.core.mail import send_mail
+from django.db.models import Q, Sum
+from django.utils.dateparse import parse_date
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
+from collections import defaultdict
+from decimal import Decimal
 from .utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
-from django.http import JsonResponse
-from .models import MaquinaBase
+from django.template.loader import render_to_string
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -278,32 +280,64 @@ def eliminar_unidad(request, unidad_id):
 
 def catalogo_publico(request):
     query = request.GET.get('q', '')
-    # Filtrar solo máquinas que tengan unidades realmente disponibles (no en mantenimiento)
-    maquinas = MaquinaBase.objects.filter(
-        visible=True,
-        unidades__estado='disponible',
-        unidades__visible=True
-    ).distinct().order_by('nombre')
-    
-    if query:
-        maquinas = maquinas.filter(
-            Q(nombre__icontains=query) |
-            Q(tipo__icontains=query) |
-            Q(marca__icontains=query) |
-            Q(modelo__icontains=query) |
-            Q(descripcion_corta__icontains=query) |
-            Q(descripcion_larga__icontains=query)
-        ).distinct()
+    # Obtener todos los tipos y marcas posibles
+    tipos_maquina = MaquinaBase.TIPOS_MAQUINA
+    marcas = MaquinaBase.MARCAS
 
+    # Obtener precios mínimo y máximo de todas las máquinas visibles
+    precios = MaquinaBase.objects.filter(visible=True)
+    precio_min = precios.order_by('precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    precio_max = precios.order_by('-precio_por_dia').first().precio_por_dia if precios.exists() else 0
+
+    # Leer filtros seleccionados
+    filtros = {
+        'tipo': request.GET.getlist('tipo'),
+        'marca': request.GET.getlist('marca'),
+        'estado': request.GET.getlist('estado'),
+        'precio_min': request.GET.get('precio_min', precio_min),
+        'precio_max': request.GET.get('precio_max', precio_max),
+    }
+
+    # Filtrar máquinas
+    maquinas = MaquinaBase.objects.filter(visible=True)
+    if filtros['tipo']:
+        maquinas = maquinas.filter(tipo__in=filtros['tipo'])
+    if filtros['marca']:
+        maquinas = maquinas.filter(marca__in=filtros['marca'])
+    # Estado: OR global
+    if filtros['estado']:
+        estados = []
+        if 'disponible' in filtros['estado']:
+            estados.append(True)
+        if 'no_disponible' in filtros['estado']:
+            estados.append(False)
+        maquinas = [m for m in maquinas if m.tiene_unidades_disponibles() in estados]
+    else:
+        maquinas = list(maquinas)
+    # Filtro de precio
+    try:
+        pmin = float(filtros['precio_min'])
+        pmax = float(filtros['precio_max'])
+        maquinas = [m for m in maquinas if pmin <= float(m.precio_por_dia) <= pmax]
+    except:
+        pass
+    # Filtro de búsqueda
+    if query:
+        maquinas = [m for m in maquinas if query.lower() in m.nombre.lower() or query.lower() in m.modelo.lower() or query.lower() in m.descripcion_corta.lower() or query.lower() in m.descripcion_larga.lower()]
+    # Descripción corta recortada
     for maquina in maquinas:
         if len(maquina.descripcion_corta) > 200:
             maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
         else:
             maquina.descripcion_vista = maquina.descripcion_corta
-    
     return render(request, 'maquinas/catalogo_publico.html', {
         'maquinas': maquinas,
-        'query': query
+        'query': query,
+        'tipos_maquina': tipos_maquina,
+        'marcas': marcas,
+        'precio_min': precio_min,
+        'precio_max': precio_max,
+        'filtros': filtros,
     })
 
 @csrf_exempt
@@ -1104,3 +1138,130 @@ def confirmar_pago_binance(request):
 def nombres_maquinas_base(request):
     nombres = list(MaquinaBase.objects.values_list('nombre', flat=True))
     return JsonResponse({'nombres': nombres})
+
+@require_GET
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def estadisticas_facturacion(request):
+    """
+    Devuelve datos de facturación agrupados por día, semana, mes o año según el rango de fechas.
+    Suma monto_total de alquileres creados en el periodo y resta monto_reembolso de los cancelados en el periodo.
+    """
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    if not fecha_inicio or not fecha_fin:
+        return JsonResponse({'error': 'Debe especificar fecha de inicio y fin.'}, status=400)
+
+    fecha_inicio = parse_date(fecha_inicio)
+    fecha_fin = parse_date(fecha_fin)
+    if not fecha_inicio or not fecha_fin:
+        return JsonResponse({'error': 'Fechas inválidas.'}, status=400)
+
+    if fecha_inicio > fecha_fin:
+        return JsonResponse({'error': 'La fecha de inicio no puede ser posterior a la de fin.'}, status=400)
+
+    dias = (fecha_fin - fecha_inicio).days + 1
+    if dias <= 7:
+        agrupacion = 'dia'
+        formato = '%Y-%m-%d'
+    elif dias <= 31:
+        agrupacion = 'semana'
+        formato = '%Y-%W'
+    elif dias <= 366:
+        agrupacion = 'mes'
+        formato = '%Y-%m'
+    else:
+        agrupacion = 'anio'
+        formato = '%Y'
+
+    # Alquileres creados en el periodo
+    alquileres_creados = Alquiler.objects.filter(
+        fecha_creacion__date__gte=fecha_inicio,
+        fecha_creacion__date__lte=fecha_fin
+    )
+    # Alquileres cancelados en el periodo
+    alquileres_cancelados = Alquiler.objects.filter(
+        fecha_cancelacion__date__gte=fecha_inicio,
+        fecha_cancelacion__date__lte=fecha_fin,
+        estado='cancelado'
+    )
+
+    # Agrupación
+    if agrupacion == 'dia':
+        trunc = TruncDay
+    elif agrupacion == 'semana':
+        trunc = TruncWeek
+    elif agrupacion == 'mes':
+        trunc = TruncMonth
+    else:
+        trunc = TruncYear
+
+    # Sumar monto_total de creados
+    creados_agrupados = alquileres_creados.annotate(periodo=trunc('fecha_creacion')).values('periodo').annotate(monto=Sum('monto_total')).order_by('periodo')
+    # Sumar monto_reembolso de cancelados
+    cancelados_agrupados = alquileres_cancelados.annotate(periodo=trunc('fecha_cancelacion')).values('periodo').annotate(monto=Sum('monto_reembolso')).order_by('periodo')
+
+    # Unir ambos resultados
+    datos = defaultdict(lambda: Decimal('0.00'))
+    for item in creados_agrupados:
+        if item['periodo']:
+            datos[item['periodo'].strftime(formato)] += item['monto'] or 0
+    for item in cancelados_agrupados:
+        if item['periodo']:
+            datos[item['periodo'].strftime(formato)] -= item['monto'] or 0
+
+    # Ordenar por periodo
+    labels = sorted(datos.keys())
+    data = [float(datos[label]) for label in labels]
+    total = float(sum(data))
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+        'total': total
+    })
+
+def catalogo_grilla_ajax(request):
+    # Lógica idéntica a catalogo_publico pero solo devuelve el HTML de la grilla
+    query = request.GET.get('q', '')
+    tipos_maquina = MaquinaBase.TIPOS_MAQUINA
+    marcas = MaquinaBase.MARCAS
+    precios = MaquinaBase.objects.filter(visible=True)
+    precio_min = precios.order_by('precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    precio_max = precios.order_by('-precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    filtros = {
+        'tipo': request.GET.getlist('tipo'),
+        'marca': request.GET.getlist('marca'),
+        'estado': request.GET.getlist('estado'),
+        'precio_min': request.GET.get('precio_min', precio_min),
+        'precio_max': request.GET.get('precio_max', precio_max),
+    }
+    maquinas = MaquinaBase.objects.filter(visible=True)
+    if filtros['tipo']:
+        maquinas = maquinas.filter(tipo__in=filtros['tipo'])
+    if filtros['marca']:
+        maquinas = maquinas.filter(marca__in=filtros['marca'])
+    if filtros['estado']:
+        estados = []
+        if 'disponible' in filtros['estado']:
+            estados.append(True)
+        if 'no_disponible' in filtros['estado']:
+            estados.append(False)
+        maquinas = [m for m in maquinas if m.tiene_unidades_disponibles() in estados]
+    else:
+        maquinas = list(maquinas)
+    try:
+        pmin = float(filtros['precio_min'])
+        pmax = float(filtros['precio_max'])
+        maquinas = [m for m in maquinas if pmin <= float(m.precio_por_dia) <= pmax]
+    except:
+        pass
+    if query:
+        maquinas = [m for m in maquinas if query.lower() in m.nombre.lower() or query.lower() in m.modelo.lower() or query.lower() in m.descripcion_corta.lower() or query.lower() in m.descripcion_larga.lower()]
+    for maquina in maquinas:
+        if len(maquina.descripcion_corta) > 200:
+            maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
+        else:
+            maquina.descripcion_vista = maquina.descripcion_corta
+    html = render_to_string('maquinas/_grilla_maquinas.html', {'maquinas': maquinas, 'request': request})
+    return JsonResponse({'html': html})

@@ -28,4 +28,6 @@ urlpatterns = [
     path('maquina/<int:maquina_id>/desocultar/', views.desocultar_maquina_base, name='desocultar_maquina_base'),
     path('confirmar-pago-binance/', views.confirmar_pago_binance, name='confirmar_pago_binance'),
     path('nombres_maquinas_base/', views.nombres_maquinas_base, name='nombres_maquinas_base'),
+    path('persona/estadisticas/', views.estadisticas_facturacion, name='estadisticas_facturacion'),
+    path('catalogo/grilla/', views.catalogo_grilla_ajax, name='catalogo_grilla_ajax'),
 ] 
