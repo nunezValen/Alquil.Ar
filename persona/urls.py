@@ -13,8 +13,13 @@ from .views import (
     enviar_codigo_verificacion, verificar_codigo, cambiar_password_2,
     bloquear_cliente, desbloquear_cliente,
     lista_empleados_gestion, bloquear_empleado, desbloquear_empleado,
+    marcar_como_cliente, desmarcar_como_cliente,
+    marcar_como_empleado, desmarcar_como_empleado,
+    modificar_datos_cliente, modificar_datos_empleado,
     registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler, finalizar_alquiler,
-    obtener_datos_cliente_actual
+    verificar_alquileres_afectados, finalizar_alquiler_con_mantenimiento,
+    obtener_datos_cliente_actual, ver_datos_personales, lista_sucursales, cargar_sucursal,
+    toggle_visibilidad_sucursal, modificar_sucursal
 )
 from maquinas.views import cancelar_alquiler
 from persona import views
@@ -50,9 +55,12 @@ urlpatterns = [
     path('estadisticas/maquinas/', views.estadisticas_maquinas, name='estadisticas_maquinas'),
     path('logout/', logout_view, name='logout'),
     path('modificar-datos-personales/', modificar_datos_personales, name='modificar_datos_personales'),
+    path('ver-datos-personales/', ver_datos_personales, name='ver_datos_personales'),
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('iniciar-alquiler/', iniciar_alquiler, name='iniciar_alquiler'),
     path('finalizar-alquiler/', finalizar_alquiler, name='finalizar_alquiler'),
+    path('verificar-alquileres-afectados/', verificar_alquileres_afectados, name='verificar_alquileres_afectados'),
+    path('finalizar-alquiler-con-mantenimiento/', finalizar_alquiler_con_mantenimiento, name='finalizar_alquiler_con_mantenimiento'),
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
     path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
     path('buscar-clientes-json/', buscar_clientes_json, name='buscar_clientes_json'),
@@ -73,6 +81,19 @@ urlpatterns = [
     path('gestion/empleados/', lista_empleados_gestion, name='lista_empleados_gestion'),
     path('empleados/<int:persona_id>/bloquear/', bloquear_empleado, name='bloquear_empleado'),
     path('empleados/<int:persona_id>/desbloquear/', desbloquear_empleado, name='desbloquear_empleado'),
+    # Rutas para gestión de empleados (marcar/desmarcar como cliente)
+    path('empleados/<int:persona_id>/marcar-cliente/', marcar_como_cliente, name='marcar_como_cliente'),
+    path('empleados/<int:persona_id>/desmarcar-cliente/', desmarcar_como_cliente, name='desmarcar_como_cliente'),
+    # Rutas para gestión de clientes (marcar/desmarcar como empleado)
+    path('clientes/<int:persona_id>/marcar-empleado/', marcar_como_empleado, name='marcar_como_empleado'),
+    path('clientes/<int:persona_id>/desmarcar-empleado/', desmarcar_como_empleado, name='desmarcar_como_empleado'),
+    # Rutas para modificar datos de usuarios (solo admin)
+    path('clientes/<int:persona_id>/modificar-datos/', modificar_datos_cliente, name='modificar_datos_cliente'),
+    path('empleados/<int:persona_id>/modificar-datos/', modificar_datos_empleado, name='modificar_datos_empleado'),
+    path('gestion/sucursales/', lista_sucursales, name='lista_sucursales'),
+    path('sucursales/cargar/', cargar_sucursal, name='cargar_sucursal'),
+    path('sucursales/<int:sucursal_id>/toggle-visible/', toggle_visibilidad_sucursal, name='toggle_visibilidad_sucursal'),
+    path('sucursales/<int:sucursal_id>/modificar/', modificar_sucursal, name='modificar_sucursal'),
 ]
 
 

@@ -3,7 +3,7 @@ from .models import Persona, Maquina, Sucursal
 
 @admin.register(Sucursal)
 class SucursalAdmin(admin.ModelAdmin):
-    list_display = ('direccion', 'telefono', 'email', 'horario')
+    list_display = ('direccion', 'telefono', 'email', 'horario', 'es_visible')
     search_fields = ('direccion', 'telefono', 'email', 'horario')
     fieldsets = (
         ('Ubicación', {
@@ -14,6 +14,9 @@ class SucursalAdmin(admin.ModelAdmin):
         }),
         ('Horarios', {
             'fields': ('horario',)
+        }),
+        ('Visibilidad', {
+            'fields': ('es_visible',)
         }),
     )
 

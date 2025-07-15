@@ -167,6 +167,12 @@ class Unidad(models.Model):
         verbose_name='Visible',
         help_text='Indica si la unidad es visible en el sistema'
     )
+    fecha_fin_mantenimiento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha Fin Mantenimiento',
+        help_text='Fecha hasta la cual la unidad estará en mantenimiento'
+    )
 
     def __str__(self):
         return f"{self.maquina_base} - Patente: {self.patente}"
@@ -197,6 +203,7 @@ class Alquiler(models.Model):
         ('finalizado', 'Finalizado'),
         ('cancelado', 'Cancelado'),
         ('rechazado', 'Rechazado'),
+        ('adeudado', 'Adeudado'),
     ]
     
     METODOS_PAGO = [

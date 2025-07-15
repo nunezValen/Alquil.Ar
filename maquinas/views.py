@@ -179,11 +179,15 @@ def toggle_visibilidad_unidad(request, pk):
     unidad = get_object_or_404(Unidad, pk=pk)
     maquina_base = unidad.maquina_base
     
-    # Si se intenta desocultar una unidad, verificar que su máquina base esté visible
-    if not unidad.visible and not maquina_base.visible:
-        messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su máquina base está oculta.')
-        return redirect('maquinas:lista_unidades')
-    
+    # Si se intenta desocultar una unidad, verificar que su máquina base y sucursal estén visibles
+    if not unidad.visible:
+        if not maquina_base.visible:
+            messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su máquina base está oculta.')
+            return redirect('maquinas:lista_unidades')
+        if not unidad.sucursal.es_visible:
+            messages.error(request, f'No se puede desocultar la unidad {unidad.patente} porque su sucursal está oculta.')
+            return redirect('maquinas:lista_unidades')
+
     # Cambiar visibilidad y actualizar stock
     if unidad.visible:
         unidad.visible = False
@@ -192,7 +196,7 @@ def toggle_visibilidad_unidad(request, pk):
     else:
         unidad.visible = True
         maquina_base.stock += 1
-        messages.success(request, f'La unidad {unidad.patente} ha sido desoculta.')
+        messages.success(request, f'La unidad {unidad.patente} ha sido desocultada.')
     
     unidad.save()
     maquina_base.save()
@@ -734,7 +738,24 @@ def alquilar_maquina(request, maquina_id):
                         'error': 'No se encontró tu perfil de persona. Por favor, regístrate primero.'
                     }, status=400)
             
-            # VALIDACIÓN 1: Verificar que el cliente no tenga otro alquiler activo/reservado
+            # VALIDACIÓN 1: Verificar que el cliente no tenga alquileres adeudados
+            alquileres_adeudados = Alquiler.objects.filter(
+                persona=persona,
+                estado='adeudado'
+            )
+            
+            if alquileres_adeudados.exists():
+                alquiler_adeudado = alquileres_adeudados.first()
+                dias_vencido = (date.today() - alquiler_adeudado.fecha_fin).days
+                return JsonResponse({
+                    'error': f'❌ NO SE PUEDE REALIZAR EL ALQUILER: Hay un alquiler vencido (#{alquiler_adeudado.numero}) asociado a esta personaque debe ser devuelto URGENTEMENTE. '
+                            f'Máquina: {alquiler_adeudado.maquina_base.nombre}, '
+                            f'vencido hace {dias_vencido} día{"s" if dias_vencido != 1 else ""}. '
+                            f'Antes de realizar un nuevo alquiler debe resolverse esta situación. '
+                            f'📞 Se recomienda coordinar la devolución a la brevedad.'
+                }, status=400)
+            
+            # VALIDACIÓN 2: Verificar que el cliente no tenga otro alquiler activo/reservado
             alquileres_activos = Alquiler.objects.filter(
                 persona=persona,
                 estado__in=['reservado', 'en_curso']
@@ -743,15 +764,14 @@ def alquilar_maquina(request, maquina_id):
             if alquileres_activos.exists():
                 alquiler_activo = alquileres_activos.first()
                 return JsonResponse({
-                    'error': f'Ya tienes un alquiler activo (#{alquiler_activo.numero}). '
-                            f'Solo puedes tener un alquiler a la vez. '
-                            f'Tu alquiler actual: {alquiler_activo.maquina_base.nombre} '
+                    'error': f'Ya existe un alquiler activo asociado a esta persona (#{alquiler_activo.numero}). '
+                            f'Solo se puede tener un alquiler a la vez. '
+                            f'Su alquiler actual: {alquiler_activo.maquina_base.nombre} '
                             f'del {alquiler_activo.fecha_inicio.strftime("%d/%m/%Y")} '
                             f'al {alquiler_activo.fecha_fin.strftime("%d/%m/%Y")}. '
-                            f'Contacta al soporte si necesitas cancelarlo.'
                 }, status=400)
             
-            # VALIDACIÓN 2: Verificar disponibilidad de unidades para las fechas
+            # VALIDACIÓN 3: Verificar disponibilidad de unidades para las fechas
             unidades_disponibles = Alquiler.obtener_unidades_disponibles(maquina, fecha_inicio, fecha_fin)
             
             if unidades_disponibles == 0:
@@ -831,12 +851,18 @@ def alquilar_maquina(request, maquina_id):
     # Obtener información de disponibilidad
     try:
         persona = Persona.objects.get(email=request.user.email)
+        # Verificar si tiene alquileres adeudados
+        tiene_alquiler_adeudado = Alquiler.objects.filter(
+            persona=persona,
+            estado='adeudado'
+        ).exists()
         # Verificar si tiene cualquier alquiler activo (reservado o en curso)
         tiene_alquiler_activo = Alquiler.objects.filter(
             persona=persona,
             estado__in=['reservado', 'en_curso']
         ).exists()
     except:
+        tiene_alquiler_adeudado = False
         tiene_alquiler_activo = False
     
     # Obtener lista de clientes si el usuario es empleado
@@ -860,7 +886,8 @@ def alquilar_maquina(request, maquina_id):
                     'dni': cliente.dni,
                     'calificacion_promedio': float(cliente.calificacion_promedio),
                     'tiene_recargo': cliente.tiene_recargo(),
-                    'mensaje_recargo': cliente.get_mensaje_recargo()
+                    'mensaje_recargo': cliente.get_mensaje_recargo(),
+                    'tiene_alquiler_adeudado': Alquiler.objects.filter(persona=cliente, estado='adeudado').exists()
                 }
                 clientes.append(cliente_data)
     except:
@@ -885,7 +912,8 @@ def alquilar_maquina(request, maquina_id):
                         'dni': cliente.dni,
                         'calificacion_promedio': float(cliente.calificacion_promedio),
                         'tiene_recargo': cliente.tiene_recargo(),
-                        'mensaje_recargo': cliente.get_mensaje_recargo()
+                        'mensaje_recargo': cliente.get_mensaje_recargo(),
+                        'tiene_alquiler_adeudado': Alquiler.objects.filter(persona=cliente, estado='adeudado').exists()
                     }
                     clientes.append(cliente_data)
         except Persona.DoesNotExist:
@@ -902,6 +930,7 @@ def alquilar_maquina(request, maquina_id):
             'unidades_totales': maquina.unidades.filter(estado='disponible', visible=True).count()
         },
         'fecha_minima': fecha_minima.strftime('%Y-%m-%d'),
+        'tiene_alquiler_adeudado': tiene_alquiler_adeudado,
         'tiene_alquiler_activo': tiene_alquiler_activo,
         'clientes': clientes,
         'usuario_email': request.user.email

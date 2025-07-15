@@ -75,7 +75,7 @@
   "model": "auth.user",
   "pk": 10,
   "fields": {
-    "password": "pbkdf2_sha256$1000000$EJ4Lxsv2i70IsiYmjP4K2p$cA6dxmqBjLp2J4kRwqt0UhyGNznxA1a/TfGdklY7VGE=",
+    "password": "pbkdf2_sha256$1000000$kgOKwv1u8xwO3eCHm8WiFL$hVE7huOemB7VoSsszVaBqrVc5HIdwalEswasqj38llQ=",
     "last_login": "2025-06-05T04:02:46.351Z",
     "is_superuser": false,
     "username": "valentin1333@hotmail.com",
@@ -111,13 +111,31 @@
   "model": "auth.user",
   "pk": 15,
   "fields": {
-    "password": "pbkdf2_sha256$1000000$kDOKwv1u8xwO3eCGm8WiFL$QmFUhjoZNQs7kjn4pr+LVRA5Ts/P7sRUPs9cMLbWCXQ=",
+    "password": "pbkdf2_sha256$1000000$kgOKwv1u8xwO3eCHm8WiFL$hVE7huOemB7VoSsszVaBqrVc5HIdwalEswasqj38llQ=",
     "last_login": "2025-06-05T05:57:00.226Z",
     "is_superuser": false,
     "username": "uzielpineiroj@gmail.com",
     "first_name": "Uziel",
     "last_name": "Pineiro",
     "email": "uzielpineiroj@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-06-05T03:16:33.540Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 16,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$kgOKwv1u8xwO3eCHm8WiFL$hVE7huOemB7VoSsszVaBqrVc5HIdwalEswasqj38llQ=",
+    "last_login": "2025-06-05T05:57:00.226Z",
+    "is_superuser": false,
+    "username": "eguaraszoe@gmail.com",
+    "first_name": "Zoe",
+    "last_name": "Eguaras",
+    "email": "eguaraszoe@gmail.com",
     "is_staff": false,
     "is_active": true,
     "date_joined": "2025-06-05T03:16:33.540Z",

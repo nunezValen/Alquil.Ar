@@ -194,6 +194,7 @@ class UnidadForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Modificar el queryset de sucursales para mostrar la dirección
+        self.fields['sucursal'].queryset = Sucursal.objects.filter(es_visible=True)
         self.fields['sucursal'].label_from_instance = lambda obj: f"{obj.direccion}"
 
     def clean(self):
@@ -241,8 +242,9 @@ class CargarUnidadForm(forms.ModelForm):
         if not self.instance.pk:
             self.instance.estado = 'disponible'
             self.instance.visible = True
-        
-        # Modificar el queryset de sucursales para mostrar la dirección
+ 
+        # Solo mostrar sucursales visibles
+        self.fields['sucursal'].queryset = Sucursal.objects.filter(es_visible=True)
         self.fields['sucursal'].label_from_instance = lambda obj: f"{obj.direccion}"
 
     def clean_patente(self):

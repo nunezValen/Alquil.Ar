@@ -270,6 +270,12 @@ class Sucursal(models.Model):
         help_text="Horarios de atención de la sucursal"
     )
 
+    es_visible = models.BooleanField(
+        default=True,
+        verbose_name="Visible",
+        help_text="Indica si la sucursal es visible en listados y mapas"
+    )
+
     def clean(self):
         """Validaciones adicionales del modelo"""
         super().clean()

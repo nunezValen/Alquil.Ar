@@ -1,5 +1,5 @@
 from django import forms
-from .models import Persona, Alquiler
+from .models import Persona, Alquiler, Sucursal
 from datetime import date
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -443,10 +443,14 @@ class ModificarDatosPersonalesForm(forms.ModelForm):
         }
         error_messages = {
             'nombre': {
-                'required': 'El nombre es obligatorio.'
+                'required': 'El nombre es obligatorio.',
+                'max_length': 'El nombre no puede tener más de 50 caracteres.',
+                'min_length': 'El nombre debe tener al menos 2 caracteres.'
             },
             'apellido': {
-                'required': 'El apellido es obligatorio.'
+                'required': 'El apellido es obligatorio.',
+                'max_length': 'El apellido no puede tener más de 50 caracteres.',
+                'min_length': 'El apellido debe tener al menos 2 caracteres.'
             }
         }
 
@@ -457,27 +461,273 @@ class ModificarDatosPersonalesForm(forms.ModelForm):
             self.fields['apellido'].initial = self.instance.apellido
 
     def clean_nombre(self):
-        nombre = self.cleaned_data.get('nombre', '').strip()
-        if not nombre:
-            raise forms.ValidationError('El nombre es obligatorio.')
-        if len(nombre) < 2:
-            raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
-        if len(nombre) > 50:
-            raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
+        nombre = self.cleaned_data.get('nombre')
+        if nombre:
+            nombre = nombre.strip()
+            if len(nombre) < 2:
+                raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+            if len(nombre) > 50:
+                raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
         return nombre
 
     def clean_apellido(self):
-        apellido = self.cleaned_data.get('apellido', '').strip()
-        if not apellido:
-            raise forms.ValidationError('El apellido es obligatorio.')
-        if len(apellido) < 2:
-            raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
-        if len(apellido) > 50:
-            raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
+        apellido = self.cleaned_data.get('apellido')
+        if apellido:
+            apellido = apellido.strip()
+            if len(apellido) < 2:
+                raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+            if len(apellido) > 50:
+                raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
         return apellido
 
     def save(self, commit=True):
-        persona = super().save(commit=False)
+        instance = super().save(commit=False)
         if commit:
-            persona.save()
-        return persona
+            instance.save()
+        return instance
+
+
+class ModificarDatosUsuarioForm(forms.ModelForm):
+    """
+    Formulario para que los administradores modifiquen los datos de otros usuarios.
+    Permite modificar: DNI, fecha de nacimiento, nombre y apellido.
+    El email se puede ver pero no modificar.
+    """
+    email_readonly = forms.EmailField(
+        label='Email',
+        required=False,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'readonly': 'readonly',
+            'style': 'background-color: #f8f9fa;'
+        })
+    )
+
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'apellido', 'dni', 'fecha_nacimiento']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre',
+                'autocomplete': 'off',
+                'minlength': '2',
+                'maxlength': '50',
+                'required': 'required'
+            }),
+            'apellido': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Apellido',
+                'autocomplete': 'off',
+                'minlength': '2',
+                'maxlength': '50',
+                'required': 'required'
+            }),
+            'dni': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'DNI',
+                'autocomplete': 'off',
+                'type': 'number',
+                'min': '1000000',
+                'max': '999999999',
+                'required': 'required',
+                'oninput': 'javascript: if (this.value.length > 9) this.value = this.value.slice(0, 9);'
+            }),
+            'fecha_nacimiento': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'autocomplete': 'off',
+                'required': 'required'
+            })
+        }
+        labels = {
+            'nombre': 'Nombre',
+            'apellido': 'Apellido',
+            'dni': 'DNI',
+            'fecha_nacimiento': 'Fecha de Nacimiento'
+        }
+        error_messages = {
+            'nombre': {
+                'required': 'El nombre es obligatorio.',
+                'max_length': 'El nombre no puede tener más de 50 caracteres.',
+                'min_length': 'El nombre debe tener al menos 2 caracteres.'
+            },
+            'apellido': {
+                'required': 'El apellido es obligatorio.',
+                'max_length': 'El apellido no puede tener más de 50 caracteres.',
+                'min_length': 'El apellido debe tener al menos 2 caracteres.'
+            },
+            'dni': {
+                'required': 'El DNI es obligatorio.',
+                'invalid': 'El DNI debe contener solo números.'
+            },
+            'fecha_nacimiento': {
+                'required': 'La fecha de nacimiento es obligatoria.',
+                'invalid': 'Ingrese una fecha válida.'
+            }
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            # Establecer el email como readonly
+            self.fields['email_readonly'].initial = self.instance.email
+
+    def clean_dni(self):
+        dni = self.cleaned_data.get('dni')
+        if not dni:
+            raise forms.ValidationError('El DNI es obligatorio.')
+        
+        if dni:
+            # Verificar si el DNI ya existe en otro usuario
+            if Persona.objects.filter(dni=dni).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError('El DNI ya se encuentra registrado por otro usuario.')
+            
+            # Eliminar cualquier espacio en blanco
+            dni = str(dni).strip()
+            
+            # Verificar que solo contenga números
+            if not dni.isdigit():
+                raise forms.ValidationError('El DNI debe contener solo números.')
+            
+            # Verificar la longitud (entre 7 y 9 números)
+            if len(dni) < 7 or len(dni) > 9:
+                raise forms.ValidationError('El DNI debe tener entre 7 y 9 números.')
+        
+        return dni
+
+    def clean_fecha_nacimiento(self):
+        fecha = self.cleaned_data.get('fecha_nacimiento')
+        if not fecha:
+            raise forms.ValidationError('La fecha de nacimiento es obligatoria.')
+        
+        if fecha:
+            hoy = date.today()
+            edad = hoy.year - fecha.year - ((hoy.month, hoy.day) < (fecha.month, fecha.day))
+            if edad < 18:
+                raise forms.ValidationError('No cumple con la mayoría de edad.')
+        return fecha
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre')
+        if not nombre:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        
+        if nombre:
+            nombre = nombre.strip()
+            if len(nombre) < 2:
+                raise forms.ValidationError('El nombre debe tener al menos 2 caracteres.')
+            if len(nombre) > 50:
+                raise forms.ValidationError('El nombre no puede tener más de 50 caracteres.')
+        return nombre
+
+    def clean_apellido(self):
+        apellido = self.cleaned_data.get('apellido')
+        if not apellido:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        
+        if apellido:
+            apellido = apellido.strip()
+            if len(apellido) < 2:
+                raise forms.ValidationError('El apellido debe tener al menos 2 caracteres.')
+            if len(apellido) > 50:
+                raise forms.ValidationError('El apellido no puede tener más de 50 caracteres.')
+        return apellido
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+        return instance
+
+class SucursalForm(forms.ModelForm):
+    class Meta:
+        model = Sucursal
+        fields = ['direccion', 'latitud', 'longitud', 'telefono', 'email', 'horario']
+        widgets = {
+            'direccion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dirección completa'}),
+            'latitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Latitud'}),
+            'longitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Longitud'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'horario': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Horario de atención', 'rows': 3}),
+        }
+        error_messages = {
+            'direccion': {
+                'required': 'La dirección es obligatoria.',
+                'max_length': 'La dirección no puede tener más de 200 caracteres.',
+            },
+            'telefono': {
+                'required': 'El teléfono es obligatorio.',
+                'max_length': 'El teléfono no puede tener más de 20 caracteres.',
+            },
+            'latitud': {
+                'required': 'Debe seleccionar una ubicación en el mapa.',
+            },
+            'longitud': {
+                'required': 'Debe seleccionar una ubicación en el mapa.',
+            },
+            'horario': {
+                'required': 'El horario es obligatorio.',
+            },
+            'email': {
+                'required': 'El email es obligatorio.',
+                'invalid': 'Por favor, ingresa una dirección de email válida.',
+            }
+        }
+
+    def clean_direccion(self):
+        """Valida que la dirección ingresada no exista en otra sucursal y respete longitud."""
+        direccion = self.cleaned_data.get('direccion', '').strip()
+        if not direccion:
+            raise forms.ValidationError('La dirección es obligatoria.')
+
+        if len(direccion) > 200:
+            raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
+
+        # Búsqueda case-insensitive de direcciones duplicadas sólo entre sucursales visibles
+        qs = Sucursal.objects.filter(direccion__iexact=direccion, es_visible=True)
+        # Excluir la instancia actual si estamos editando
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError('Ya existe una sucursal registrada con esta dirección.')
+        return direccion
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono', '').strip()
+        if not telefono:
+            raise forms.ValidationError('El teléfono es obligatorio.')
+        if len(telefono) > 20:
+            raise forms.ValidationError('El teléfono no puede tener más de 20 caracteres.')
+        return telefono
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validar que los demás campos no queden vacíos
+        campos_requeridos = ['latitud', 'longitud', 'telefono', 'email', 'horario']
+        for campo in campos_requeridos:
+            valor = cleaned_data.get(campo)
+            # Para los float, 0 puede ser un valor válido; por eso sólo se verifica None o cadena vacía
+            if valor is None or valor == '':
+                # Mensaje específico para ubicación
+                if campo in ['latitud', 'longitud']:
+                    self.add_error(campo, 'Debe seleccionar una ubicación en el mapa.')
+                else:
+                    self.add_error(campo, 'Este campo es obligatorio.')
+        return cleaned_data
+
+class ModificarSucursalForm(SucursalForm):
+    class Meta(SucursalForm.Meta):
+        exclude = ['direccion', 'latitud', 'longitud']
+
+    def clean(self):
+        # Llama al método clean() de la clase base para obtener los datos limpios
+        cleaned_data = super(SucursalForm, self).clean()
+        
+        # Como latitud y longitud no son parte de este formulario,
+        # no se necesita la validación que está en SucursalForm.clean().
+        # Aquí solo se realizan las validaciones de los campos que sí están presentes.
+        
+        return cleaned_data

@@ -13,7 +13,8 @@ from django.urls import reverse
 from .models import Persona, Maquina, Sucursal, CodigoVerificacion
 from .forms import (
     PersonaForm, ClienteForm, EmpleadoForm, EditarPersonaForm,
-    CambiarPasswordForm, ModificarDatosPersonalesForm
+    CambiarPasswordForm, ModificarDatosPersonalesForm, ModificarDatosUsuarioForm,
+    SucursalForm, ModificarSucursalForm
 )
 from datetime import date
 import random
@@ -31,6 +32,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value
 from functools import wraps
 from django.utils.dateparse import parse_date
+from maquinas.models import Unidad
 
 def empleado_requerido(view_func):
     """
@@ -1185,9 +1187,117 @@ def checkout(request, alquiler_id):
     
     return redirect('persona:mis_alquileres')
 
+def procesar_alquileres_vencidos_automatico():
+    """Función para procesar automáticamente alquileres vencidos"""
+    from datetime import date
+    
+    # Obtener la fecha actual
+    fecha_actual = date.today()
+    
+    # Buscar alquileres vencidos que no han sido devueltos
+    alquileres_vencidos = Alquiler.objects.filter(
+        estado='en_curso',  # Solo alquileres en curso
+        fecha_fin__lt=fecha_actual  # Fecha de fin menor a la fecha actual
+    )
+    
+    # También revisar alquileres reservados vencidos (que nunca se retiraron)
+    alquileres_reservados_vencidos = Alquiler.objects.filter(
+        estado='reservado',  # Alquileres reservados
+        fecha_inicio__lt=fecha_actual  # Fecha de inicio menor a la fecha actual
+    )
+    
+    procesados = 0
+    
+    # Procesar alquileres en curso vencidos
+    for alquiler in alquileres_vencidos:
+        try:
+            # Cambiar estado del alquiler a "adeudado"
+            alquiler.estado = 'adeudado'
+            alquiler.save()
+            
+            # Poner la máquina en mantenimiento
+            if alquiler.unidad:
+                alquiler.unidad.estado = 'adeudado'
+                alquiler.unidad.save()
+                
+                # NUEVA FUNCIONALIDAD: Cancelar automáticamente alquileres futuros de la misma unidad
+                alquileres_futuros = Alquiler.objects.filter(
+                    unidad=alquiler.unidad,
+                    estado__in=['reservado', 'en_curso'],
+                    fecha_inicio__gt=date.today()  # Solo alquileres futuros
+                ).exclude(id=alquiler.id)
+                
+                alquileres_cancelados = []
+                for alquiler_futuro in alquileres_futuros:
+                    try:
+                        # Cancelar el alquiler futuro
+                        observaciones_cancelacion = f"Cancelado automáticamente por alquiler adeudado #{alquiler.numero}. La máquina {alquiler.unidad.patente} no fue devuelto a tiempo."
+                        
+                        # Crear un usuario del sistema para la cancelación automática
+                        from django.contrib.auth.models import User
+                        usuario_sistema = User.objects.filter(is_superuser=True).first()
+                        
+                        porcentaje, monto = alquiler_futuro.cancelar(
+                            empleado=usuario_sistema, 
+                            observaciones=observaciones_cancelacion
+                        )
+                        
+                        # Enviar email de cancelación
+                        try:
+                            from maquinas.utils import enviar_email_alquiler_cancelado
+                            enviar_email_alquiler_cancelado(alquiler_futuro)
+                            print(f"[ADEUDADO] Email de cancelación enviado para alquiler {alquiler_futuro.numero}")
+                        except Exception as e:
+                            print(f"[ADEUDADO] Error al enviar email de cancelación para alquiler {alquiler_futuro.numero}: {str(e)}")
+                        
+                        alquileres_cancelados.append({
+                            'numero': alquiler_futuro.numero,
+                            'cliente': f"{alquiler_futuro.persona.nombre} {alquiler_futuro.persona.apellido}",
+                            'monto_reembolso': float(monto) if monto else 0,
+                            'porcentaje_reembolso': porcentaje
+                        })
+                        
+                    except Exception as e:
+                        print(f"[ADEUDADO] Error cancelando alquiler futuro {alquiler_futuro.numero}: {str(e)}")
+                
+                if alquileres_cancelados:
+                    print(f"[ADEUDADO] Se cancelaron {len(alquileres_cancelados)} alquileres futuros por alquiler adeudado {alquiler.numero}")
+                    for cancelado in alquileres_cancelados:
+                        print(f"  - {cancelado['numero']}: {cancelado['cliente']} - Reembolso: {cancelado['porcentaje_reembolso']}% (${cancelado['monto_reembolso']})")
+            
+            procesados += 1
+            
+        except Exception as e:
+            # Log del error silencioso para no interrumpir la vista
+            print(f"Error procesando alquiler vencido {alquiler.numero}: {str(e)}")
+    
+    # Procesar alquileres reservados que nunca se retiraron (cancelar automáticamente)
+    for alquiler in alquileres_reservados_vencidos:
+        try:
+            # Cambiar estado a cancelado en lugar de adeudado
+            alquiler.estado = 'cancelado'
+            alquiler.fecha_cancelacion = fecha_actual
+            alquiler.cancelado_por_empleado = True
+            alquiler.observaciones_cancelacion = "Cancelado automáticamente por no retirar en fecha de inicio"
+            alquiler.porcentaje_reembolso = 0  # Sin reembolso por no retirar
+            alquiler.monto_reembolso = 0
+            alquiler.save()
+            
+            procesados += 1
+            
+        except Exception as e:
+            print(f"Error procesando alquiler reservado vencido {alquiler.numero}: {str(e)}")
+    
+    return procesados
+
 @empleado_requerido
 def lista_alquileres(request):
     """Vista completa de gestión de alquileres para empleados y admins"""
+    # Procesar automáticamente alquileres vencidos
+    alquileres_procesados = procesar_alquileres_vencidos_automatico()
+    if alquileres_procesados > 0:
+        print(f"Se procesaron automáticamente {alquileres_procesados} alquileres vencidos")
+    
     # Obtener todos los alquileres inicialmente
     alquileres = Alquiler.objects.select_related(
         'maquina_base', 'unidad', 'persona', 'unidad__sucursal'
@@ -1241,7 +1351,8 @@ def lista_alquileres(request):
         reservados=Count('id', filter=Q(estado='reservado')),
         en_curso=Count('id', filter=Q(estado='en_curso')),
         finalizados=Count('id', filter=Q(estado='finalizado')),
-        cancelados=Count('id', filter=Q(estado='cancelado'))
+        cancelados=Count('id', filter=Q(estado='cancelado')),
+        adeudados=Count('id', filter=Q(estado='adeudado'))
     )
     
     # Obtener sucursales para el filtro
@@ -1266,6 +1377,7 @@ def lista_alquileres(request):
         'stats': stats,
         'sucursales': sucursales,
         'mensaje_sin_resultados': mensaje_sin_resultados,
+        'fecha_actual': date.today(),
         'filtros': {
             'estado': estado_filtro,
             'fecha_desde': fecha_desde,
@@ -1313,6 +1425,24 @@ def iniciar_alquiler(request):
             return JsonResponse({
                 'success': False,
                 'error': 'El código ingresado no coincide con el código de retiro del alquiler. Verifica el código con el cliente.'
+            })
+        
+        # Validar que la fecha actual esté dentro del período válido para retirar
+        from datetime import date
+        fecha_actual = date.today()
+        
+        # No permitir retirar antes de la fecha de inicio
+        if fecha_actual < alquiler.fecha_inicio:
+            return JsonResponse({
+                'success': False,
+                'error': f'No se puede retirar el alquiler aún. La fecha de inicio es {alquiler.fecha_inicio.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}.'
+            })
+        
+        # No permitir retirar después de la fecha de fin
+        if fecha_actual > alquiler.fecha_fin:
+            return JsonResponse({
+                'success': False,
+                'error': f'El período de alquiler ha terminado. El alquiler finalizó el {alquiler.fecha_fin.strftime("%d/%m/%Y")} y hoy es {fecha_actual.strftime("%d/%m/%Y")}. Contacta con un administrador.'
             })
         
         # Cambiar estado a 'en_curso'
@@ -1383,8 +1513,8 @@ def finalizar_alquiler(request):
                 'error': 'Alquiler no encontrado.'
             })
         
-        # Verificar que el alquiler esté en estado 'en_curso'
-        if alquiler.estado != 'en_curso':
+        # Verificar que el alquiler esté en estado 'en_curso' o 'adeudado'
+        if alquiler.estado not in ['en_curso', 'adeudado']:
             return JsonResponse({
                 'success': False,
                 'error': f'No es posible devolver en este estado. El alquiler está en estado {alquiler.get_estado_display()}.'
@@ -1429,7 +1559,10 @@ def finalizar_alquiler(request):
             print(f"Error enviando email de finalización: {str(e)}")
         
         # Mensaje de éxito
-        mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        if alquiler.estado == 'adeudado':
+            mensaje = f"Devolución tardía registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        else:
+            mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
         
         return JsonResponse({
             'success': True,
@@ -1541,7 +1674,7 @@ def recuperar_password(request):
 
 def mapa_sucursales(request):
     try:
-        sucursales = Sucursal.objects.all()
+        sucursales = Sucursal.objects.filter(es_visible=True)
         
         # Validar que las coordenadas sean válidas
         for sucursal in sucursales:
@@ -2304,6 +2437,68 @@ def desbloquear_empleado(request, persona_id):
     empleado.save()
     return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ha sido desbloqueado.'})
 
+@require_http_methods(["POST"])
+def marcar_como_cliente(request, persona_id):
+    print(f"DEBUG: marcar_como_cliente llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    empleado = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Empleado encontrado: {empleado.email}, es_cliente actual: {empleado.es_cliente}")
+    empleado.es_cliente = True
+    empleado.save()
+    print(f"DEBUG: Empleado marcado como cliente: {empleado.email}, es_cliente nuevo: {empleado.es_cliente}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ahora también es cliente.'})
+
+
+@require_http_methods(["POST"])
+def desmarcar_como_cliente(request, persona_id):
+    print(f"DEBUG: desmarcar_como_cliente llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    empleado = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Empleado encontrado: {empleado.email}, es_cliente actual: {empleado.es_cliente}")
+    empleado.es_cliente = False
+    empleado.save()
+    print(f"DEBUG: Empleado desmarcado como cliente: {empleado.email}, es_cliente nuevo: {empleado.es_cliente}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El empleado {empleado.email} ya no es cliente.'})
+
+@require_http_methods(["POST"])
+def marcar_como_empleado(request, persona_id):
+    print(f"DEBUG: marcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+    
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = True
+    cliente.save()
+    print(f"DEBUG: Cliente marcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ahora también es empleado.'})
+
+
+@require_http_methods(["POST"])
+def desmarcar_como_empleado(request, persona_id):
+    print(f"DEBUG: desmarcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = False
+    cliente.save()
+    print(f"DEBUG: Cliente desmarcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ya no es empleado.'})
+
 @empleado_requerido
 @csrf_protect
 @ensure_csrf_cookie
@@ -2447,5 +2642,493 @@ def estadisticas_maquinas(request):
     cantidades = [item['cantidad'] for item in ranking]
     listado = [{'nombre': item['maquina_base__nombre'], 'cantidad': item['cantidad']} for item in ranking]
     return JsonResponse({'labels': labels, 'cantidades': cantidades, 'listado': listado})
+
+@require_http_methods(["POST"])
+def desmarcar_como_empleado(request, persona_id):
+    print(f"DEBUG: desmarcar_como_empleado llamado con persona_id={persona_id}")
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        print("DEBUG: Usuario no tiene permisos de admin")
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso para esta acción.'}, status=403)
+        
+    cliente = get_object_or_404(Persona, id=persona_id)
+    print(f"DEBUG: Cliente encontrado: {cliente.email}, es_empleado actual: {cliente.es_empleado}")
+    cliente.es_empleado = False
+    cliente.save()
+    print(f"DEBUG: Cliente desmarcado como empleado: {cliente.email}, es_empleado nuevo: {cliente.es_empleado}")
+    
+    return JsonResponse({'status': 'success', 'message': f'El cliente {cliente.email} ya no es empleado.'})
+
+
+@empleado_requerido
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_datos_cliente(request, persona_id):
+    """
+    Vista para que los administradores modifiquen los datos de un cliente específico.
+    """
+    from .forms import ModificarDatosUsuarioForm
+    
+    # Verificar que el usuario actual es admin
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+    
+    # Obtener el cliente
+    try:
+        cliente = Persona.objects.get(id=persona_id, es_cliente=True)
+    except Persona.DoesNotExist:
+        messages.error(request, "Cliente no encontrado.")
+        return redirect('persona:lista_clientes')
+    
+    if request.method == 'POST':
+        form = ModificarDatosUsuarioForm(request.POST, instance=cliente)
+        if form.is_valid():
+            cliente = form.save()
+            
+            # Actualizar también el usuario de Django si existe
+            try:
+                user = User.objects.get(email=cliente.email)
+                user.first_name = cliente.nombre
+                user.last_name = cliente.apellido
+                user.save()
+            except User.DoesNotExist:
+                pass  # El usuario de Django puede no existir
+            
+            messages.success(request, f'Datos del cliente {cliente.nombre} {cliente.apellido} actualizados correctamente.')
+            return redirect('persona:lista_clientes')
+    else:
+        form = ModificarDatosUsuarioForm(instance=cliente)
+    
+    return render(request, 'persona/modificar_datos_usuario.html', {
+        'form': form,
+        'usuario': cliente,
+        'tipo_usuario': 'Cliente'
+    })
+
+
+@empleado_requerido
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_datos_empleado(request, persona_id):
+    """
+    Vista para que los administradores modifiquen los datos de un empleado específico.
+    """
+    from .forms import ModificarDatosUsuarioForm
+    
+    # Verificar que el usuario actual es admin
+    if not request.user.is_superuser and (not hasattr(request.user, 'persona') or not request.user.persona.es_admin):
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('persona:gestion')
+    
+    # Obtener el empleado
+    try:
+        empleado = Persona.objects.get(id=persona_id, es_empleado=True)
+    except Persona.DoesNotExist:
+        messages.error(request, "Empleado no encontrado.")
+        return redirect('persona:lista_empleados_gestion')
+    
+    if request.method == 'POST':
+        form = ModificarDatosUsuarioForm(request.POST, instance=empleado)
+        if form.is_valid():
+            empleado = form.save()
+            
+            # Actualizar también el usuario de Django si existe
+            try:
+                user = User.objects.get(email=empleado.email)
+                user.first_name = empleado.nombre
+                user.last_name = empleado.apellido
+                user.save()
+            except User.DoesNotExist:
+                pass  # El usuario de Django puede no existir
+            
+            messages.success(request, f'Datos del empleado {empleado.nombre} {empleado.apellido} actualizados correctamente.')
+            return redirect('persona:lista_empleados_gestion')
+    else:
+        form = ModificarDatosUsuarioForm(instance=empleado)
+    
+    return render(request, 'persona/modificar_datos_usuario.html', {
+        'form': form,
+        'usuario': empleado,
+        'tipo_usuario': 'Empleado'
+    })
+
+@login_required
+def ver_datos_personales(request):
+    """
+    Vista para que los usuarios vean todos sus datos personales de forma de solo lectura
+    """
+    try:
+        # Buscar el perfil por email del usuario
+        persona = Persona.objects.get(email=request.user.email)
+    except Persona.DoesNotExist:
+        messages.error(request, "No se encontró el perfil asociado a tu email.")
+        return redirect('persona:inicio')
+    
+    return render(request, 'persona/ver_datos_personales.html', {
+        'persona': persona
+    })
+
+@empleado_requerido
+def lista_sucursales(request):
+    from django.db.models.functions import Replace
+    """Gestionar listado de sucursales con filtros y paginación"""
+    # Determinar si el usuario actual es administrador (superusuario o admin definido en el modelo Persona)
+    es_admin_usuario = request.user.is_superuser or (hasattr(request.user, 'persona') and request.user.persona.es_admin)
+
+    # Los administradores pueden ver todas las sucursales, incluso las ocultas.
+    # Para el resto de los empleados, se muestran únicamente las sucursales visibles.
+    if es_admin_usuario:
+        queryset = Sucursal.objects.all().order_by('direccion')
+    else:
+        queryset = Sucursal.objects.filter(es_visible=True).order_by('direccion')
+
+    # Filtros
+    filtros = {
+        'direccion': request.GET.get('direccion', ''),
+        'telefono': request.GET.get('telefono', '').replace(' ',''),
+        'email': request.GET.get('email', ''),
+    }
+
+    if filtros['direccion']:
+        queryset = queryset.filter(direccion__icontains=filtros['direccion'])
+    if filtros['telefono']:
+        queryset = queryset.annotate(
+    telefono_sin_espacios=Replace(F('telefono'), Value(' '), Value(''))
+).filter(
+    telefono_sin_espacios__icontains=filtros['telefono']
+)
+    if filtros['email']:
+        queryset = queryset.filter(email__icontains=filtros['email'])
+
+    filtros_aplicados = any(filtros.values())
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(queryset, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    mensaje_sin_resultados = None
+    if not page_obj.object_list and filtros_aplicados:
+        mensaje_sin_resultados = "No se encontraron sucursales con los filtros aplicados."
+
+    return render(request, 'persona/lista_sucursales.html', {
+        'sucursales': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'filtros': filtros,
+        'mensaje_sin_resultados': mensaje_sin_resultados,
+        'mostrar_columna_visible': es_admin_usuario,
+    })
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def cargar_sucursal(request):
+    """Formulario para cargar una nueva sucursal (solo admins)"""
+    if request.method == 'POST':
+        form = SucursalForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal creada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = SucursalForm()
+    return render(request, 'persona/cargar_sucursal.html', {'form': form})
+
+# Endpoint para alternar visibilidad de sucursal
+@login_required
+@user_passes_test(es_admin)
+@require_http_methods(["POST"])
+def toggle_visibilidad_sucursal(request, sucursal_id):
+    from maquinas.models import Unidad
+
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    nueva_visibilidad = not sucursal.es_visible
+
+    # Si se intenta ocultar
+    if not nueva_visibilidad:
+        # Verificar que no existan unidades visibles asociadas
+        if Unidad.objects.filter(sucursal=sucursal, visible=True).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Para ocultar esta sucursal, es necesario ocultar sus unidades de máquina primero.'
+            })
+    else:
+        # Se intenta volver visible: verificar duplicado de dirección entre visibles
+        if Sucursal.objects.filter(es_visible=True, direccion__iexact=sucursal.direccion).exclude(pk=sucursal.pk).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Ya existe otra sucursal visible con la misma dirección.'
+            })
+
+    sucursal.es_visible = nueva_visibilidad
+    sucursal.save()
+
+    mensaje = (f'La sucursal "{sucursal.direccion}" ahora es visible.' if sucursal.es_visible 
+               else f'La sucursal "{sucursal.direccion}" ha sido ocultada.')
+
+    return JsonResponse({'status': 'success', 'visible': sucursal.es_visible, 'message': mensaje})
+
+@login_required
+@user_passes_test(es_admin)
+@csrf_protect
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def modificar_sucursal(request, sucursal_id):
+    """Formulario para modificar una sucursal existente (solo admins)"""
+    sucursal = get_object_or_404(Sucursal, pk=sucursal_id)
+    if request.method == 'POST':
+        form = ModificarSucursalForm(request.POST, instance=sucursal)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sucursal actualizada correctamente.')
+            return redirect('persona:lista_sucursales')
+    else:
+        form = ModificarSucursalForm(instance=sucursal)
+
+    return render(request, 'persona/modificar_sucursal.html', {
+        'form': form,
+        'sucursal': sucursal
+    })
+
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def verificar_alquileres_afectados(request):
+    """Vista para verificar qué alquileres se verían afectados por el mantenimiento de una unidad"""
+    try:
+        alquiler_id = request.POST.get('alquiler_id')
+        fecha_fin_mantenimiento = request.POST.get('fecha_fin_mantenimiento')
+        
+        if not alquiler_id or not fecha_fin_mantenimiento:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Obtener el alquiler actual
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que tiene unidad asignada
+        if not alquiler.unidad:
+            return JsonResponse({
+                'success': False,
+                'error': 'El alquiler no tiene unidad asignada.'
+            })
+        
+        # Parsear fecha
+        try:
+            from datetime import datetime
+            fecha_fin_mantenimiento = datetime.strptime(fecha_fin_mantenimiento, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Formato de fecha inválido.'
+            })
+        
+        # Buscar alquileres afectados
+        alquileres_afectados = Alquiler.objects.filter(
+            unidad=alquiler.unidad,
+            estado__in=['reservado', 'en_curso'],
+            fecha_inicio__lte=fecha_fin_mantenimiento
+        ).exclude(id=alquiler.id)
+        
+        # Convertir a lista para JSON
+        alquileres_data = []
+        for alq in alquileres_afectados:
+            alquileres_data.append({
+                'id': alq.id,
+                'numero': alq.numero,
+                'cliente': f"{alq.persona.nombre} {alq.persona.apellido}",
+                'maquina': alq.maquina_base.nombre,
+                'fecha_inicio': alq.fecha_inicio.strftime('%d/%m/%Y'),
+                'fecha_fin': alq.fecha_fin.strftime('%d/%m/%Y'),
+                'estado': alq.get_estado_display(),
+                'monto': float(alq.monto_total) if alq.monto_total else 0
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'alquileres_afectados': alquileres_data,
+            'total_afectados': len(alquileres_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
+
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def finalizar_alquiler_con_mantenimiento(request):
+    """Vista para finalizar alquiler con mantenimiento y cancelar alquileres afectados"""
+    try:
+        from maquinas.models import CalificacionCliente
+        from maquinas.utils import enviar_email_finalizacion_alquiler, enviar_email_alquiler_cancelado
+        
+        alquiler_id = request.POST.get('alquiler_id')
+        codigo_cliente = request.POST.get('codigo_cliente', '').strip()
+        calificacion = request.POST.get('calificacion')
+        observaciones = request.POST.get('observaciones', '').strip()
+        maquina_danada_raw = request.POST.get('maquina_danada')
+        maquina_danada = maquina_danada_raw in ['true', 'on', '1', True]
+        fecha_fin_mantenimiento = request.POST.get('fecha_fin_mantenimiento')
+        
+        # Validar datos requeridos
+        if not alquiler_id or not codigo_cliente or not calificacion:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Si la máquina está dañada, la fecha es requerida
+        if maquina_danada and not fecha_fin_mantenimiento:
+            return JsonResponse({
+                'success': False,
+                'error': 'La fecha fin de mantenimiento es requerida cuando la máquina está dañada.'
+            })
+        
+        # Validar calificación
+        try:
+            calificacion = int(calificacion)
+            if calificacion < 1 or calificacion > 5:
+                raise ValueError("Calificación fuera de rango")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'La calificación debe ser un número entre 1 y 5.'
+            })
+        
+        # Buscar el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que el alquiler esté en estado válido
+        if alquiler.estado not in ['en_curso', 'adeudado']:
+            return JsonResponse({
+                'success': False,
+                'error': f'No es posible devolver en este estado. El alquiler está en estado {alquiler.get_estado_display()}.'
+            })
+        
+        # Verificar el código de retiro
+        if alquiler.codigo_retiro != codigo_cliente:
+            return JsonResponse({
+                'success': False,
+                'error': 'DNI o código de reserva inválido.'
+            })
+        
+        # Parsear fecha de fin de mantenimiento si está presente
+        if fecha_fin_mantenimiento:
+            try:
+                from datetime import datetime
+                fecha_fin_mantenimiento = datetime.strptime(fecha_fin_mantenimiento, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Formato de fecha inválido.'
+                })
+        
+        # Si la máquina está dañada y hay unidad, cancelar alquileres afectados
+        alquileres_cancelados = []
+        if maquina_danada and alquiler.unidad and fecha_fin_mantenimiento:
+            # Buscar alquileres afectados
+            alquileres_afectados = Alquiler.objects.filter(
+                unidad=alquiler.unidad,
+                estado__in=['reservado', 'en_curso'],
+                fecha_inicio__lte=fecha_fin_mantenimiento
+            ).exclude(id=alquiler.id)
+            
+            # Cancelar cada alquiler afectado
+            for alq in alquileres_afectados:
+                try:
+                    observaciones_cancelacion = f"Cancelado automáticamente por mantenimiento de máquina programado hasta {fecha_fin_mantenimiento.strftime('%d/%m/%Y')}"
+                    porcentaje, monto = alq.cancelar(empleado=request.user, observaciones=observaciones_cancelacion)
+                    
+                    # Enviar email de cancelación
+                    try:
+                        enviar_email_alquiler_cancelado(alq)
+                    except Exception as e:
+                        print(f"Error enviando email de cancelación para alquiler {alq.numero}: {str(e)}")
+                    
+                    alquileres_cancelados.append({
+                        'numero': alq.numero,
+                        'cliente': f"{alq.persona.nombre} {alq.persona.apellido}",
+                        'monto_reembolso': float(monto) if monto else 0,
+                        'porcentaje_reembolso': porcentaje
+                    })
+                except Exception as e:
+                    print(f"Error cancelando alquiler {alq.numero}: {str(e)}")
+        
+        # Finalizar el alquiler actual
+        alquiler.estado = 'finalizado'
+        alquiler.save()
+        
+        # Actualizar estado de la máquina/unidad
+        mensaje_maquina = ""
+        if alquiler.unidad:
+            if maquina_danada:
+                alquiler.unidad.estado = 'mantenimiento'
+                alquiler.unidad.fecha_fin_mantenimiento = fecha_fin_mantenimiento
+                alquiler.unidad.save()
+                mensaje_maquina = f"Máquina marcada en mantenimiento hasta {fecha_fin_mantenimiento.strftime('%d/%m/%Y')}."
+            else:
+                alquiler.unidad.estado = 'disponible'
+                alquiler.unidad.fecha_fin_mantenimiento = None
+                alquiler.unidad.save()
+                mensaje_maquina = "Máquina marcada como disponible."
+        else:
+            mensaje_maquina = "Sin unidad asignada."
+        
+        # Crear calificación del cliente
+        CalificacionCliente.objects.create(
+            alquiler=alquiler,
+            cliente=alquiler.persona,
+            empleado=request.user,
+            calificacion=calificacion,
+            observaciones=observaciones
+        )
+        
+        # Enviar email de finalización
+        try:
+            enviar_email_finalizacion_alquiler(alquiler)
+        except Exception as e:
+            print(f"Error enviando email de finalización: {str(e)}")
+        
+        # Mensaje de éxito
+        mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        
+        if alquileres_cancelados:
+            mensaje += f" Se cancelaron {len(alquileres_cancelados)} alquileres afectados por el mantenimiento."
+        
+        return JsonResponse({
+            'success': True,
+            'message': mensaje,
+            'alquileres_cancelados': alquileres_cancelados
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
 
 # Create your views here.
