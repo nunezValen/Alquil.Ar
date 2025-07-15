@@ -195,9 +195,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let valido = true;
         const fechaInicio = getFecha(inputInicio);
         const fechaFin = getFecha(inputFin);
-        const hoy = new Date(hoyISO());
         limpiarErrorFecha(inputInicio, prefix + '-inicio');
         limpiarErrorFecha(inputFin, prefix + '-fin');
+        if (!inputInicio.checkValidity()) {
+            mostrarErrorFecha(inputInicio, 'La fecha ingresada no es válida.', prefix + '-inicio');
+            valido = false;
+        }
+        if (!inputFin.checkValidity()) {
+            mostrarErrorFecha(inputFin, 'La fecha ingresada no es válida.', prefix + '-fin');
+            valido = false;
+        }
         
         if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
             mostrarErrorFecha(inputFin, 'La fecha de fin debe ser igual o posterior a la de inicio.', prefix + '-fin');
