@@ -2633,14 +2633,32 @@ def estadisticas_maquinas(request):
     # Filtrar alquileres por fecha de inicio en el rango
     alquileres = Alquiler.objects.filter(fecha_inicio__gte=fecha_inicio, fecha_inicio__lte=fecha_fin)
     # Agrupar por máquina base y contar
-    ranking = (
+    ranking_completo = (
         alquileres.values('maquina_base__nombre')
         .annotate(cantidad=Count('id'))
-        .order_by('-cantidad')[:5]
+        .order_by('-cantidad')
     )
-    labels = [item['maquina_base__nombre'] for item in ranking]
-    cantidades = [item['cantidad'] for item in ranking]
-    listado = [{'nombre': item['maquina_base__nombre'], 'cantidad': item['cantidad']} for item in ranking]
+    
+    # Obtener top 5
+    top_5 = ranking_completo[:5]
+    
+    # Calcular "Otras" sumando el resto
+    top_5_total = sum(item['cantidad'] for item in top_5)
+    total_alquileres = sum(item['cantidad'] for item in ranking_completo)
+    otras_cantidad = total_alquileres - top_5_total
+    
+    # Preparar datos para el gráfico
+    labels = [item['maquina_base__nombre'] for item in top_5]
+    cantidades = [item['cantidad'] for item in top_5]
+    
+    # Agregar "Otras" si hay máquinas fuera del top 5
+    if otras_cantidad > 0:
+        labels.append('Otras')
+        cantidades.append(otras_cantidad)
+    
+    # Preparar listado completo para la tabla (mantener todas las máquinas)
+    listado = [{'nombre': item['maquina_base__nombre'], 'cantidad': item['cantidad']} for item in ranking_completo]
+    
     return JsonResponse({'labels': labels, 'cantidades': cantidades, 'listado': listado})
 
 @require_http_methods(["POST"])

@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         datasets: [{
                             data: data.cantidades,
                             backgroundColor: [
-                                '#2176d2', '#51a3f5', '#7bcfff', '#b3e0ff', '#f7b32b'
+                                '#2176d2', '#4a96f0', '#6bb3ff', '#8cc4ff', '#a6d1ff', '#f7b32b'
                             ],
                         }]
                     },
