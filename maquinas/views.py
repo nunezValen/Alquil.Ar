@@ -714,11 +714,11 @@ def alquilar_maquina(request, maquina_id):
                 alquiler_adeudado = alquileres_adeudados.first()
                 dias_vencido = (date.today() - alquiler_adeudado.fecha_fin).days
                 return JsonResponse({
-                    'error': f'❌ NO PUEDES ALQUILAR: Tienes un alquiler vencido (#{alquiler_adeudado.numero}) que debe ser devuelto URGENTEMENTE. '
+                    'error': f'❌ NO SE PUEDE REALIZAR EL ALQUILER: Hay un alquiler vencido (#{alquiler_adeudado.numero}) asociado a esta personaque debe ser devuelto URGENTEMENTE. '
                             f'Máquina: {alquiler_adeudado.maquina_base.nombre}, '
                             f'vencido hace {dias_vencido} día{"s" if dias_vencido != 1 else ""}. '
-                            f'Debes devolver la máquina antes de poder realizar nuevos alquileres. '
-                            f'📞 Contacta inmediatamente para coordinar la devolución.'
+                            f'Antes de realizar un nuevo alquiler debe resolverse esta situación. '
+                            f'📞 Se recomienda coordinar la devolución a la brevedad.'
                 }, status=400)
             
             # VALIDACIÓN 2: Verificar que el cliente no tenga otro alquiler activo/reservado
@@ -730,12 +730,11 @@ def alquilar_maquina(request, maquina_id):
             if alquileres_activos.exists():
                 alquiler_activo = alquileres_activos.first()
                 return JsonResponse({
-                    'error': f'Ya tienes un alquiler activo (#{alquiler_activo.numero}). '
-                            f'Solo puedes tener un alquiler a la vez. '
-                            f'Tu alquiler actual: {alquiler_activo.maquina_base.nombre} '
+                    'error': f'Ya existe un alquiler activo asociado a esta persona (#{alquiler_activo.numero}). '
+                            f'Solo se puede tener un alquiler a la vez. '
+                            f'Su alquiler actual: {alquiler_activo.maquina_base.nombre} '
                             f'del {alquiler_activo.fecha_inicio.strftime("%d/%m/%Y")} '
                             f'al {alquiler_activo.fecha_fin.strftime("%d/%m/%Y")}. '
-                            f'Contacta al soporte si necesitas cancelarlo.'
                 }, status=400)
             
             # VALIDACIÓN 3: Verificar disponibilidad de unidades para las fechas

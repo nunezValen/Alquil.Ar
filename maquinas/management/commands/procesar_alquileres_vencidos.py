@@ -78,6 +78,61 @@ class Command(BaseCommand):
                         alquiler.unidad.estado = 'mantenimiento'
                         alquiler.unidad.save()
                         
+                        # NUEVA FUNCIONALIDAD: Cancelar automáticamente alquileres futuros de la misma unidad
+                        alquileres_futuros = Alquiler.objects.filter(
+                            unidad=alquiler.unidad,
+                            estado__in=['reservado', 'en_curso'],
+                            fecha_inicio__gt=date.today()  # Solo alquileres futuros
+                        ).exclude(id=alquiler.id)
+                        
+                        alquileres_cancelados = []
+                        for alquiler_futuro in alquileres_futuros:
+                            try:
+                                # Cancelar el alquiler futuro
+                                observaciones_cancelacion = f"Cancelado automáticamente por alquiler adeudado #{alquiler.numero}. La máquina {alquiler.unidad.patente} no fue devuelto a tiempo."
+                                
+                                # Crear un usuario del sistema para la cancelación automática
+                                from django.contrib.auth.models import User
+                                usuario_sistema = User.objects.filter(is_superuser=True).first()
+                                
+                                porcentaje, monto = alquiler_futuro.cancelar(
+                                    empleado=usuario_sistema, 
+                                    observaciones=observaciones_cancelacion
+                                )
+                                
+                                # Enviar email de cancelación
+                                try:
+                                    from maquinas.utils import enviar_email_alquiler_cancelado
+                                    enviar_email_alquiler_cancelado(alquiler_futuro)
+                                    if verbose:
+                                        self.stdout.write(
+                                            self.style.SUCCESS(
+                                                f'    ✓ Email de cancelación enviado para alquiler {alquiler_futuro.numero}'
+                                            )
+                                        )
+                                except Exception as e:
+                                    if verbose:
+                                        self.stdout.write(
+                                            self.style.ERROR(
+                                                f'    ✗ Error al enviar email de cancelación para alquiler {alquiler_futuro.numero}: {str(e)}'
+                                            )
+                                        )
+                                
+                                alquileres_cancelados.append({
+                                    'numero': alquiler_futuro.numero,
+                                    'cliente': f"{alquiler_futuro.persona.nombre} {alquiler_futuro.persona.apellido}",
+                                    'monto_reembolso': float(monto) if monto else 0,
+                                    'porcentaje_reembolso': porcentaje
+                                })
+                                
+                            except Exception as e:
+                                if verbose:
+                                    self.stdout.write(
+                                        self.style.ERROR(
+                                            f'    ✗ Error cancelando alquiler futuro {alquiler_futuro.numero}: {str(e)}'
+                                        )
+                                    )
+                        
                         if verbose:
                             self.stdout.write(
                                 self.style.SUCCESS(
@@ -89,6 +144,19 @@ class Command(BaseCommand):
                                     f'  ✓ Unidad {alquiler.unidad.patente} puesta en mantenimiento'
                                 )
                             )
+                            
+                            if alquileres_cancelados:
+                                self.stdout.write(
+                                    self.style.WARNING(
+                                        f'  ⚠️  Se cancelaron {len(alquileres_cancelados)} alquileres futuros:'
+                                    )
+                                )
+                                for cancelado in alquileres_cancelados:
+                                    self.stdout.write(
+                                        self.style.WARNING(
+                                            f'    - {cancelado["numero"]}: {cancelado["cliente"]} - Reembolso: {cancelado["porcentaje_reembolso"]}% (${cancelado["monto_reembolso"]})'
+                                        )
+                                    )
                     else:
                         if verbose:
                             self.stdout.write(
@@ -103,6 +171,27 @@ class Command(BaseCommand):
                                 f'  [DRY RUN] Se cambiaría a estado "adeudado" y unidad a mantenimiento'
                             )
                         )
+                        
+                        # Mostrar qué alquileres se cancelarían en dry-run
+                        if alquiler.unidad:
+                            alquileres_futuros = Alquiler.objects.filter(
+                                unidad=alquiler.unidad,
+                                estado__in=['reservado', 'en_curso'],
+                                fecha_inicio__gt=date.today()  # Solo alquileres futuros
+                            ).exclude(id=alquiler.id)
+                            
+                            if alquileres_futuros.exists():
+                                self.stdout.write(
+                                    self.style.WARNING(
+                                        f'  [DRY RUN] Se cancelarían {alquileres_futuros.count()} alquileres futuros:'
+                                    )
+                                )
+                                for alquiler_futuro in alquileres_futuros:
+                                    self.stdout.write(
+                                        self.style.WARNING(
+                                            f'    - {alquiler_futuro.numero}: {alquiler_futuro.persona.nombre} {alquiler_futuro.persona.apellido} (${alquiler_futuro.monto_total})'
+                                        )
+                                    )
                 
                 procesados += 1
                 

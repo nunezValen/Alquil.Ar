@@ -1219,6 +1219,51 @@ def procesar_alquileres_vencidos_automatico():
             if alquiler.unidad:
                 alquiler.unidad.estado = 'adeudado'
                 alquiler.unidad.save()
+                
+                # NUEVA FUNCIONALIDAD: Cancelar automáticamente alquileres futuros de la misma unidad
+                alquileres_futuros = Alquiler.objects.filter(
+                    unidad=alquiler.unidad,
+                    estado__in=['reservado', 'en_curso'],
+                    fecha_inicio__gt=date.today()  # Solo alquileres futuros
+                ).exclude(id=alquiler.id)
+                
+                alquileres_cancelados = []
+                for alquiler_futuro in alquileres_futuros:
+                    try:
+                        # Cancelar el alquiler futuro
+                        observaciones_cancelacion = f"Cancelado automáticamente por alquiler adeudado #{alquiler.numero}. La máquina {alquiler.unidad.patente} no fue devuelto a tiempo."
+                        
+                        # Crear un usuario del sistema para la cancelación automática
+                        from django.contrib.auth.models import User
+                        usuario_sistema = User.objects.filter(is_superuser=True).first()
+                        
+                        porcentaje, monto = alquiler_futuro.cancelar(
+                            empleado=usuario_sistema, 
+                            observaciones=observaciones_cancelacion
+                        )
+                        
+                        # Enviar email de cancelación
+                        try:
+                            from maquinas.utils import enviar_email_alquiler_cancelado
+                            enviar_email_alquiler_cancelado(alquiler_futuro)
+                            print(f"[ADEUDADO] Email de cancelación enviado para alquiler {alquiler_futuro.numero}")
+                        except Exception as e:
+                            print(f"[ADEUDADO] Error al enviar email de cancelación para alquiler {alquiler_futuro.numero}: {str(e)}")
+                        
+                        alquileres_cancelados.append({
+                            'numero': alquiler_futuro.numero,
+                            'cliente': f"{alquiler_futuro.persona.nombre} {alquiler_futuro.persona.apellido}",
+                            'monto_reembolso': float(monto) if monto else 0,
+                            'porcentaje_reembolso': porcentaje
+                        })
+                        
+                    except Exception as e:
+                        print(f"[ADEUDADO] Error cancelando alquiler futuro {alquiler_futuro.numero}: {str(e)}")
+                
+                if alquileres_cancelados:
+                    print(f"[ADEUDADO] Se cancelaron {len(alquileres_cancelados)} alquileres futuros por alquiler adeudado {alquiler.numero}")
+                    for cancelado in alquileres_cancelados:
+                        print(f"  - {cancelado['numero']}: {cancelado['cliente']} - Reembolso: {cancelado['porcentaje_reembolso']}% (${cancelado['monto_reembolso']})")
             
             procesados += 1
             
