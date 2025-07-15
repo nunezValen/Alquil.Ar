@@ -714,6 +714,20 @@
                                     Marcar si la máquina necesita mantenimiento.
                                 </div>
                             </div>
+                            <div class="mb-3" id="fecha-fin-mantenimiento-container" style="display: none;">
+                                <label for="fecha-fin-mantenimiento" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Fecha fin de mantenimiento:
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="fecha-fin-mantenimiento" 
+                                       name="fecha_fin_mantenimiento"
+                                       min="{{ fecha_actual|date:'Y-m-d' }}"
+                                       required>
+                                <div class="form-text">
+                                    Selecciona hasta qué fecha estará la máquina en mantenimiento.
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -736,6 +750,47 @@
                 </button>
                 <button type="button" class="btn btn-warning" id="finalizar-alquiler-btn">
                     <i class="fas fa-check"></i> <span id="modal-boton-texto">Finalizar Alquiler</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar cancelación de alquileres afectados -->
+<div class="modal fade" id="confirmarCancelacionModal" tabindex="-1" aria-labelledby="confirmarCancelacionModalLabel">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmarCancelacionModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Confirmación de Mantenimiento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>¡Atención!</strong> Al marcar esta máquina como en mantenimiento se cancelarán los siguientes alquileres:
+                </div>
+                
+                <div id="alquileres-afectados-container">
+                    <!-- Los alquileres afectados se mostrarán aquí -->
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Información importante:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Los clientes recibirán automáticamente un email de cancelación</li>
+                        <li>Se procesará el reembolso correspondiente según la política</li>
+                        <li>Los alquileres se cancelarán inmediatamente</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmar-cancelacion-btn">
+                    <i class="fas fa-check"></i> Confirmar y Procesar
                 </button>
             </div>
         </div>
@@ -1068,6 +1123,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Manejar checkbox de máquina dañada
+    const maquinaDanadaCheckbox = document.getElementById('maquina-danada');
+    const fechaFinMantenimientoContainer = document.getElementById('fecha-fin-mantenimiento-container');
+    const fechaFinMantenimientoInput = document.getElementById('fecha-fin-mantenimiento');
+    
+    if (maquinaDanadaCheckbox && fechaFinMantenimientoContainer && fechaFinMantenimientoInput) {
+        maquinaDanadaCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                fechaFinMantenimientoContainer.style.display = 'block';
+                fechaFinMantenimientoInput.required = true;
+            } else {
+                fechaFinMantenimientoContainer.style.display = 'none';
+                fechaFinMantenimientoInput.required = false;
+                fechaFinMantenimientoInput.value = '';
+            }
+        });
+    }
+    
     // Manejar finalización de alquiler
     const finalizarBtn = document.getElementById('finalizar-alquiler-btn');
     const formFinalizar = document.getElementById('finalizar-alquiler-form');
@@ -1079,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const calificacion = document.getElementById('calificacion').value;
             const observaciones = document.getElementById('observaciones-finalizar').value.trim();
             const maquinaDanada = document.getElementById('maquina-danada').checked;
+            const fechaFinMantenimiento = document.getElementById('fecha-fin-mantenimiento').value;
             
             // Validaciones
             if (!codigoCliente) {
@@ -1091,52 +1165,153 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Deshabilitar botón y mostrar spinner
-            const originalText = finalizarBtn.innerHTML;
-            finalizarBtn.disabled = true;
-            finalizarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Finalizando...';
+            if (maquinaDanada && !fechaFinMantenimiento) {
+                mostrarAlertaModalFinalizar('<i class="fas fa-calendar-alt"></i> Por favor, selecciona la fecha fin de mantenimiento.', 'warning');
+                return;
+            }
             
-            // Enviar solicitud
-            const formData = new FormData(formFinalizar);
-            
-            fetch('{% url "persona:finalizar_alquiler" %}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarAlertaModalFinalizar(
-                        `<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> ${data.message}`,
-                        'success'
-                    );
-                    
-                    // Recargar página después de 2 segundos
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
+            // Si la máquina está dañada, verificar alquileres afectados
+            if (maquinaDanada && fechaFinMantenimiento) {
+                verificarAlquileresAfectados(alquilerId, fechaFinMantenimiento);
+            } else {
+                // Procesar sin verificación de alquileres afectados
+                procesarFinalizacion();
+            }
+        });
+    }
+    
+    function verificarAlquileresAfectados(alquilerId, fechaFinMantenimiento) {
+        const formData = new FormData();
+        formData.append('alquiler_id', alquilerId);
+        formData.append('fecha_fin_mantenimiento', fechaFinMantenimiento);
+        
+        fetch('{% url "persona:verificar_alquileres_afectados" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.total_afectados > 0) {
+                    // Mostrar modal de confirmación
+                    mostrarModalConfirmacion(data.alquileres_afectados);
                 } else {
-                    mostrarAlertaModalFinalizar(
-                        `<i class="fas fa-times-circle"></i> <strong>Error:</strong> ${data.error}`,
-                        'danger'
-                    );
+                    // No hay alquileres afectados, procesar directamente
+                    procesarFinalizacion();
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
+            } else {
                 mostrarAlertaModalFinalizar(
-                    '<i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> Ocurrió un error al procesar la solicitud.',
+                    `<i class="fas fa-times-circle"></i> <strong>Error:</strong> ${data.error}`,
                     'danger'
                 );
-            })
-            .finally(() => {
-                // Restaurar botón
-                finalizarBtn.disabled = false;
-                finalizarBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlertaModalFinalizar(
+                '<i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> Ocurrió un error al verificar los alquileres afectados.',
+                'danger'
+            );
+        });
+    }
+    
+    function mostrarModalConfirmacion(alquileresAfectados) {
+        const container = document.getElementById('alquileres-afectados-container');
+        
+        if (alquileresAfectados.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">No hay alquileres que se verían afectados por el mantenimiento.</div>';
+        } else {
+            let html = '<div class="table-responsive"><table class="table table-striped">';
+            html += '<thead><tr><th>Número</th><th>Cliente</th><th>Máquina</th><th>Fechas</th><th>Estado</th><th>Monto</th></tr></thead>';
+            html += '<tbody>';
+            
+            alquileresAfectados.forEach(alquiler => {
+                html += `<tr>
+                    <td><strong>${alquiler.numero}</strong></td>
+                    <td>${alquiler.cliente}</td>
+                    <td>${alquiler.maquina}</td>
+                    <td>${alquiler.fecha_inicio} - ${alquiler.fecha_fin}</td>
+                    <td><span class="badge bg-warning">${alquiler.estado}</span></td>
+                    <td>$${alquiler.monto.toLocaleString()}</td>
+                </tr>`;
             });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+        
+        // Mostrar modal de confirmación
+        const modal = new bootstrap.Modal(document.getElementById('confirmarCancelacionModal'));
+        modal.show();
+    }
+    
+    function procesarFinalizacion() {
+        const finalizarBtn = document.getElementById('finalizar-alquiler-btn');
+        const formFinalizar = document.getElementById('finalizar-alquiler-form');
+        
+        // Deshabilitar botón y mostrar spinner
+        const originalText = finalizarBtn.innerHTML;
+        finalizarBtn.disabled = true;
+        finalizarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Finalizando...';
+        
+        // Enviar solicitud
+        const formData = new FormData(formFinalizar);
+        
+        fetch('{% url "persona:finalizar_alquiler_con_mantenimiento" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlertaModalFinalizar(
+                    `<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> ${data.message}`,
+                    'success'
+                );
+                
+                // Recargar página después de 2 segundos
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                mostrarAlertaModalFinalizar(
+                    `<i class="fas fa-times-circle"></i> <strong>Error:</strong> ${data.error}`,
+                    'danger'
+                );
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlertaModalFinalizar(
+                '<i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> Ocurrió un error al procesar la solicitud.',
+                'danger'
+            );
+        })
+        .finally(() => {
+            // Restaurar botón
+            finalizarBtn.disabled = false;
+            finalizarBtn.innerHTML = originalText;
+        });
+    }
+    
+    // Manejar confirmación de cancelación
+    const confirmarCancelacionBtn = document.getElementById('confirmar-cancelacion-btn');
+    if (confirmarCancelacionBtn) {
+        confirmarCancelacionBtn.addEventListener('click', function() {
+            // Cerrar modal de confirmación
+            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmarCancelacionModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Procesar finalización
+            procesarFinalizacion();
         });
     }
 });

@@ -1332,6 +1332,7 @@ def lista_alquileres(request):
         'stats': stats,
         'sucursales': sucursales,
         'mensaje_sin_resultados': mensaje_sin_resultados,
+        'fecha_actual': date.today(),
         'filtros': {
             'estado': estado_filtro,
             'fecha_desde': fecha_desde,
@@ -2850,5 +2851,239 @@ def modificar_sucursal(request, sucursal_id):
         'form': form,
         'sucursal': sucursal
     })
+
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def verificar_alquileres_afectados(request):
+    """Vista para verificar qué alquileres se verían afectados por el mantenimiento de una unidad"""
+    try:
+        alquiler_id = request.POST.get('alquiler_id')
+        fecha_fin_mantenimiento = request.POST.get('fecha_fin_mantenimiento')
+        
+        if not alquiler_id or not fecha_fin_mantenimiento:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Obtener el alquiler actual
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que tiene unidad asignada
+        if not alquiler.unidad:
+            return JsonResponse({
+                'success': False,
+                'error': 'El alquiler no tiene unidad asignada.'
+            })
+        
+        # Parsear fecha
+        try:
+            from datetime import datetime
+            fecha_fin_mantenimiento = datetime.strptime(fecha_fin_mantenimiento, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Formato de fecha inválido.'
+            })
+        
+        # Buscar alquileres afectados
+        alquileres_afectados = Alquiler.objects.filter(
+            unidad=alquiler.unidad,
+            estado__in=['reservado', 'en_curso'],
+            fecha_inicio__lte=fecha_fin_mantenimiento
+        ).exclude(id=alquiler.id)
+        
+        # Convertir a lista para JSON
+        alquileres_data = []
+        for alq in alquileres_afectados:
+            alquileres_data.append({
+                'id': alq.id,
+                'numero': alq.numero,
+                'cliente': f"{alq.persona.nombre} {alq.persona.apellido}",
+                'maquina': alq.maquina_base.nombre,
+                'fecha_inicio': alq.fecha_inicio.strftime('%d/%m/%Y'),
+                'fecha_fin': alq.fecha_fin.strftime('%d/%m/%Y'),
+                'estado': alq.get_estado_display(),
+                'monto': float(alq.monto_total) if alq.monto_total else 0
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'alquileres_afectados': alquileres_data,
+            'total_afectados': len(alquileres_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
+
+@empleado_requerido
+@csrf_protect
+@require_http_methods(["POST"])
+def finalizar_alquiler_con_mantenimiento(request):
+    """Vista para finalizar alquiler con mantenimiento y cancelar alquileres afectados"""
+    try:
+        from maquinas.models import CalificacionCliente
+        from maquinas.utils import enviar_email_finalizacion_alquiler, enviar_email_alquiler_cancelado
+        
+        alquiler_id = request.POST.get('alquiler_id')
+        codigo_cliente = request.POST.get('codigo_cliente', '').strip()
+        calificacion = request.POST.get('calificacion')
+        observaciones = request.POST.get('observaciones', '').strip()
+        maquina_danada_raw = request.POST.get('maquina_danada')
+        maquina_danada = maquina_danada_raw in ['true', 'on', '1', True]
+        fecha_fin_mantenimiento = request.POST.get('fecha_fin_mantenimiento')
+        
+        # Validar datos requeridos
+        if not alquiler_id or not codigo_cliente or not calificacion:
+            return JsonResponse({
+                'success': False,
+                'error': 'Faltan datos requeridos.'
+            })
+        
+        # Si la máquina está dañada, la fecha es requerida
+        if maquina_danada and not fecha_fin_mantenimiento:
+            return JsonResponse({
+                'success': False,
+                'error': 'La fecha fin de mantenimiento es requerida cuando la máquina está dañada.'
+            })
+        
+        # Validar calificación
+        try:
+            calificacion = int(calificacion)
+            if calificacion < 1 or calificacion > 5:
+                raise ValueError("Calificación fuera de rango")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'La calificación debe ser un número entre 1 y 5.'
+            })
+        
+        # Buscar el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Alquiler no encontrado.'
+            })
+        
+        # Verificar que el alquiler esté en estado válido
+        if alquiler.estado not in ['en_curso', 'adeudado']:
+            return JsonResponse({
+                'success': False,
+                'error': f'No es posible devolver en este estado. El alquiler está en estado {alquiler.get_estado_display()}.'
+            })
+        
+        # Verificar el código de retiro
+        if alquiler.codigo_retiro != codigo_cliente:
+            return JsonResponse({
+                'success': False,
+                'error': 'DNI o código de reserva inválido.'
+            })
+        
+        # Parsear fecha de fin de mantenimiento si está presente
+        if fecha_fin_mantenimiento:
+            try:
+                from datetime import datetime
+                fecha_fin_mantenimiento = datetime.strptime(fecha_fin_mantenimiento, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Formato de fecha inválido.'
+                })
+        
+        # Si la máquina está dañada y hay unidad, cancelar alquileres afectados
+        alquileres_cancelados = []
+        if maquina_danada and alquiler.unidad and fecha_fin_mantenimiento:
+            # Buscar alquileres afectados
+            alquileres_afectados = Alquiler.objects.filter(
+                unidad=alquiler.unidad,
+                estado__in=['reservado', 'en_curso'],
+                fecha_inicio__lte=fecha_fin_mantenimiento
+            ).exclude(id=alquiler.id)
+            
+            # Cancelar cada alquiler afectado
+            for alq in alquileres_afectados:
+                try:
+                    observaciones_cancelacion = f"Cancelado automáticamente por mantenimiento de máquina programado hasta {fecha_fin_mantenimiento.strftime('%d/%m/%Y')}"
+                    porcentaje, monto = alq.cancelar(empleado=request.user, observaciones=observaciones_cancelacion)
+                    
+                    # Enviar email de cancelación
+                    try:
+                        enviar_email_alquiler_cancelado(alq)
+                    except Exception as e:
+                        print(f"Error enviando email de cancelación para alquiler {alq.numero}: {str(e)}")
+                    
+                    alquileres_cancelados.append({
+                        'numero': alq.numero,
+                        'cliente': f"{alq.persona.nombre} {alq.persona.apellido}",
+                        'monto_reembolso': float(monto) if monto else 0,
+                        'porcentaje_reembolso': porcentaje
+                    })
+                except Exception as e:
+                    print(f"Error cancelando alquiler {alq.numero}: {str(e)}")
+        
+        # Finalizar el alquiler actual
+        alquiler.estado = 'finalizado'
+        alquiler.save()
+        
+        # Actualizar estado de la máquina/unidad
+        mensaje_maquina = ""
+        if alquiler.unidad:
+            if maquina_danada:
+                alquiler.unidad.estado = 'mantenimiento'
+                alquiler.unidad.fecha_fin_mantenimiento = fecha_fin_mantenimiento
+                alquiler.unidad.save()
+                mensaje_maquina = f"Máquina marcada en mantenimiento hasta {fecha_fin_mantenimiento.strftime('%d/%m/%Y')}."
+            else:
+                alquiler.unidad.estado = 'disponible'
+                alquiler.unidad.fecha_fin_mantenimiento = None
+                alquiler.unidad.save()
+                mensaje_maquina = "Máquina marcada como disponible."
+        else:
+            mensaje_maquina = "Sin unidad asignada."
+        
+        # Crear calificación del cliente
+        CalificacionCliente.objects.create(
+            alquiler=alquiler,
+            cliente=alquiler.persona,
+            empleado=request.user,
+            calificacion=calificacion,
+            observaciones=observaciones
+        )
+        
+        # Enviar email de finalización
+        try:
+            enviar_email_finalizacion_alquiler(alquiler)
+        except Exception as e:
+            print(f"Error enviando email de finalización: {str(e)}")
+        
+        # Mensaje de éxito
+        mensaje = f"Devolución registrada. {mensaje_maquina} Cliente calificado con {calificacion} estrellas."
+        
+        if alquileres_cancelados:
+            mensaje += f" Se cancelaron {len(alquileres_cancelados)} alquileres afectados por el mantenimiento."
+        
+        return JsonResponse({
+            'success': True,
+            'message': mensaje,
+            'alquileres_cancelados': alquileres_cancelados
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        })
 
 # Create your views here.
