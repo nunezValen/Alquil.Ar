@@ -2730,8 +2730,15 @@ def ver_datos_personales(request):
 def lista_sucursales(request):
     from django.db.models.functions import Replace
     """Gestionar listado de sucursales con filtros y paginación"""
-    # Ahora, nadie puede ver las sucursales ocultas en esta tabla.
-    queryset = Sucursal.objects.filter(es_visible=True).order_by('direccion')
+    # Determinar si el usuario actual es administrador (superusuario o admin definido en el modelo Persona)
+    es_admin_usuario = request.user.is_superuser or (hasattr(request.user, 'persona') and request.user.persona.es_admin)
+
+    # Los administradores pueden ver todas las sucursales, incluso las ocultas.
+    # Para el resto de los empleados, se muestran únicamente las sucursales visibles.
+    if es_admin_usuario:
+        queryset = Sucursal.objects.all().order_by('direccion')
+    else:
+        queryset = Sucursal.objects.filter(es_visible=True).order_by('direccion')
 
     # Filtros
     filtros = {
@@ -2768,7 +2775,7 @@ def lista_sucursales(request):
         'is_paginated': page_obj.has_other_pages(),
         'filtros': filtros,
         'mensaje_sin_resultados': mensaje_sin_resultados,
-        'mostrar_columna_visible': request.user.is_superuser or (hasattr(request.user, 'persona') and request.user.persona.es_admin),
+        'mostrar_columna_visible': es_admin_usuario,
     })
 
 @login_required

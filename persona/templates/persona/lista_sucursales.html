@@ -131,10 +131,6 @@
                                 this.checked = !this.checked;
                             } else {
                                 showToast(data.message, 'success');
-                                // Si la sucursal se ocultó, quitar la fila de la tabla
-                                if (!data.visible) {
-                                    this.closest('tr').remove();
-                                }
                             }
                         })
                         .catch(() => { this.checked = !this.checked; });
