@@ -28,18 +28,18 @@
                                 <form id="form-facturacion" class="mb-4">
                                     <div class="mb-3">
                                         <label class="form-label">Fecha de Inicio</label>
-                                        <input type="date" class="form-control" name="fecha_inicio" max="{{ today|default:'' }}">
+                                        <input type="date" class="form-control" name="fecha_inicio">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Fecha de Fin</label>
-                                        <input type="date" class="form-control" name="fecha_fin" max="{{ today|default:'' }}">
+                                        <input type="date" class="form-control" name="fecha_fin">
                                     </div>
                                     <button type="button" class="btn btn-primary w-100" id="btn-consultar-facturacion">Consultar</button>
                                 </form>
                             </div>
                             <div class="col-md-7 d-flex flex-column align-items-center justify-content-center">
                                 <div id="facturacion-grafico" style="width:100%; min-height:220px;"></div>
-                                <div id="facturacion-total" class="fs-5 mt-4"></div>
+                                <div id="facturacion-total" class="fs-6 mt-4"></div>
                             </div>
                         </div>
                     </div>
@@ -50,11 +50,11 @@
                                 <form id="form-maquinas" class="mb-4">
                                     <div class="mb-3">
                                         <label class="form-label">Fecha de Inicio</label>
-                                        <input type="date" class="form-control" name="fecha_inicio" max="{{ today|default:'' }}">
+                                        <input type="date" class="form-control" name="fecha_inicio">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Fecha de Fin</label>
-                                        <input type="date" class="form-control" name="fecha_fin" max="{{ today|default:'' }}">
+                                        <input type="date" class="form-control" name="fecha_fin">
                                     </div>
                                     <button type="button" class="btn btn-primary w-100" id="btn-consultar-maquinas">Consultar</button>
                                 </form>
@@ -77,7 +77,6 @@
                                             <!-- Resultados aquí -->
                                         </tbody>
                                     </table>
-                                    <button class="btn btn-primary btn-sm mt-3 ms-auto d-block" id="btn-descargar-maquinas">Descargar Resultados</button>
                                 </div>
                             </div>
                         </div>
@@ -259,5 +258,5 @@
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/static/js/estadisticas.js"></script>
+<script src="/static/js/estadisticas.js?v=5&timestamp=20250115b"></script>
 {% endblock %} 

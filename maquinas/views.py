@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET
 from persona.views import es_empleado_o_admin
 from .forms import MaquinaBaseForm, AlquilerForm, CargarUnidadForm
 from .models import MaquinaBase, Unidad, Alquiler
@@ -14,11 +14,13 @@ from django.http import HttpResponse, JsonResponse
 from datetime import datetime, date, timedelta
 from django.urls import reverse
 from persona.models import Persona
-from django.db.models import Q
-from django.core.mail import send_mail
+from django.db.models import Q, Sum
+from django.utils.dateparse import parse_date
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
+from collections import defaultdict
+from decimal import Decimal
 from .utils import enviar_email_alquiler_simple, enviar_email_alquiler_cancelado
-from django.http import JsonResponse
-from .models import MaquinaBase
+from django.template.loader import render_to_string
 
 def es_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -133,11 +135,10 @@ def cargar_maquina_base(request):
     })
 
 @login_required
-@user_passes_test(es_admin)
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["GET", "POST"])
 def eliminar_maquina_base(request, maquina_id):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
 
     if request.method == 'POST':
@@ -157,7 +158,7 @@ def eliminar_maquina_base(request, maquina_id):
     return render(request, 'maquinas/eliminar_maquina_base.html', {'maquina': maquina})
 
 @login_required
-@user_passes_test(es_admin)
+@user_passes_test(es_empleado_o_admin)
 def lista_maquinas(request):
     maquinas = MaquinaBase.objects.all().order_by('nombre')
     return render(request, 'maquinas/lista_maquinas.html', {'maquinas': maquinas})
@@ -172,8 +173,10 @@ def lista_unidades(request):
     })
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def toggle_visibilidad_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
     maquina_base = unidad.maquina_base
     
@@ -282,32 +285,64 @@ def eliminar_unidad(request, unidad_id):
 
 def catalogo_publico(request):
     query = request.GET.get('q', '')
-    # Filtrar solo máquinas que tengan unidades realmente disponibles (no en mantenimiento)
-    maquinas = MaquinaBase.objects.filter(
-        visible=True,
-        unidades__estado='disponible',
-        unidades__visible=True
-    ).distinct().order_by('nombre')
-    
-    if query:
-        maquinas = maquinas.filter(
-            Q(nombre__icontains=query) |
-            Q(tipo__icontains=query) |
-            Q(marca__icontains=query) |
-            Q(modelo__icontains=query) |
-            Q(descripcion_corta__icontains=query) |
-            Q(descripcion_larga__icontains=query)
-        ).distinct()
+    # Obtener todos los tipos y marcas posibles
+    tipos_maquina = MaquinaBase.TIPOS_MAQUINA
+    marcas = MaquinaBase.MARCAS
 
+    # Obtener precios mínimo y máximo de todas las máquinas visibles
+    precios = MaquinaBase.objects.filter(visible=True)
+    precio_min = precios.order_by('precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    precio_max = precios.order_by('-precio_por_dia').first().precio_por_dia if precios.exists() else 0
+
+    # Leer filtros seleccionados
+    filtros = {
+        'tipo': request.GET.getlist('tipo'),
+        'marca': request.GET.getlist('marca'),
+        'estado': request.GET.getlist('estado'),
+        'precio_min': request.GET.get('precio_min', precio_min),
+        'precio_max': request.GET.get('precio_max', precio_max),
+    }
+
+    # Filtrar máquinas
+    maquinas = MaquinaBase.objects.filter(visible=True)
+    if filtros['tipo']:
+        maquinas = maquinas.filter(tipo__in=filtros['tipo'])
+    if filtros['marca']:
+        maquinas = maquinas.filter(marca__in=filtros['marca'])
+    # Estado: OR global
+    if filtros['estado']:
+        estados = []
+        if 'disponible' in filtros['estado']:
+            estados.append(True)
+        if 'no_disponible' in filtros['estado']:
+            estados.append(False)
+        maquinas = [m for m in maquinas if m.tiene_unidades_disponibles() in estados]
+    else:
+        maquinas = list(maquinas)
+    # Filtro de precio
+    try:
+        pmin = float(filtros['precio_min'])
+        pmax = float(filtros['precio_max'])
+        maquinas = [m for m in maquinas if pmin <= float(m.precio_por_dia) <= pmax]
+    except:
+        pass
+    # Filtro de búsqueda
+    if query:
+        maquinas = [m for m in maquinas if query.lower() in m.nombre.lower() or query.lower() in m.modelo.lower() or query.lower() in m.descripcion_corta.lower() or query.lower() in m.descripcion_larga.lower()]
+    # Descripción corta recortada
     for maquina in maquinas:
         if len(maquina.descripcion_corta) > 200:
             maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
         else:
             maquina.descripcion_vista = maquina.descripcion_corta
-    
     return render(request, 'maquinas/catalogo_publico.html', {
         'maquinas': maquinas,
-        'query': query
+        'query': query,
+        'tipos_maquina': tipos_maquina,
+        'marcas': marcas,
+        'precio_min': precio_min,
+        'precio_max': precio_max,
+        'filtros': filtros,
     })
 
 @csrf_exempt
@@ -714,11 +749,11 @@ def alquilar_maquina(request, maquina_id):
                 alquiler_adeudado = alquileres_adeudados.first()
                 dias_vencido = (date.today() - alquiler_adeudado.fecha_fin).days
                 return JsonResponse({
-                    'error': f'❌ NO PUEDES ALQUILAR: Tienes un alquiler vencido (#{alquiler_adeudado.numero}) que debe ser devuelto URGENTEMENTE. '
+                    'error': f'❌ NO SE PUEDE REALIZAR EL ALQUILER: Hay un alquiler vencido (#{alquiler_adeudado.numero}) asociado a esta personaque debe ser devuelto URGENTEMENTE. '
                             f'Máquina: {alquiler_adeudado.maquina_base.nombre}, '
                             f'vencido hace {dias_vencido} día{"s" if dias_vencido != 1 else ""}. '
-                            f'Debes devolver la máquina antes de poder realizar nuevos alquileres. '
-                            f'📞 Contacta inmediatamente para coordinar la devolución.'
+                            f'Antes de realizar un nuevo alquiler debe resolverse esta situación. '
+                            f'📞 Se recomienda coordinar la devolución a la brevedad.'
                 }, status=400)
             
             # VALIDACIÓN 2: Verificar que el cliente no tenga otro alquiler activo/reservado
@@ -730,12 +765,11 @@ def alquilar_maquina(request, maquina_id):
             if alquileres_activos.exists():
                 alquiler_activo = alquileres_activos.first()
                 return JsonResponse({
-                    'error': f'Ya tienes un alquiler activo (#{alquiler_activo.numero}). '
-                            f'Solo puedes tener un alquiler a la vez. '
-                            f'Tu alquiler actual: {alquiler_activo.maquina_base.nombre} '
+                    'error': f'Ya existe un alquiler activo asociado a esta persona (#{alquiler_activo.numero}). '
+                            f'Solo se puede tener un alquiler a la vez. '
+                            f'Su alquiler actual: {alquiler_activo.maquina_base.nombre} '
                             f'del {alquiler_activo.fecha_inicio.strftime("%d/%m/%Y")} '
                             f'al {alquiler_activo.fecha_fin.strftime("%d/%m/%Y")}. '
-                            f'Contacta al soporte si necesitas cancelarlo.'
                 }, status=400)
             
             # VALIDACIÓN 3: Verificar disponibilidad de unidades para las fechas
@@ -979,11 +1013,13 @@ def pago_pendiente(request):
     return redirect('maquinas:catalogo_publico')
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def editar_maquina_base(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, pk=pk)
     if request.method == 'POST':
-        form = MaquinaBaseForm(request.POST, instance=maquina)
+        form = MaquinaBaseForm(request.POST, request.FILES, instance=maquina)
         if form.is_valid():
             maquina = form.save(commit=False)
             # Mantener la imagen original
@@ -1003,8 +1039,10 @@ def editar_maquina_base(request, pk):
     })
 
 @login_required
-@user_passes_test(es_admin)
 def editar_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
     if request.method == 'POST':
         form = UnidadForm(request.POST, instance=unidad, initial={'patente_original': unidad.patente})
@@ -1021,10 +1059,19 @@ def editar_unidad(request, pk):
     })
 
 @login_required
-@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def toggle_mantenimiento_unidad(request, pk):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_unidades')
     unidad = get_object_or_404(Unidad, pk=pk)
-    
+
+    # Verificar si la unidad está en un alquiler en curso
+    from maquinas.models import Alquiler
+    alquiler_en_curso = Alquiler.objects.filter(unidad=unidad, estado='en_curso').exists()
+    if alquiler_en_curso:
+        messages.error(request, "No se puede poner en mantenimiento una unidad que está en un alquiler en curso.")
+        return redirect('maquinas:lista_unidades')
+
     # Solo permitir cambiar entre disponible y mantenimiento
     if unidad.estado == 'disponible':
         unidad.estado = 'mantenimiento'
@@ -1035,17 +1082,16 @@ def toggle_mantenimiento_unidad(request, pk):
     else:
         messages.error(request, 'Solo se puede cambiar el estado de mantenimiento en unidades disponibles.')
         return redirect('maquinas:lista_unidades')
-    
+
     unidad.save()
     messages.success(request, mensaje)
     return redirect('maquinas:lista_unidades')
 
 @login_required
-@user_passes_test(es_admin)
-@csrf_protect
-@ensure_csrf_cookie
-@require_http_methods(["POST"])
 def desocultar_maquina_base(request, maquina_id):
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "No tienes permisos para realizar esta acción.")
+        return redirect('maquinas:lista_maquinas')
     maquina = get_object_or_404(MaquinaBase, id=maquina_id)
     nombre_maquina = maquina.nombre
     try:
@@ -1134,3 +1180,130 @@ def confirmar_pago_binance(request):
 def nombres_maquinas_base(request):
     nombres = list(MaquinaBase.objects.values_list('nombre', flat=True))
     return JsonResponse({'nombres': nombres})
+
+@require_GET
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def estadisticas_facturacion(request):
+    """
+    Devuelve datos de facturación agrupados por día, semana, mes o año según el rango de fechas.
+    Suma monto_total de alquileres creados en el periodo y resta monto_reembolso de los cancelados en el periodo.
+    """
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    if not fecha_inicio or not fecha_fin:
+        return JsonResponse({'error': 'Debe especificar fecha de inicio y fin.'}, status=400)
+
+    fecha_inicio = parse_date(fecha_inicio)
+    fecha_fin = parse_date(fecha_fin)
+    if not fecha_inicio or not fecha_fin:
+        return JsonResponse({'error': 'Fechas inválidas.'}, status=400)
+
+    if fecha_inicio > fecha_fin:
+        return JsonResponse({'error': 'La fecha de inicio no puede ser posterior a la de fin.'}, status=400)
+
+    dias = (fecha_fin - fecha_inicio).days + 1
+    if dias <= 7:
+        agrupacion = 'dia'
+        formato = '%Y-%m-%d'
+    elif dias <= 31:
+        agrupacion = 'semana'
+        formato = '%Y-%W'
+    elif dias <= 366:
+        agrupacion = 'mes'
+        formato = '%Y-%m'
+    else:
+        agrupacion = 'anio'
+        formato = '%Y'
+
+    # Alquileres creados en el periodo
+    alquileres_creados = Alquiler.objects.filter(
+        fecha_creacion__date__gte=fecha_inicio,
+        fecha_creacion__date__lte=fecha_fin
+    )
+    # Alquileres cancelados en el periodo
+    alquileres_cancelados = Alquiler.objects.filter(
+        fecha_cancelacion__date__gte=fecha_inicio,
+        fecha_cancelacion__date__lte=fecha_fin,
+        estado='cancelado'
+    )
+
+    # Agrupación
+    if agrupacion == 'dia':
+        trunc = TruncDay
+    elif agrupacion == 'semana':
+        trunc = TruncWeek
+    elif agrupacion == 'mes':
+        trunc = TruncMonth
+    else:
+        trunc = TruncYear
+
+    # Sumar monto_total de creados
+    creados_agrupados = alquileres_creados.annotate(periodo=trunc('fecha_creacion')).values('periodo').annotate(monto=Sum('monto_total')).order_by('periodo')
+    # Sumar monto_reembolso de cancelados
+    cancelados_agrupados = alquileres_cancelados.annotate(periodo=trunc('fecha_cancelacion')).values('periodo').annotate(monto=Sum('monto_reembolso')).order_by('periodo')
+
+    # Unir ambos resultados
+    datos = defaultdict(lambda: Decimal('0.00'))
+    for item in creados_agrupados:
+        if item['periodo']:
+            datos[item['periodo'].strftime(formato)] += item['monto'] or 0
+    for item in cancelados_agrupados:
+        if item['periodo']:
+            datos[item['periodo'].strftime(formato)] -= item['monto'] or 0
+
+    # Ordenar por periodo
+    labels = sorted(datos.keys())
+    data = [float(datos[label]) for label in labels]
+    total = float(sum(data))
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+        'total': total
+    })
+
+def catalogo_grilla_ajax(request):
+    # Lógica idéntica a catalogo_publico pero solo devuelve el HTML de la grilla
+    query = request.GET.get('q', '')
+    tipos_maquina = MaquinaBase.TIPOS_MAQUINA
+    marcas = MaquinaBase.MARCAS
+    precios = MaquinaBase.objects.filter(visible=True)
+    precio_min = precios.order_by('precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    precio_max = precios.order_by('-precio_por_dia').first().precio_por_dia if precios.exists() else 0
+    filtros = {
+        'tipo': request.GET.getlist('tipo'),
+        'marca': request.GET.getlist('marca'),
+        'estado': request.GET.getlist('estado'),
+        'precio_min': request.GET.get('precio_min', precio_min),
+        'precio_max': request.GET.get('precio_max', precio_max),
+    }
+    maquinas = MaquinaBase.objects.filter(visible=True)
+    if filtros['tipo']:
+        maquinas = maquinas.filter(tipo__in=filtros['tipo'])
+    if filtros['marca']:
+        maquinas = maquinas.filter(marca__in=filtros['marca'])
+    if filtros['estado']:
+        estados = []
+        if 'disponible' in filtros['estado']:
+            estados.append(True)
+        if 'no_disponible' in filtros['estado']:
+            estados.append(False)
+        maquinas = [m for m in maquinas if m.tiene_unidades_disponibles() in estados]
+    else:
+        maquinas = list(maquinas)
+    try:
+        pmin = float(filtros['precio_min'])
+        pmax = float(filtros['precio_max'])
+        maquinas = [m for m in maquinas if pmin <= float(m.precio_por_dia) <= pmax]
+    except:
+        pass
+    if query:
+        maquinas = [m for m in maquinas if query.lower() in m.nombre.lower() or query.lower() in m.modelo.lower() or query.lower() in m.descripcion_corta.lower() or query.lower() in m.descripcion_larga.lower()]
+    for maquina in maquinas:
+        if len(maquina.descripcion_corta) > 200:
+            maquina.descripcion_vista = maquina.descripcion_corta[:197] + "..."
+        else:
+            maquina.descripcion_vista = maquina.descripcion_corta
+    html = render_to_string('maquinas/_grilla_maquinas.html', {'maquinas': maquinas, 'request': request})
+    return JsonResponse({'html': html})

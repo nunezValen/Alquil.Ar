@@ -17,6 +17,7 @@ from .views import (
     marcar_como_empleado, desmarcar_como_empleado,
     modificar_datos_cliente, modificar_datos_empleado,
     registrar_cliente_nuevo, registrar_empleado_nuevo, iniciar_alquiler, finalizar_alquiler,
+    verificar_alquileres_afectados, finalizar_alquiler_con_mantenimiento,
     obtener_datos_cliente_actual, ver_datos_personales, lista_sucursales, cargar_sucursal,
     toggle_visibilidad_sucursal, modificar_sucursal
 )
@@ -59,6 +60,8 @@ urlpatterns = [
     path('alquileres/', lista_alquileres, name='lista_alquileres'),
     path('iniciar-alquiler/', iniciar_alquiler, name='iniciar_alquiler'),
     path('finalizar-alquiler/', finalizar_alquiler, name='finalizar_alquiler'),
+    path('verificar-alquileres-afectados/', verificar_alquileres_afectados, name='verificar_alquileres_afectados'),
+    path('finalizar-alquiler-con-mantenimiento/', finalizar_alquiler_con_mantenimiento, name='finalizar_alquiler_con_mantenimiento'),
     path('reembolsos/', lista_reembolsos, name='lista_reembolsos'),
     path('marcar-reembolso-pagado/<int:reembolso_id>/', marcar_reembolso_pagado, name='marcar_reembolso_pagado'),
     path('buscar-clientes-json/', buscar_clientes_json, name='buscar_clientes_json'),

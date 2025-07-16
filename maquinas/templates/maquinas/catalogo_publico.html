@@ -112,69 +112,143 @@
             height: 200px;
         }
     }
+
+/* Slider de precio recatado, prolijo y alineado */
+#slider-precio .noUi-target {
+    background: #e0e0e0;
+    border-radius: 4px;
+    border: none;
+    box-shadow: none;
+    height: 16px; /* Altura suficiente para el handle */
+    margin-top: 10px;
+    margin-bottom: 0;
+    position: relative;
+}
+#slider-precio .noUi-connect {
+    background: #2176d2; /* Celeste original */
+    border-radius: 4px;
+}
+#slider-precio .noUi-handle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #2176d2;
+    box-shadow: none;
+    top: 0;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    /* Quitar position: absolute y transform */
+}
+#slider-precio .noUi-handle:after, #slider-precio .noUi-handle:before {
+    display: none;
+}
+#slider-precio .noUi-tooltip {
+    display: none !important;
+}
+
+/* Limpiar filtros más grande y alineado a la izquierda */
+#limpiar-filtros {
+    font-size: 1.15rem;
+    font-weight: 500;
+    text-align: left;
+    display: block;
+    margin-left: 0;
+    margin-top: 2.5rem;
+}
+#limpiar-filtros i {
+    font-size: 1.2em;
+    vertical-align: middle;
+}
 </style>
 
 <section class="py-5">
-    <div class="section-container">
-        <div class="search-container">
-            <form method="GET" class="search-form">
-                <div class="input-group">
-                    <input type="text" 
-                           name="q" 
-                           class="form-control search-input" 
-                           placeholder="Buscar..." 
-                           value="{{ query }}"
-                           aria-label="Buscar">
-                    <button class="btn btn-primary search-button" type="submit">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
+    <div class="section-container d-flex">
+        <!-- Filtros laterales -->
+        <aside style="width: 270px; min-width: 220px; max-width: 320px; margin-right: 2.5rem;">
+            <form id="filtros-form" autocomplete="off">
+                <div class="mb-4">
+                    <h5 class="mb-2">Tipo</h5>
+                    {% for value, label in tipos_maquina %}
+                    <div class="form-check">
+                        <input class="form-check-input filtro-tipo" type="checkbox" name="tipo" value="{{ value }}" id="tipo-{{ value }}" {% if value in filtros.tipo %}checked{% endif %}>
+                        <label class="form-check-label" for="tipo-{{ value }}">{{ label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4">
+                    <h5 class="mb-2">Marca</h5>
+                    {% for value, label in marcas %}
+                    <div class="form-check">
+                        <input class="form-check-input filtro-marca" type="checkbox" name="marca" value="{{ value }}" id="marca-{{ value }}" {% if value in filtros.marca %}checked{% endif %}>
+                        <label class="form-check-label" for="marca-{{ value }}">{{ label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4">
+                    <h5 class="mb-2">Estado</h5>
+                    <div class="form-check">
+                        <input class="form-check-input filtro-estado" type="checkbox" name="estado" value="disponible" id="estado-disponible" {% if 'disponible' in filtros.estado %}checked{% endif %}>
+                        <label class="form-check-label" for="estado-disponible">Disponible</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input filtro-estado" type="checkbox" name="estado" value="no_disponible" id="estado-no-disponible" {% if 'no_disponible' in filtros.estado %}checked{% endif %}>
+                        <label class="form-check-label" for="estado-no-disponible">No disponible</label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h5 class="mb-2">Precio por día</h5>
+                    <div id="slider-precio"></div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <span id="precio-min-label"></span>
+                        <span id="precio-max-label"></span>
+                    </div>
+                    <input type="hidden" name="precio_min" id="precio_min" value="{{ filtros.precio_min|default:precio_min }}">
+                    <input type="hidden" name="precio_max" id="precio_max" value="{{ filtros.precio_max|default:precio_max }}">
+                </div>
+                <div class="mt-5 text-center">
+                    <span id="limpiar-filtros" class="text-secondary" style="cursor:pointer; font-size: 0.95rem;">
+                        <i class="fas fa-times me-1"></i> Limpiar filtros
+                    </span>
                 </div>
             </form>
-        </div>
-
-        {% if query %}
-        <div class="search-results">
-            {% if maquinas %}
-                <p>Se encontraron {{ maquinas|length }} resultado(s) para "{{ query }}"</p>
-            {% else %}
-                <p>No se encontraron resultados para "{{ query }}"</p>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if maquinas %}
-            <div class="catalog-grid">
-                {% for maquina in maquinas %}
-                    <div class="machine-card">
-                        {% if maquina.imagen %}
-                            <img src="{{ maquina.imagen.url }}" alt="{{ maquina.nombre }}" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
-                        {% else %}
-                            <img src="{% static 'img/no-image.jpg' %}" alt="Sin imagen" class="{% if not maquina.tiene_unidades_disponibles %}no-disponible{% endif %}">
-                        {% endif %}
-                        <div class="card-body">
-                            <h3>{{ maquina.nombre }}</h3>
-                            <p class="price">${{ maquina.precio_por_dia }} por día</p>
-                            <div class="estado">
-                                <span class="estado-label">Estado:</span> <span class="estado-valor">{% if maquina.tiene_unidades_disponibles %}Disponible{% else %}No Disponible{% endif %}</span>
-                            </div>
-                            <p class="description">{{ maquina.descripcion_vista }}</p>
-                            <div class="saber-mas-container">
-                                {% if request.user.is_authenticated %}
-                                    <a href="{% url 'maquinas:detalle_maquina' maquina.id %}" class="saber-mas">
-                                        Saber más <i class="fas fa-chevron-right"></i>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
+        </aside>
+        <!-- Fin filtros laterales -->
+        <div style="flex:1;">
+            <div class="search-container">
+                <form method="GET" class="search-form">
+                    <div class="input-group">
+                        <input type="text" 
+                               name="q" 
+                               class="form-control search-input" 
+                               placeholder="Buscar..." 
+                               value="{{ query }}"
+                               aria-label="Buscar">
+                        <button class="btn btn-primary search-button" type="submit">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
                     </div>
-                {% endfor %}
+                </form>
             </div>
-        {% else %}
-            <div class="text-center py-5">
-                <h2 class="mb-4">¡Próximamente más máquinas!</h2>
-                <p class="lead">Estamos trabajando para traerte el mejor catálogo de maquinaria.</p>
+
+            {% if query %}
+            <div class="search-results">
+                {% if maquinas %}
+                    <p>Se encontraron {{ maquinas|length }} resultado(s) para "{{ query }}"</p>
+                {% else %}
+                    <p>No se encontraron resultados para "{{ query }}"</p>
+                {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
+
+            <div id="catalogo-grilla">
+                {% include 'maquinas/_grilla_maquinas.html' %}
+            </div>
+        </div>
     </div>
 </section>
+<!-- noUiSlider CSS y JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+<script src="/static/js/catalogo.js"></script>
 {% endblock %} 

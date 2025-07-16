@@ -57,9 +57,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Gestión de Unidades de Máquinas</h2>
         <div class="d-flex gap-3">
-            {% if user.is_staff or user.is_superuser %}
             <a href="{% url 'persona:gestion' %}" class="btn boton-gris">Regresar a Gestión</a>
-            {% endif %}
             {% if user.is_superuser %}
             <a href="{% url 'maquinas:cargar_unidad' %}" class="btn boton-principal">
                 Agregar Unidad de Máquina
@@ -90,13 +88,12 @@
                     <td>{{ unidad.get_estado_display }}</td>
                     <td>{% if unidad.visible %}Visible{% else %}Oculta{% endif %}</td>
                     <td>
-                        {% if user.is_superuser %}
                         <a href="{% url 'maquinas:editar_unidad' unidad.id %}" class="action-icon edit" title="Editar">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
                         {% if unidad.estado == 'disponible' or unidad.estado == 'mantenimiento' %}
-                        <a href="{% url 'maquinas:toggle_mantenimiento_unidad' unidad.id %}" 
-                           class="action-icon {% if unidad.estado == 'disponible' %}maintenance{% else %}maintenance-off{% endif %}" 
+                        <a href="{% url 'maquinas:toggle_mantenimiento_unidad' unidad.id %}"
+                           class="action-icon {% if unidad.estado == 'disponible' %}maintenance{% else %}maintenance-off{% endif %}"
                            title="{% if unidad.estado == 'disponible' %}Poner en mantenimiento{% else %}Marcar como disponible{% endif %}">
                             <i class="fas {% if unidad.estado == 'disponible' %}fa-wrench{% else %}fa-check-circle{% endif %}"></i>
                         </a>
@@ -104,7 +101,6 @@
                         <a href="{% url 'maquinas:toggle_visibilidad_unidad' unidad.id %}" class="action-icon {% if unidad.visible %}delete{% else %}edit{% endif %}" title="{% if unidad.visible %}Ocultar{% else %}Mostrar{% endif %}">
                             <i class="fas {% if unidad.visible %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
                         </a>
-                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
