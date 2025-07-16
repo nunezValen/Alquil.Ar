@@ -1524,7 +1524,7 @@ def finalizar_alquiler(request):
         if alquiler.codigo_retiro != codigo_cliente:
             return JsonResponse({
                 'success': False,
-                'error': 'DNI o código de reserva inválido.'
+                'error': 'Código de reserva inválido.'
             })
         
         # Cambiar estado del alquiler a 'finalizado'
@@ -3051,7 +3051,7 @@ def finalizar_alquiler_con_mantenimiento(request):
         if alquiler.codigo_retiro != codigo_cliente:
             return JsonResponse({
                 'success': False,
-                'error': 'DNI o código de reserva inválido.'
+                'error': 'Código de reserva inválido.'
             })
         
         # Parsear fecha de fin de mantenimiento si está presente
