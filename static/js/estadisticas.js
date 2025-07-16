@@ -200,36 +200,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // --- Descargar resultados de máquinas como Excel ---
-    document.getElementById('btn-descargar-maquinas').addEventListener('click', function() {
-        const fechaInicio = inputInicioMaq.value;
-        const fechaFin = inputFinMaq.value;
-        const nombreArchivo = `Maquinas_mas_alquiladas_${fechaInicio || 'inicio'}_${fechaFin || 'hoy'}.csv`;
-        // Obtener datos de la tabla
-        const filas = Array.from(document.querySelectorAll('#tabla-maquinas-alquiladas tbody tr'));
-        if (filas.length === 0) {
-            alert('No hay resultados para descargar.');
-            return;
-        }
-        // Construir datos para Excel
-        let csv = 'Maquina Base,Cantidad de alquileres\r\n';
-        filas.forEach(tr => {
-            const tds = tr.querySelectorAll('td');
-            csv += `"${tds[0].innerText.replace(/"/g,'""')}",${tds[1].innerText}\r\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
-    });
-
     // -----------------------------
     // --- CLIENTES ---------------
     // -----------------------------
@@ -336,15 +306,5 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => {
                 graficoCli.innerHTML = `<div class='text-danger'>Error al consultar los datos.</div>`;
             });
-    });
-
-    // Descargar clientes
-    document.getElementById('btn-descargar-clientes').addEventListener('click', function() {
-        const params = new URLSearchParams();
-        if (inputInicioCli.value) params.append('fecha_inicio', inputInicioCli.value);
-        if (inputFinCli.value)   params.append('fecha_fin', inputFinCli.value);
-        params.append('export', 'xlsx');
-        // Redirigir para que el navegador descargue el archivo generado por el backend
-        window.location.href = `/persona/estadisticas/clientes/?${params.toString()}`;
     });
 }); 
