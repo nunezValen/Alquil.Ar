@@ -509,25 +509,16 @@ def procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, 
     import base64
     
     try:
-        # Si el método de pago es Binance, crear alquiler pendiente y retornar información
+        # Si el método de pago es Binance, NO crear alquiler aún, solo retornar datos para confirmación
         if metodo_pago == 'binance':
-            # Crear alquiler pendiente para Binance
-            alquiler = Alquiler.objects.create(
-                maquina_base=maquina,
-                persona=persona,
-                fecha_inicio=fecha_inicio,
-                fecha_fin=fecha_fin,
-                metodo_pago=metodo_pago,
-                estado='pendiente',
-                monto_total=total,
-                external_reference=f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
-            )
+            # Preparar external_reference sin crear el alquiler
+            external_reference = f"{maquina.id}|{persona.id}|{fecha_inicio.strftime('%Y-%m-%d')}|{fecha_fin.strftime('%Y-%m-%d')}|{metodo_pago}|{total}"
             
-            print(f"[OK] Alquiler pendiente creado para Binance: {alquiler.id}")
+            print(f"[OK] Datos preparados para Binance - External reference: {external_reference}")
             
             return JsonResponse({
                 'metodo_pago': 'binance',
-                'alquiler_id': alquiler.id,
+                'external_reference': external_reference,
                 'success': True
             })
         
@@ -1108,8 +1099,10 @@ def desocultar_maquina_base(request, maquina_id):
 def confirmar_pago_binance(request):
     """
     Vista para confirmar el pago de Binance realizado por un empleado
+    Ahora crea el alquiler en lugar de solo confirmarlo
     """
     import json
+    from datetime import datetime
     
     try:
         # Verificar que el usuario sea empleado
@@ -1120,27 +1113,87 @@ def confirmar_pago_binance(request):
         
         # Obtener datos del request
         data = json.loads(request.body)
-        alquiler_id = data.get('alquiler_id')
+        external_reference = data.get('external_reference')
         
-        if not alquiler_id:
+        if not external_reference:
             return JsonResponse({
-                'error': 'ID de alquiler requerido'
+                'error': 'Referencia externa requerida'
             }, status=400)
         
-        # Obtener el alquiler
-        alquiler = get_object_or_404(Alquiler, id=alquiler_id)
-        
-        # Verificar que el alquiler esté pendiente y sea de Binance
-        if alquiler.estado != 'pendiente' or alquiler.metodo_pago != 'binance':
+        # Parsear external_reference
+        try:
+            parts = external_reference.split('|')
+            if len(parts) != 6:
+                raise ValueError("Formato de referencia externa inválido")
+            
+            maquina_id, persona_id, fecha_inicio_str, fecha_fin_str, metodo_pago, total = parts
+            
+            # Convertir fechas
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            
+            # Obtener objetos
+            maquina = get_object_or_404(MaquinaBase, id=maquina_id)
+            persona = get_object_or_404(Persona, id=persona_id)
+            
+        except (ValueError, IndexError) as e:
             return JsonResponse({
-                'error': 'Este alquiler no puede ser confirmado'
+                'error': f'Error procesando datos del pago: {str(e)}'
             }, status=400)
         
-        # Confirmar el alquiler
-        alquiler.estado = 'reservado'
-        alquiler.save()
+        # IDEMPOTENCIA: Verificar que no existe ya un alquiler ACTIVO para esta referencia
+        alquiler_existente = Alquiler.objects.filter(
+            external_reference=external_reference,
+            estado__in=['reservado', 'en_curso']  # Solo alquileres realmente activos
+        ).first()
         
-        print(f"[OK] Alquiler {alquiler.id} confirmado por empleado {request.user.email}")
+        if alquiler_existente:
+            print(f"[OK] Alquiler ya existe para Binance: {alquiler_existente.numero}")
+            alquiler = alquiler_existente
+        else:
+            # Verificar disponibilidad nuevamente
+            if not Alquiler.verificar_disponibilidad(maquina, fecha_inicio, fecha_fin):
+                return JsonResponse({
+                    'error': 'No hay unidades disponibles para las fechas seleccionadas'
+                }, status=400)
+            
+            # Verificar que el cliente no tenga otro alquiler activo
+            alquileres_activos = Alquiler.objects.filter(
+                persona=persona,
+                estado__in=['reservado', 'en_curso']
+            )
+            
+            if alquileres_activos.exists():
+                return JsonResponse({
+                    'error': 'El cliente ya tiene un alquiler activo'
+                }, status=400)
+            
+            # Buscar unidad disponible
+            unidad = Unidad.objects.filter(
+                maquina_base=maquina,
+                estado='disponible',
+                visible=True
+            ).first()
+            
+            if not unidad:
+                return JsonResponse({
+                    'error': 'No hay unidades disponibles'
+                }, status=400)
+            
+            # Crear el alquiler
+            alquiler = Alquiler.objects.create(
+                maquina_base=maquina,
+                unidad=unidad,
+                persona=persona,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                metodo_pago=metodo_pago,
+                estado='reservado',
+                monto_total=float(total),
+                external_reference=external_reference
+            )
+            
+            print(f"[OK] Alquiler Binance creado: {alquiler.numero}")
         
         # Enviar email al cliente
         try:
