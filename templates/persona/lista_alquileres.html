@@ -507,8 +507,7 @@
                         <h6>Información del Cliente</h6>
                         <p><strong>Nombre:</strong> {{ alquiler.persona.nombre }} {{ alquiler.persona.apellido }}</p>
                         <p><strong>Email:</strong> {{ alquiler.persona.email }}</p>
-                        <p><strong>Teléfono:</strong> {{ alquiler.persona.telefono|default:"No especificado" }}</p>
-                        <p><strong>Dirección:</strong> {{ alquiler.persona.direccion|default:"No especificada" }}</p>
+                        <p><strong>DNI:</strong> {{ alquiler.persona.dni }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6>Información del Alquiler</h6>
@@ -931,7 +930,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     mostrarAlertaModal(
-                        `<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> El alquiler ${data.numero_alquiler} se ha iniciado correctamente. ` +
+                        `<i class="fas fa-check-circle"></i> <strong>¡Éxito!</strong> El alquiler se ha iniciado correctamente. ` +
                         `Se ha enviado un email de confirmación al cliente.`,
                         'success'
                     );

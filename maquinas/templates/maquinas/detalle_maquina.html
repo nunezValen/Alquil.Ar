@@ -594,8 +594,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('binance-detail-fechas').textContent = datos.fechas || '-';
         document.getElementById('binance-detail-total').textContent = datos.total || '-';
         
-        // Guardar ID del alquiler para confirmación
-        window.currentAlquilerId = datos.alquiler_id;
+        // Guardar external_reference para confirmación
+        window.currentExternalReference = datos.external_reference;
         
         // Mostrar modal de Binance
         const binanceModal = new bootstrap.Modal(document.getElementById('binanceModal'));
@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-6"><strong>Código de Retiro:</strong></div>
+                        <div class="col-6"><strong>Numero del alquiler:</strong></div>
                         <div class="col-6"><span class="badge bg-primary fs-6">${alquiler.codigo_retiro}</span></div>
                     </div>
                     <hr>
@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <hr>
                     <div class="alert alert-info mb-0">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Importante:</strong> Se ha enviado un email de confirmación al cliente con todos los detalles del alquiler.
+                        <strong>Importante:</strong> Se ha enviado un email de confirmación al cliente con todos los detalles del alquiler y su codigo de retiro.
                     </div>
                 </div>
             </div>
@@ -975,12 +975,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('binanceModal').addEventListener('hidden.bs.modal', function () {
         this.setAttribute('aria-hidden', 'true');
+        // Limpiar variables globales para evitar alquileres huérfanos
+        if (window.currentExternalReference) {
+            console.log('Modal de Binance cerrado - Limpiando referencia externa');
+            window.currentExternalReference = null;
+        }
     });
     
     // Manejar confirmación de pago de Binance
     document.getElementById('confirmar-pago-binance').addEventListener('click', function() {
-        if (!window.currentAlquilerId) {
-            alert('Error: No se encontró el ID del alquiler');
+        if (!window.currentExternalReference) {
+            alert('Error: No se encontró la referencia del alquiler');
             return;
         }
         
@@ -997,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
             body: JSON.stringify({
-                alquiler_id: window.currentAlquilerId
+                external_reference: window.currentExternalReference
             })
         })
         .then(response => response.json())
@@ -1106,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     cliente: clienteNombre,
                     fechas: `${fechaInicio} - ${fechaFin.toISOString().split('T')[0]}`,
                     total: document.getElementById('total-costo').textContent.replace('$', ''),
-                    alquiler_id: data.alquiler_id
+                    external_reference: data.external_reference
                 });
                 
                 // Restaurar botón
