@@ -108,9 +108,14 @@
             document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.toggle-visible').forEach(function(sw) {
                     sw.addEventListener('change', function() {
-                        if (!this.checked) { // Si se está ocultando
+                        if (!this.checked) { // Ocultar
                             if (!confirm('¿Estás seguro de que deseas ocultar esta sucursal? Este cambio no se puede deshacer.')) {
                                 this.checked = true; // Revertir si se cancela
+                                return;
+                            }
+                        } else { // Hacer visible
+                            if (!confirm('¿Estás seguro de que deseas hacer visible esta sucursal?')) {
+                                this.checked = false; // Revertir si se cancela
                                 return;
                             }
                         }

@@ -685,8 +685,8 @@ class SucursalForm(forms.ModelForm):
         if len(direccion) > 200:
             raise forms.ValidationError('La dirección no puede tener más de 200 caracteres.')
 
-        # Búsqueda case-insensitive de direcciones duplicadas sólo entre sucursales visibles
-        qs = Sucursal.objects.filter(direccion__iexact=direccion, es_visible=True)
+        # Búsqueda case-insensitive de direcciones duplicadas en TODAS las sucursales (visibles o no)
+        qs = Sucursal.objects.filter(direccion__iexact=direccion)
         # Excluir la instancia actual si estamos editando
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
@@ -719,15 +719,6 @@ class SucursalForm(forms.ModelForm):
         return cleaned_data
 
 class ModificarSucursalForm(SucursalForm):
-    class Meta(SucursalForm.Meta):
-        exclude = ['direccion', 'latitud', 'longitud']
-
-    def clean(self):
-        # Llama al método clean() de la clase base para obtener los datos limpios
-        cleaned_data = super(SucursalForm, self).clean()
-        
-        # Como latitud y longitud no son parte de este formulario,
-        # no se necesita la validación que está en SucursalForm.clean().
-        # Aquí solo se realizan las validaciones de los campos que sí están presentes.
-        
-        return cleaned_data
+    """Formulario de edición idéntico al de creación, permite modificar todos los campos."""
+    # Sin Meta personalizado: hereda los `fields` completos de `SucursalForm`.
+    pass

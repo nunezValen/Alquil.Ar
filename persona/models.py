@@ -292,7 +292,15 @@ class Sucursal(models.Model):
     def clean(self):
         """Validaciones adicionales del modelo"""
         super().clean()
-        # Validar que el teléfono tenga el formato correcto
+
+        # 1) Dirección única (ignorando mayúsculas/minúsculas y espacios laterales)
+        direccion_normalizada = (self.direccion or '').strip()
+        if direccion_normalizada:
+            duplicados = Sucursal.objects.filter(direccion__iexact=direccion_normalizada).exclude(pk=self.pk)
+            if duplicados.exists():
+                raise ValidationError({'direccion': 'Ya existe una sucursal con esta dirección.'})
+
+        # 2) Teléfono con al menos 10 dígitos
         if self.telefono:
             # Eliminar espacios y guiones para contar dígitos
             digitos = ''.join(filter(str.isdigit, self.telefono))
