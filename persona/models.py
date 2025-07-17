@@ -67,23 +67,33 @@ class Persona(models.Model):
         """
         Calcula el recargo basado en la calificación promedio del cliente.
         
-        Reglas:
+        Reglas (usando redondeo hacia arriba):
         - ≥ 4 estrellas: 0% de recargo
         - = 3 estrellas: 10% de recargo  
         - = 2 estrellas: 20% de recargo
         - = 1 estrella: 30% de recargo
         
+        Ejemplos:
+        - 3.5 → ceil(3.5) = 4 → 0% recargo
+        - 2.5 → ceil(2.5) = 3 → 10% recargo
+        - 1.5 → ceil(1.5) = 2 → 20% recargo
+        
         Returns:
             tuple: (porcentaje_recargo, monto_recargo, monto_total)
         """
-        # Reglas de negocio corregidas según especificaciones
-        if self.calificacion_promedio >= 4.0:
+        import math
+        
+        # Redondear hacia arriba la calificación promedio
+        calificacion_redondeada = math.ceil(float(self.calificacion_promedio))
+        
+        # Aplicar reglas de negocio basadas en la calificación redondeada
+        if calificacion_redondeada >= 4:
             porcentaje = 0
-        elif self.calificacion_promedio >= 3.0:
+        elif calificacion_redondeada == 3:
             porcentaje = 10
-        elif self.calificacion_promedio >= 2.0:
+        elif calificacion_redondeada == 2:
             porcentaje = 20
-        else:  # < 2.0
+        else:  # calificacion_redondeada == 1
             porcentaje = 30
         
         monto_recargo = (monto_base * porcentaje) / 100
@@ -94,9 +104,12 @@ class Persona(models.Model):
     def tiene_recargo(self):
         """
         Verifica si el cliente tiene recargo aplicable.
+        Usa redondeo hacia arriba para consistencia.
         Returns: bool
         """
-        return self.calificacion_promedio < 4.0
+        import math
+        calificacion_redondeada = math.ceil(float(self.calificacion_promedio))
+        return calificacion_redondeada < 4
     
     def get_mensaje_recargo(self, monto_base=None):
         """

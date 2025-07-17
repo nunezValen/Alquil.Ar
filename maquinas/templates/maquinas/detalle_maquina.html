@@ -718,15 +718,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (cliente) {
             if (cliente.tiene_recargo) {
-                // Calcular recargo según las reglas de negocio
+                // Calcular recargo según las reglas de negocio (usando redondeo hacia arriba)
+                const calificacionRedondeada = Math.ceil(cliente.calificacion_promedio);
                 let porcentaje;
-                if (cliente.calificacion_promedio >= 4.0) {
+                if (calificacionRedondeada >= 4) {
                     porcentaje = 0;
-                } else if (cliente.calificacion_promedio >= 3.0) {
+                } else if (calificacionRedondeada === 3) {
                     porcentaje = 10;
-                } else if (cliente.calificacion_promedio >= 2.0) {
+                } else if (calificacionRedondeada === 2) {
                     porcentaje = 20;
-                } else {
+                } else { // calificacionRedondeada === 1
                     porcentaje = 30;
                 }
                 const montoRecargo = (subtotal * porcentaje) / 100;
@@ -739,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('monto-recargo').textContent = '$' + montoRecargo.toFixed(2);
                 document.getElementById('mensaje-recargo').innerHTML = 
                     `<i class="fas fa-exclamation-triangle me-2"></i>` +
-                    `Se aplica recargo por calificación promedio de ${cliente.calificacion_promedio} estrellas.`;
+                    `Se aplica recargo por calificación de ${cliente.calificacion_promedio} estrellas (redondeado a ${calificacionRedondeada}).`;
                 recargoInfo.style.display = 'block';
             } else {
                 // Sin recargo
