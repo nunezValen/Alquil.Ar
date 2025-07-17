@@ -182,7 +182,7 @@ def inicio(request):
                 messages.error(request, 'Hubo un error al procesar el pago.')
 
     # Obtener máquinas para mostrar en la página de inicio
-    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
+    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:3]  # Obtener las primeras 3 máquinas con stock
     for maquina in maquinas:
         if len(maquina.descripcion_corta) > 100:
             maquina.descripcion_vista = maquina.descripcion_corta[:100] + "..."
@@ -811,7 +811,7 @@ def login_as_persona(request):
 
 @login_required
 def inicio_blanco(request):
-    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:4]  # Obtener las primeras 4 máquinas con stock
+    maquinas = MaquinaBase.objects.filter(stock__gt=0)[:3]  # Obtener las primeras 3 máquinas con stock
     for maquina in maquinas:
         # Creamos un atributo temporal solo para la vista
         if len(maquina.descripcion_corta) > 300:
