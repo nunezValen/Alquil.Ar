@@ -1949,13 +1949,21 @@ def buscar_clientes_json(request):
         print("[INFO] Búsqueda muy corta, devolviendo lista vacía")
         return JsonResponse({'clientes': []})
     
-    # Buscar SOLO por email y DNI en todas las personas (excluir empleados)
+    # Buscar SOLO por email y DNI en todas las personas que sean clientes
     print(f"📊 Total personas en BD: {Persona.objects.count()}")
     
-    clientes = Persona.objects.filter(
+    # Filtrar clientes, excluyendo al usuario actual si está autenticado
+    clientes_queryset = Persona.objects.filter(
         Q(email__icontains=query) | Q(dni__icontains=query),
-        es_empleado=False  # Excluir empleados
-    ).order_by('apellido', 'nombre')[:10]  # Limitar a 10 resultados
+        es_cliente=True,                # Incluir solo personas que sean clientes
+        bloqueado_cliente=False         # No incluir clientes bloqueados
+    )
+    
+    # Excluir al usuario actual para que no pueda alquilar para sí mismo
+    if request.user.is_authenticated:
+        clientes_queryset = clientes_queryset.exclude(email=request.user.email)
+    
+    clientes = clientes_queryset.order_by('apellido', 'nombre')[:10]  # Limitar a 10 resultados
     
     print(f"🔍 Total encontrados: {clientes.count()}")
     

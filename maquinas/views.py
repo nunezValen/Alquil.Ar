@@ -719,10 +719,14 @@ def alquilar_maquina(request, maquina_id):
             fecha_fin = fecha_inicio + timedelta(days=dias-1)
             
             # Obtener la persona asociada al usuario
-            if request.user.persona.es_empleado:  # Si es empleado
+            # Verificar si el empleado está actuando como cliente
+            es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+            
+            if request.user.persona.es_empleado and not es_empleado_actuando_como_cliente:  # Si es empleado trabajando
                 cliente_id = request.POST.get('cliente_id')
                 persona = get_object_or_404(Persona, id=cliente_id)
             else:
+                # Cliente normal o empleado actuando como cliente
                 try:
                     persona = Persona.objects.get(email=request.user.email)
                 except Persona.DoesNotExist:
@@ -805,25 +809,26 @@ def alquilar_maquina(request, maquina_id):
             porcentaje_recargo, monto_recargo, total = persona.calcular_recargo(total_base)
             
             # Verificar si el usuario es empleado para usar QR dinámico o API normal
+            # Considerar si está actuando como cliente
             try:
-                es_empleado = request.user.persona.es_empleado
+                es_empleado_trabajando = request.user.persona.es_empleado and not es_empleado_actuando_como_cliente
             except:
                 # Si no tiene persona asociada, buscar por email y asociar
                 try:
                     persona_usuario = Persona.objects.get(email=request.user.email)
                     persona_usuario.user = request.user
                     persona_usuario.save()
-                    es_empleado = persona_usuario.es_empleado
+                    es_empleado_trabajando = persona_usuario.es_empleado and not es_empleado_actuando_como_cliente
                 except Persona.DoesNotExist:
                     return JsonResponse({
                         'error': 'No se encontró tu perfil de persona. Por favor, contacta al administrador.'
                     }, status=400)
             
-            if es_empleado:
-                # EMPLEADOS: Usar QR dinámico con nuevas credenciales
+            if es_empleado_trabajando:
+                # EMPLEADOS TRABAJANDO: Usar QR dinámico con nuevas credenciales
                 return procesar_pago_empleado_qr_dinamico(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago)
             else:
-                # CLIENTES: Usar API anterior (preferencias normales)
+                # CLIENTES (normales o empleados actuando como clientes): Usar API anterior (preferencias normales)
                 return procesar_pago_cliente_normal(request, maquina, persona, fecha_inicio, fecha_fin, dias, total_base, total, porcentaje_recargo, monto_recargo, metodo_pago)
 
         
@@ -841,30 +846,44 @@ def alquilar_maquina(request, maquina_id):
     fecha_minima = date.today()
     
     # Obtener información de disponibilidad
+    # NOTA: Solo verificar alquileres del usuario si NO es empleado o si es empleado pero no tiene clientes para gestionar
     try:
         persona = Persona.objects.get(email=request.user.email)
-        # Verificar si tiene alquileres adeudados
-        tiene_alquiler_adeudado = Alquiler.objects.filter(
-            persona=persona,
-            estado='adeudado'
-        ).exists()
-        # Verificar si tiene cualquier alquiler activo (reservado o en curso)
-        tiene_alquiler_activo = Alquiler.objects.filter(
-            persona=persona,
-            estado__in=['reservado', 'en_curso']
-        ).exists()
+        
+        # Verificar si el empleado está actuando como cliente
+        es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+        
+        # Si es empleado trabajando, NO verificar sus alquileres personales (puede alquilar para otros)
+        if persona.es_empleado and not es_empleado_actuando_como_cliente:
+            tiene_alquiler_adeudado = False
+            tiene_alquiler_activo = False
+        else:
+            # Si es cliente normal o empleado actuando como cliente, sí verificar sus alquileres
+            tiene_alquiler_adeudado = Alquiler.objects.filter(
+                persona=persona,
+                estado='adeudado'
+            ).exists()
+            tiene_alquiler_activo = Alquiler.objects.filter(
+                persona=persona,
+                estado__in=['reservado', 'en_curso']
+            ).exists()
     except:
         tiene_alquiler_adeudado = False
         tiene_alquiler_activo = False
     
-    # Obtener lista de clientes si el usuario es empleado
+    # Obtener lista de clientes si el usuario es empleado TRABAJANDO (no actuando como cliente)
     clientes = []
     try:
-        if request.user.persona.es_empleado:
-            # Solo incluir personas que NO sean empleados ni admins (solo clientes)
+        es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+        
+        if request.user.persona.es_empleado and not es_empleado_actuando_como_cliente:
+            # Incluir todas las personas que sean clientes y no estén bloqueadas
+            # EXCLUIR al empleado actual para que no pueda alquilar para sí mismo
             clientes_queryset = Persona.objects.filter(
-                es_empleado=False,
-                es_admin=False
+                es_cliente=True,                    # Que sea cliente
+                bloqueado_cliente=False             # Que no esté bloqueado como cliente
+            ).exclude(
+                email=request.user.email            # EXCLUIR al empleado actual
             )
             
             # Agregar información de recargo para cada cliente
@@ -888,10 +907,14 @@ def alquilar_maquina(request, maquina_id):
             persona_usuario = Persona.objects.get(email=request.user.email)
             persona_usuario.user = request.user
             persona_usuario.save()
-            if persona_usuario.es_empleado:
+            es_empleado_actuando_como_cliente = request.session.get('es_empleado_actuando_como_cliente', False)
+            
+            if persona_usuario.es_empleado and not es_empleado_actuando_como_cliente:
                 clientes_queryset = Persona.objects.filter(
-                    es_empleado=False,
-                    es_admin=False
+                    es_cliente=True,                    # Que sea cliente
+                    bloqueado_cliente=False             # Que no esté bloqueado como cliente
+                ).exclude(
+                    email=request.user.email            # EXCLUIR al empleado actual
                 )
                 
                 clientes = []
