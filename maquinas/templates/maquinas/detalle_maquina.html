@@ -387,7 +387,7 @@
                                         </label>
                                     </div>
                                     
-                                    {% if usuario_persona.es_empleado %}
+                                    {% if usuario_persona.es_empleado and not es_empleado_actuando_como_cliente %}
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="metodo_pago" id="binance" value="binance">
                                         <label class="form-check-label" for="binance">
