@@ -27,7 +27,7 @@ def crear_admin():
     apellido = "Sistema"
     email = "eguaraszoe@gmail.com"
     dni = "12345678"
-    password = "123456"
+    password = "contraseña"
     
     try:
         # Verificar si ya existe el usuario
